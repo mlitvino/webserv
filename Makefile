@@ -5,12 +5,12 @@ SRC_DIR = src
 OBJ_DIR = objs
 INC_DIR = incld
 
-SRC_FILES =	main.cpp \
-			te.cpp c.cpp
+SRC_FILES =	main.cpp
 
 SRCS = $(foreach file,$(SRC_FILES),$(shell find $(SRC_DIR) -name "$(file)" -type f))
 OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
-CPPFLAGS = -I$(INC_DIR) -MMD -MP -Wall -Wextra -Werror -std=c++20
+CPPFLAGS = -I$(INC_DIR) -MMD -MP -Wall -Wextra -std=c++20
+#-Wall -Wextra -Werror
 DEPS = $(OBJS:.o=.d)
 
 all: $(NAME)
@@ -33,12 +33,15 @@ fclean: clean
 
 re: fclean all
 
-run: all
-	./$(NAME)
+start: all
+	./$(NAME) $(filter-out $@,$(MAKECMDGOALS))
+
+%:
+	@:
 
 debug: CPPFLAGS += -DDEBUG -g3
 debug: all
 
-.PHONY: all clean fclean re run
+.PHONY: all clean fclean re start debug
 
 -include $(DEPS)

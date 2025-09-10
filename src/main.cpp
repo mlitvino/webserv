@@ -2,10 +2,15 @@
 
 int	main(int ac, char **av)
 {
-	int			res;
+	int			err;
 	addrinfo	hints;
 	addrinfo	*server;
-	int			sockfd;
+	int			sockfd = -1;
+
+	int					client_sockfd = -1;
+	sockaddr_storage	client_addr;
+	socklen_t			client_addr_len = sizeof(client_addr);
+
 
 	// (void)av;
 	// if (ac != 2)
@@ -18,23 +23,42 @@ int	main(int ac, char **av)
 
 	try
 	{
-		res = getaddrinfo(IN_DOMAIN, IN_PORT, &hints, &server);
-		if (res)
-			THROW(gai_strerror(res));
+		err = getaddrinfo(IN_DOMAIN, IN_PORT, &hints, &server);
+		if (err)
+			THROW(gai_strerror(err));
 
 		sockfd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
 		if (sockfd == -1)
 			THROW_ERRNO("socket");
 
-		res = bind(sockfd, server->ai_addr, server->ai_addrlen);
-		if (res)
+		err = bind(sockfd, server->ai_addr, server->ai_addrlen);
+		if (err)
 			THROW_ERRNO("bind");
 
+		err = listen(sockfd, QUEUE_SIZE);
+		if (err)
+			THROW_ERRNO("listen");
+
+		client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
+		if (client_sockfd == -1)
+			THROW_ERRNO("listen");
+
+
+		char buffer[1024] = {0};
+		read(client_sockfd, buffer, sizeof(buffer));
+
+		std::cout << "CONTENT: " << "(" << buffer << ")" << std::endl;
 	}
 	catch (std::exception& e)
 	{
 		std::cout << e.what() << std::endl;
 	}
+
+	close(client_sockfd);
+	close(sockfd);
+	freeaddrinfo(server);
+
+	std::cout << "END" << std::endl;
 
 	return 0;
 }

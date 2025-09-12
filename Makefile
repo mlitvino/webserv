@@ -5,7 +5,10 @@ SRC_DIR = src
 OBJ_DIR = objs
 INC_DIR = incld
 
-SRC_FILES =	main.cpp
+SRC_FILES =	main.cpp \
+			parser.cpp \
+			init.cpp \
+			loop.cpp
 
 SRCS = $(foreach file,$(SRC_FILES),$(shell find $(SRC_DIR) -name "$(file)" -type f))
 OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))

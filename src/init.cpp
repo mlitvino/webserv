@@ -11,7 +11,7 @@ void	init_servers(addrinfo *&server, int &sockfd)
 	hints.ai_flags = AI_PASSIVE;
 
 
-	err = getaddrinfo(IN_DOMAIN, IN_PORT, &hints, &server);
+	err = getaddrinfo(DOMAIN, PORT, &hints, &server);
 	if (err)
 		THROW(gai_strerror(err));
 

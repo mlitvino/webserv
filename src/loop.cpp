@@ -1,44 +1,146 @@
 #include "webserv.hpp"
 
+int	parseRequest(t_request &req, std::string& use_buf)
+{
+	int		leftBytes;
+
+	if (req.method.empty())
+	{
+		req.method = use_buf.substr(0, 3);
+		if (req.method != "GET"
+			&& req.method != "POST"
+			&& req.method != "DELETE")
+		{
+			THROW("unknown method in request");
+		}
+		use_buf.erase(0, 3);
+	}
+
+
+	return leftBytes;
+}
+
+// void	readRequest(t_request &req, int client_sockfd)
+// {
+// 	char		buffer[1024];
+// 	std::string	use_buf(0);
+// 	int		res;
+// 	int		leftBytes;
+
+// 	while(true)
+// 	{
+// 		res = read(client_sockfd, buffer, sizeof(buffer));
+// 		if (res > 0)
+// 		{
+// 			buffer[res] = 0;
+// 			use_buf += buffer;
+// 		}
+// 		else if (res == 0)
+// 		{} // connection was closed
+// 		else
+// 		{} // error
+// 	}
+// 	leftBytes = parseRequest(req, use_buf);
+// }
+
 void	accepting_loop(int &sockfd)
 {
 	int					err;
 	int					client_sockfd = -1;
 	sockaddr_storage	client_addr;
 	socklen_t			client_addr_len = sizeof(client_addr);
+	char				buffer[1024] = {0};
+
+	epoll_event	ev;
+	epoll_event	events[MAX_EVENTS];
+	int			epoll_fd;
+	int			nfds;
+
+	t_request	req;
+	bzero(&req, sizeof(req));
 
 	while (1)
 	{
-		client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
-		if (client_sockfd == -1)
-			THROW_ERRNO("listen");
+		// client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
+		// if (client_sockfd == -1)
+		// 	THROW_ERRNO("listen");
 
-		char	buffer[1024] = {0};
-		err = read(client_sockfd, buffer, sizeof(buffer));
-		if (err == -1)
-			THROW_ERRNO("read");
+		epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
+		if (epoll_fd == -1)
+			THROW_ERRNO("epoll_create");
 
-		std::cout << "CLIENT REQUEST:\n" << buffer << std::endl;
+		ev.events = EPOLLIN;
+		ev.data.fd = sockfd;
+		err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &ev);
+		if (err)
+			THROW_ERRNO("epoll_ctl");
 
-		bzero(buffer, sizeof(buffer));
-		strcpy(buffer, HTTP_STATUS);
+		while (true)
+		{
+			nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+			if (nfds == -1)
+				THROW_ERRNO("epoll_wait");
 
-		int html_fd = open(STATIC_SITE, O_RDWR);
-		if (html_fd == -1)
-			THROW_ERRNO("open");
+			for (int i = 0; i < nfds; ++i)
+			{
+				if (events[i].data.fd == sockfd)
+				{
+					int client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
+					if (client_sockfd == -1)
+						THROW_ERRNO("accept");
 
-		int len = read(html_fd, &buffer[sizeof(HTTP_STATUS) - 1], sizeof(buffer) / 2);
-		if (len < 0)
-			THROW_ERRNO("read");
+					int flags = fcntl(client_sockfd, F_GETFL, 0);
+					fcntl(client_sockfd, F_SETFL, flags | O_NONBLOCK);
+					ev.events = EPOLLIN | EPOLLET;
+					ev.data.fd = client_sockfd;
+					err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_sockfd, &ev);
+					if (err)
+						THROW_ERRNO("epoll_ctl");
 
-		close(html_fd);
+					// handle new connection
+				}
+				else
+				{
+					// handle new data in old connection
+					err = read(events[i].data.fd, buffer, sizeof(buffer));
+					if (err == -1)
+						THROW_ERRNO("read");
 
-		std::cout << "SERVER RESPONSE:\n" << buffer << std::endl;
+					std::cout << "CLIENT REQUEST:\n" << buffer << std::endl;
 
-		err = send(client_sockfd, buffer, sizeof(buffer), 0);
-		if (err == -1)
-			THROW_ERRNO("send");
+					bzero(buffer, sizeof(buffer));
+					strcpy(buffer, HTTP_STATUS);
 
-		close(client_sockfd);
+					int html_fd = open(STATIC_SITE, O_RDWR);
+					if (html_fd == -1)
+						THROW_ERRNO("open");
+
+					int len = read(html_fd, &buffer[sizeof(HTTP_STATUS) - 1], sizeof(buffer) / 2);
+					if (len == -1)
+						THROW_ERRNO("read");
+
+					close(html_fd);
+
+					std::cout << "SERVER RESPONSE:\n" << buffer << std::endl;
+
+					err = send(events[i].data.fd, buffer, sizeof(buffer), 0);
+					if (err == -1)
+						THROW_ERRNO("send");
+
+					close(events[i].data.fd);
+				}
+			}
+		}
+
+
+		// err = read(client_sockfd, buffer, sizeof(buffer));
+		// if (err == -1)
+		// 	THROW_ERRNO("read");
+
+		// std::cout << "CLIENT REQUEST:\n" << buffer << std::endl;
+
+		//readRequest(req, client_sockfd);
+
+
 	}
 }

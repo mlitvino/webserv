@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fstream>
 
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -13,23 +14,27 @@
 #include "CustomException.hpp"
 
 #define QUEUE_SIZE 20
+#define BUFFER_SIZE 1024
+#define MAX_EVENTS 10
+#define DEFAULT_EPOLL_SIZE 10
 
 #define HTTP_STATUS "HTTP/1.1 200\r\n\r\n"
 #define CRLF "\r\n"
+#define DBLE_CRLF "\r\n\r\n"
 
 // default conf_file
-#define IN_PORT "8080"
-#define IN_DOMAIN "localhost"
+#define PORT "8080"
+#define DOMAIN "localhost"
 #define DEFAULT_CONF "web/default_conf"
 #define STATIC_SITE "web/www/index.html"
 
 typedef struct	s_request
 {
-	char	*method;
+	std::string	method;
 	char	*path;
 	char	*proocol;
 
-	char	*body;
+	std::string	body;
 }				t_request;
 
 typedef struct	s_response
@@ -38,6 +43,7 @@ typedef struct	s_response
 	int		status_code;
 	char	*optional_phrase;
 
+	char	*content_length;
 	char	*body;
 }				t_response;
 

@@ -19,7 +19,7 @@ int	main(int ac, char **av)
 	}
 	catch (std::exception& e)
 	{
-		std::cout << "Fatal Error: " << e.what() << std::endl;
+		std::cerr << "Fatal Error: " << e.what() << std::endl;
 	}
 
 	close(sockfd);

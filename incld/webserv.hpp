@@ -11,8 +11,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "CustomException.hpp"
-
 #define QUEUE_SIZE 20
 #define BUFFER_SIZE 1024
 #define MAX_EVENTS 10
@@ -24,9 +22,12 @@
 
 // default conf_file
 #define PORT "8080"
-#define DOMAIN "localhost"
+#define HOST "localhost"
 #define DEFAULT_CONF "web/default_conf"
 #define STATIC_SITE "web/www/index.html"
+
+#include "CustomException.hpp"
+#include "Server.hpp"
 
 typedef struct	s_request
 {
@@ -80,4 +81,4 @@ typedef struct	s_data
 
 void	parser(char *conf_file);
 void	init_servers(addrinfo *&server, int &sockfd);
-void	accepting_loop(int &sockfd);
+void	accepting_loop(int sockfd);

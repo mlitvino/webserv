@@ -10,8 +10,7 @@ void	init_servers(addrinfo *&server, int &sockfd)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-
-	err = getaddrinfo(DOMAIN, PORT, &hints, &server);
+	err = getaddrinfo(HOST, PORT, &hints, &server);
 	if (err)
 		THROW(gai_strerror(err));
 
@@ -37,4 +36,6 @@ void	init_servers(addrinfo *&server, int &sockfd)
 	err = listen(sockfd, QUEUE_SIZE);
 	if (err)
 		THROW_ERRNO("listen");
+
+	freeaddrinfo(server);
 }

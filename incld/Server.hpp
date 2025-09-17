@@ -19,14 +19,12 @@ class Server
 		size_t		_clientBodySize;
 		std::string	_errPagePath[MAX_ERRS];
 
-		addrinfo	_hints;
-		addrinfo	*_server;
 		int			_sockfd;
 	public:
 		Server();
 		~Server();
 
-		void		prepareServer();
+		void		prepareServer(addrinfo &hints, addrinfo *server);
 		void		setHost(std::string &host);
 		void		setPort(std::string &port);
 		std::string	&getHost();

@@ -14,7 +14,7 @@ class CustomException : public std::exception
 	public:
 		CustomException(const char* file, int line, const char* msg, const char *strerror) noexcept
 		{
-			std::snprintf(_buf, sizeof(_buf), "%s:%d %s:%s", file, line, msg ? msg : "", strerror);
+			std::snprintf(_buf, sizeof(_buf), "%s:%d %s: %s", file, line, msg ? msg : "", strerror);
 		}
 		const char* what() const noexcept override
 		{

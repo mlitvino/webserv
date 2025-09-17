@@ -9,6 +9,12 @@ typedef enum s_err_pages
 	MAX_ERRS
 }	t_err_pages;
 
+typedef struct	EpollPtrInfo
+{
+	int		_sockfd;
+	void	*_owner; // Server, Client
+}				EpollPtrInfo;
+
 class Server
 {
 	private:
@@ -19,7 +25,8 @@ class Server
 		size_t		_clientBodySize;
 		std::string	_errPagePath[MAX_ERRS];
 
-		int			_sockfd;
+		int				_sockfd;
+		EpollPtrInfo	_ptrInfo;
 	public:
 		Server();
 		~Server();
@@ -30,5 +37,6 @@ class Server
 		std::string	&getHost();
 		std::string	&getPort();
 		int			getSockfd();
+		EpollPtrInfo &getPtrInfo();
 };
 

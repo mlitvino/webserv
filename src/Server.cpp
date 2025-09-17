@@ -31,6 +31,8 @@ void	Server::prepareServer(addrinfo &hints, addrinfo *server)
 	err = listen(_sockfd, QUEUE_SIZE);
 	if (err)
 		THROW_ERRNO("listen");
+
+	_ptrInfo._sockfd = _sockfd;
 }
 
 // Setters, Getters
@@ -60,12 +62,17 @@ int	Server::getSockfd()
 	return _sockfd;
 }
 
+EpollPtrInfo &Server::getPtrInfo()
+{
+	return _ptrInfo;
+}
+
 // Constructors
 
 Server::Server()
 {
 	_sockfd = -1;
-
+	_ptrInfo._owner = static_cast<void*>(this);
 }
 
 Server::~Server()

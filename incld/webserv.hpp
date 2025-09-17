@@ -74,11 +74,16 @@ typedef struct	s_server
 
 typedef struct	s_data
 {
-		t_server	*server_array;
-		int			server_amount;
+		Server	*serverArray;
+		int		server_amount;
+
+		epoll_event	ev;
+		epoll_event	events[MAX_EVENTS];
+		int			epoll_fd;
+		int			nfds;
 
 }		t_data;
 
-void	parser(char *conf_file);
-void	init_servers(addrinfo *&server, int &sockfd);
-void	accepting_loop(int sockfd);
+void	parser(t_data &data, char *conf_file);
+void	init_servers(t_data &data);
+void	accepting_loop(t_data &data);

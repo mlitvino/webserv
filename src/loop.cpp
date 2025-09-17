@@ -81,42 +81,75 @@ int	handle_new_data(epoll_event *events, int i)
 	return flag;
 }
 
-void	accepting_loop(int sockfd)
+void	init_epoll(t_data &data)
+{
+	int			err;
+	epoll_event	&ev = data.ev;
+	Server		*serverArray = data.serverArray;
+
+	data.epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
+	if (data.epoll_fd == -1)
+		THROW_ERRNO("epoll_create");
+
+	ev.events = EPOLLIN;
+	for (int i = 0; i < data.server_amount; ++i)
+	{
+		ev.data.ptr = static_cast<void*>(&serverArray[i]);
+		ev.data.fd = serverArray[i].getSockfd();
+		err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, serverArray[i].getSockfd(), &ev);
+		if (err)
+			THROW_ERRNO("epoll_ctl");
+	}
+}
+
+void	accepting_loop(t_data &data)
 {
 	int					err;
 	int					client_sockfd = -1;
 	sockaddr_storage	client_addr;
 	socklen_t			client_addr_len = sizeof(client_addr);
 
-	epoll_event	ev;
-	epoll_event	events[MAX_EVENTS];
-	int			epoll_fd;
+
+
+	init_epoll(data);
+
+	epoll_event	&ev = data.ev;
+	// epoll_event	events[MAX_EVENTS];
+	int			epoll_fd = data.epoll_fd;
+
 	int			nfds;
 
-	t_request	req;
-	bzero(&req, sizeof(req));
 
-	epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
-	if (epoll_fd == -1)
-		THROW_ERRNO("epoll_create");
+	int sockfd = data.serverArray[0].getSockfd();
 
-	ev.events = EPOLLIN;
-	ev.data.fd = sockfd;
-	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &ev);
-	if (err)
-		THROW_ERRNO("epoll_ctl");
+
+	// epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
+	// if (epoll_fd == -1)
+	// 	THROW_ERRNO("epoll_create");
+
+	// ev.events = EPOLLIN;
+	// ev.data.fd = sockfd;
+	// err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &ev);
+	// if (err)
+	// 	THROW_ERRNO("epoll_ctl");
 
 	while (true)
 	{
-		nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+		nfds = epoll_wait(data.epoll_fd, data.events, MAX_EVENTS, -1);
 		if (nfds == -1)
 			THROW_ERRNO("epoll_wait");
 
 		for (int i = 0; i < nfds; ++i)
 		{
-			if (events[i].data.fd == sockfd)
+			std::cout << "Erpoll fd: " << data.epoll_fd << std::endl;
+			std::cout << "Server sockfd: " << data.serverArray[0].getSockfd() << std::endl;
+			std::cout << "New fd: " << data.events[i].data.fd << std::endl;
+
+
+			if (data.events[i].data.fd == sockfd)
 			{
-				// accept new connection
+				std::cout << "Accepting new connection..." << std::endl;
+
 				int client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
 				if (client_sockfd == -1)
 					THROW_ERRNO("accept");
@@ -132,8 +165,11 @@ void	accepting_loop(int sockfd)
 			else
 			{
 				// handle new data in old connection
-				if (handle_new_data(events, i) == 1)
+				if (handle_new_data(data.events, i) == 1)
+				{
+					// test, telnet with "ex" input
 					goto fin;
+				}
 			}
 		}
 	}

@@ -94,8 +94,7 @@ void	init_epoll(t_data &data)
 	ev.events = EPOLLIN;
 	for (int i = 0; i < data.server_amount; ++i)
 	{
-		ev.data.ptr = static_cast<void*>(&serverArray[i]);
-		ev.data.fd = serverArray[i].getSockfd();
+		ev.data.ptr = static_cast<void*>(&serverArray[i].getPtrInfo());
 		err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, serverArray[i].getSockfd(), &ev);
 		if (err)
 			THROW_ERRNO("epoll_ctl");
@@ -109,29 +108,9 @@ void	accepting_loop(t_data &data)
 	sockaddr_storage	client_addr;
 	socklen_t			client_addr_len = sizeof(client_addr);
 
-
-
 	init_epoll(data);
-
-	epoll_event	&ev = data.ev;
-	// epoll_event	events[MAX_EVENTS];
-	int			epoll_fd = data.epoll_fd;
-
 	int			nfds;
-
-
 	int sockfd = data.serverArray[0].getSockfd();
-
-
-	// epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
-	// if (epoll_fd == -1)
-	// 	THROW_ERRNO("epoll_create");
-
-	// ev.events = EPOLLIN;
-	// ev.data.fd = sockfd;
-	// err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &ev);
-	// if (err)
-	// 	THROW_ERRNO("epoll_ctl");
 
 	while (true)
 	{
@@ -145,36 +124,37 @@ void	accepting_loop(t_data &data)
 			std::cout << "Server sockfd: " << data.serverArray[0].getSockfd() << std::endl;
 			std::cout << "New fd: " << data.events[i].data.fd << std::endl;
 
+			data.events[i].data.ptr;
 
-			if (data.events[i].data.fd == sockfd)
-			{
-				std::cout << "Accepting new connection..." << std::endl;
+			// if (is_new_connection()) // data.events[i].data.fd == sockfd
+			// {
+			// 	std::cout << "Accepting new connection..." << std::endl;
 
-				int client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
-				if (client_sockfd == -1)
-					THROW_ERRNO("accept");
+			// 	int client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
+			// 	if (client_sockfd == -1)
+			// 		THROW_ERRNO("accept");
 
-				int flags = fcntl(client_sockfd, F_GETFL, 0);
-				fcntl(client_sockfd, F_SETFL, flags | O_NONBLOCK);
-				ev.events = EPOLLIN | EPOLLET;
-				ev.data.fd = client_sockfd;
-				err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_sockfd, &ev);
-				if (err)
-					THROW_ERRNO("epoll_ctl");
-			}
-			else
-			{
-				// handle new data in old connection
-				if (handle_new_data(data.events, i) == 1)
-				{
-					// test, telnet with "ex" input
-					goto fin;
-				}
-			}
+			// 	int flags = fcntl(client_sockfd, F_GETFL, 0);
+			// 	fcntl(client_sockfd, F_SETFL, flags | O_NONBLOCK);
+			// 	data.ev.events = EPOLLIN | EPOLLET;
+			// 	data.ev.data.fd = client_sockfd;
+			// 	err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, client_sockfd, &data.ev);
+			// 	if (err)
+			// 		THROW_ERRNO("epoll_ctl");
+			// }
+			// else
+			// {
+			// 	// handle new data in old connection
+			// 	if (handle_new_data(data.events, i) == 1)
+			// 	{
+			// 		// test, telnet with "ex" input
+			// 		goto break_loops;
+			// 	}
+			// }
 		}
 	}
-	fin:
-	close(epoll_fd);
+	break_loops:
+	close(data.epoll_fd);
 
 	return ;
 }

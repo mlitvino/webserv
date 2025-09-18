@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <vector>
+#include <memory>
 
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -26,8 +28,18 @@
 #define DEFAULT_CONF "web/default_conf"
 #define STATIC_SITE "web/www/index.html"
 
+class Server;
+class ClientHandler;
+
+using ServerPtr  = std::shared_ptr<Server>;
+using ServerVec = std::vector<ServerPtr>;
+using ClientHandlerPtr = std::unique_ptr<ClientHandler>;
+using ClientHandlerVec = std::vector<ClientHandlerPtr>;
+
 #include "CustomException.hpp"
 #include "Server.hpp"
+#include "IEpollFdOwner.hpp"
+#include "ClientHanlder.hpp"
 
 typedef struct	s_request
 {
@@ -71,19 +83,17 @@ typedef struct	s_server
 
 }		t_server;
 
-
 typedef struct	s_data
 {
-		Server	*serverArray;
-		int		server_amount;
+		ServerVec	servers;
 
 		epoll_event	ev;
 		epoll_event	events[MAX_EVENTS];
 		int			epoll_fd;
 		int			nfds;
 
-}		t_data;
+}		GlobalData;
 
-void	parser(t_data &data, char *conf_file);
-void	init_servers(t_data &data);
-void	accepting_loop(t_data &data);
+void	parser(GlobalData &data, char *conf_file);
+void	init_servers(GlobalData &data);
+void	accepting_loop(GlobalData &data);

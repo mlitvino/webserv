@@ -1,16 +1,12 @@
 #include "webserv.hpp"
 
-void	parser(t_data &data, char *conf_file)
+void	parser(GlobalData &data, char *conf_file)
 {
-	//test conf
-	std::string	host = HOST;
-	std::string	port = PORT;
-	data.server_amount = 1;
-
-	data.serverArray = new class Server[data.server_amount];
-
-	data.serverArray[0].setHost(host);
-	data.serverArray[0].setPort(port);
+	// do it in loop for all servers in conf file
+	ServerPtr	new_server = std::make_shared<Server>();
+	new_server->setHost(std::string(HOST));
+	new_server->setPort(std::string(PORT));
+	data.servers.push_back(new_server);
 
 	if (conf_file)
 	{

@@ -9,7 +9,8 @@ SRC_FILES =	main.cpp \
 			parser.cpp \
 			init.cpp \
 			loop.cpp \
-			Server.cpp
+			Server.cpp \
+			ClientHandler.cpp
 
 SRCS = $(foreach file,$(SRC_FILES),$(shell find $(SRC_DIR) -name "$(file)" -type f))
 OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))

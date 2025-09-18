@@ -2,7 +2,7 @@
 
 int	parseRequest(t_request &req, std::string& use_buf)
 {
-	int		leftBytes;
+	int		leftBytes = 0;
 
 	if (req.method.empty())
 	{
@@ -42,76 +42,30 @@ int	parseRequest(t_request &req, std::string& use_buf)
 // 	leftBytes = parseRequest(req, use_buf);
 // }
 
-int	handle_new_data(epoll_event *events, int i)
-{
-	char	buffer[1024] = {0};
-	int		err;
-
-	err = read(events[i].data.fd, buffer, sizeof(buffer));
-	if (err == -1)
-		THROW_ERRNO("read");
-
-	std::cout << "CLIENT REQUEST:\n" << buffer << std::endl;
-
-	int flag = 0;
-	if (strcmp("ex\r\n", buffer) == 0)
-		flag++;
-
-	bzero(buffer, sizeof(buffer));
-	strcpy(buffer, HTTP_STATUS);
-
-	int html_fd = open(STATIC_SITE, O_RDWR);
-	if (html_fd == -1)
-		THROW_ERRNO("open");
-
-	int len = read(html_fd, &buffer[sizeof(HTTP_STATUS) - 1], sizeof(buffer) / 2);
-	if (len == -1)
-		THROW_ERRNO("read");
-
-	close(html_fd);
-
-	std::cout << "SERVER RESPONSE:\n" << buffer << std::endl;
-
-	err = send(events[i].data.fd, buffer, sizeof(buffer), 0);
-	if (err == -1)
-		THROW_ERRNO("send");
-
-	close(events[i].data.fd);
-
-	return flag;
-}
-
-void	init_epoll(t_data &data)
+void	init_epoll(GlobalData &data)
 {
 	int			err;
 	epoll_event	&ev = data.ev;
-	Server		*serverArray = data.serverArray;
 
 	data.epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
 	if (data.epoll_fd == -1)
 		THROW_ERRNO("epoll_create");
 
 	ev.events = EPOLLIN;
-	for (int i = 0; i < data.server_amount; ++i)
+	for (ServerPtr srv : data.servers)
 	{
-		ev.data.ptr = static_cast<void*>(&serverArray[i].getPtrInfo());
-		err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, serverArray[i].getSockfd(), &ev);
+		ev.data.ptr = static_cast<void*>(srv.get());
+		err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, srv->getSockfd(), &ev);
 		if (err)
 			THROW_ERRNO("epoll_ctl");
 	}
 }
 
-void	accepting_loop(t_data &data)
+void	accepting_loop(GlobalData &data)
 {
-	int					err;
-	int					client_sockfd = -1;
-	sockaddr_storage	client_addr;
-	socklen_t			client_addr_len = sizeof(client_addr);
+	int			nfds;
 
 	init_epoll(data);
-	int			nfds;
-	int sockfd = data.serverArray[0].getSockfd();
-
 	while (true)
 	{
 		nfds = epoll_wait(data.epoll_fd, data.events, MAX_EVENTS, -1);
@@ -121,39 +75,12 @@ void	accepting_loop(t_data &data)
 		for (int i = 0; i < nfds; ++i)
 		{
 			std::cout << "Erpoll fd: " << data.epoll_fd << std::endl;
-			std::cout << "Server sockfd: " << data.serverArray[0].getSockfd() << std::endl;
-			std::cout << "New fd: " << data.events[i].data.fd << std::endl;
+			std::cout << "Server sockfd: " << data.servers.front()->getSockfd() << std::endl;
 
-			data.events[i].data.ptr;
-
-			// if (is_new_connection()) // data.events[i].data.fd == sockfd
-			// {
-			// 	std::cout << "Accepting new connection..." << std::endl;
-
-			// 	int client_sockfd = accept(sockfd, (sockaddr *)&client_addr, &client_addr_len);
-			// 	if (client_sockfd == -1)
-			// 		THROW_ERRNO("accept");
-
-			// 	int flags = fcntl(client_sockfd, F_GETFL, 0);
-			// 	fcntl(client_sockfd, F_SETFL, flags | O_NONBLOCK);
-			// 	data.ev.events = EPOLLIN | EPOLLET;
-			// 	data.ev.data.fd = client_sockfd;
-			// 	err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, client_sockfd, &data.ev);
-			// 	if (err)
-			// 		THROW_ERRNO("epoll_ctl");
-			// }
-			// else
-			// {
-			// 	// handle new data in old connection
-			// 	if (handle_new_data(data.events, i) == 1)
-			// 	{
-			// 		// test, telnet with "ex" input
-			// 		goto break_loops;
-			// 	}
-			// }
+			IEpollFdOwner *owner = static_cast<IEpollFdOwner*>(data.events[i].data.ptr);
+			owner->handleEpollEvent(data.ev, data.epoll_fd);
 		}
 	}
-	break_loops:
 	close(data.epoll_fd);
 
 	return ;

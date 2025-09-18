@@ -1,7 +1,9 @@
 #pragma once
 
-#include "webserv.hpp"
 #include <cstring>
+
+#include "webserv.hpp"
+#include "IEpollFdOwner.hpp"
 
 typedef enum s_err_pages
 {
@@ -9,34 +11,30 @@ typedef enum s_err_pages
 	MAX_ERRS
 }	t_err_pages;
 
-typedef struct	EpollPtrInfo
-{
-	int		_sockfd;
-	void	*_owner; // Server, Client
-}				EpollPtrInfo;
-
-class Server
+class Server : public IEpollFdOwner
 {
 	private:
-		std::string	_serverName;
-		std::string	_host;
-		std::string	_port;
+		std::string			_serverName;
+		std::string			_host;
+		std::string			_port;
 
-		size_t		_clientBodySize;
-		std::string	_errPagePath[MAX_ERRS];
+		size_t				_clientBodySize;
+		std::string			_errPagePath[MAX_ERRS];
 
-		int				_sockfd;
-		EpollPtrInfo	_ptrInfo;
+		ClientHandlerVec	_clients;
+
+		int					_sockfd;
 	public:
 		Server();
 		~Server();
 
 		void		prepareServer(addrinfo &hints, addrinfo *server);
-		void		setHost(std::string &host);
-		void		setPort(std::string &port);
+		void		setHost(std::string host);
+		void		setPort(std::string port);
 		std::string	&getHost();
 		std::string	&getPort();
 		int			getSockfd();
-		EpollPtrInfo &getPtrInfo();
+
+		void	handleEpollEvent(epoll_event &ev, int epoll_fd);
 };
 

@@ -1,5 +1,21 @@
-#include "webserv.hpp"
 #include "Server.hpp"
+
+void	Server::handleEpollEvent(epoll_event &ev, int epoll_fd)
+{
+	std::cout << "Accepting new connection..." << std::endl;
+
+	try
+	{
+		ClientHandlerPtr	new_client = std::make_unique<ClientHandler>();
+		new_client->acceptConnect(_sockfd, epoll_fd);
+		_clients.push_back(std::move(new_client));
+		std::cout << "New connection was accepted" << std::endl;
+	}
+	catch(const std::exception& e)
+	{
+		std::cout << "Connection failed: " << e.what() << std::endl;
+	}
+}
 
 void	Server::prepareServer(addrinfo &hints, addrinfo *server)
 {
@@ -31,18 +47,16 @@ void	Server::prepareServer(addrinfo &hints, addrinfo *server)
 	err = listen(_sockfd, QUEUE_SIZE);
 	if (err)
 		THROW_ERRNO("listen");
-
-	_ptrInfo._sockfd = _sockfd;
 }
 
 // Setters, Getters
 
-void	Server::setHost(std::string &host)
+void	Server::setHost(std::string host)
 {
 	_host = host;
 }
 
-void	Server::setPort(std::string &port)
+void	Server::setPort(std::string port)
 {
 	_port = port;
 }
@@ -62,17 +76,11 @@ int	Server::getSockfd()
 	return _sockfd;
 }
 
-EpollPtrInfo &Server::getPtrInfo()
-{
-	return _ptrInfo;
-}
-
 // Constructors
 
 Server::Server()
 {
 	_sockfd = -1;
-	_ptrInfo._owner = static_cast<void*>(this);
 }
 
 Server::~Server()

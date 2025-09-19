@@ -42,41 +42,20 @@ int	parseRequest(t_request &req, std::string& use_buf)
 // 	leftBytes = parseRequest(req, use_buf);
 // }
 
-void	init_epoll(GlobalData &data)
+void	accepting_loop(Data &data)
 {
-	int			err;
-	epoll_event	&ev = data.ev;
-
-	data.epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
-	if (data.epoll_fd == -1)
-		THROW_ERRNO("epoll_create");
-
-	ev.events = EPOLLIN;
-	for (ServerPtr srv : data.servers)
-	{
-		ev.data.ptr = static_cast<void*>(srv.get());
-		err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, srv->getSockfd(), &ev);
-		if (err)
-			THROW_ERRNO("epoll_ctl");
-	}
-}
-
-void	accepting_loop(GlobalData &data)
-{
-	int			nfds;
+	int	nbr_events;
 
 	init_epoll(data);
+	std::cout << "Erpoll fd: " << data.epoll_fd << std::endl;
 	while (true)
 	{
-		nfds = epoll_wait(data.epoll_fd, data.events, MAX_EVENTS, -1);
-		if (nfds == -1)
+		nbr_events = epoll_wait(data.epoll_fd, data.events, MAX_EVENTS, -1);
+		if (nbr_events == -1)
 			THROW_ERRNO("epoll_wait");
 
-		for (int i = 0; i < nfds; ++i)
+		for (int i = 0; i < nbr_events; ++i)
 		{
-			std::cout << "Erpoll fd: " << data.epoll_fd << std::endl;
-			std::cout << "Server sockfd: " << data.servers.front()->getSockfd() << std::endl;
-
 			IEpollFdOwner *owner = static_cast<IEpollFdOwner*>(data.events[i].data.ptr);
 			owner->handleEpollEvent(data.ev, data.epoll_fd);
 		}

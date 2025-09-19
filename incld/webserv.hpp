@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <deque>
 
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -31,10 +32,10 @@
 class Server;
 class ClientHandler;
 
-using ServerPtr  = std::shared_ptr<Server>;
-using ServerVec = std::vector<ServerPtr>;
+using ServerPtr  = std::unique_ptr<Server>;
+using ServerDeq = std::deque<ServerPtr>;
 using ClientHandlerPtr = std::unique_ptr<ClientHandler>;
-using ClientHandlerVec = std::vector<ClientHandlerPtr>;
+using ClientHandlerDeq = std::deque<ClientHandlerPtr>;
 
 #include "CustomException.hpp"
 #include "Server.hpp"
@@ -85,15 +86,15 @@ typedef struct	s_server
 
 typedef struct	s_data
 {
-		ServerVec	servers;
+		ServerDeq	servers;
 
 		epoll_event	ev;
 		epoll_event	events[MAX_EVENTS];
 		int			epoll_fd;
-		int			nfds;
 
-}		GlobalData;
+}		Data;
 
-void	parser(GlobalData &data, char *conf_file);
-void	init_servers(GlobalData &data);
-void	accepting_loop(GlobalData &data);
+void	parser(Data &data, char *conf_file);
+void	init_servers(Data &data);
+void	accepting_loop(Data &data);
+void	init_epoll(Data &data);

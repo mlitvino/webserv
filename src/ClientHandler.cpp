@@ -31,6 +31,11 @@ void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd)
 
 	std::cout << "ClientHandler REQUEST:\n" << buffer << std::endl;
 
+	if (strcmp(buffer, "ex\r\n") == 0)
+	{
+		return CloseConnection(epoll_fd);
+	}
+
 	bzero(buffer, sizeof(buffer));
 	strcpy(buffer, HTTP_STATUS);
 
@@ -50,15 +55,35 @@ void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd)
 	if (err == -1)
 		THROW_ERRNO("send");
 
+}
+void	ClientHandler::CloseConnection(int epoll_fd)
+{
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, _sockFd, 0))
+		THROW("epoll_ctl(DEL)");
 	close(_sockFd);
+
+	_owner.RemoveClientHandler(*this, _index);
+
+	std::cout << "CLOSED" << std::endl;
 }
 
-ClientHandler::ClientHandler()
-	: _clientAddrLen{sizeof(_clientAddr)}
-	, _sockFd{-1}
+void	ClientHandler::setIndex(size_t index)
 {
-	
+	_index = index;
 }
+
+ClientHandler::ClientHandler(Server& owner)
+	: _owner{owner}
+{
+
+}
+
+// ClientHandler::ClientHandler()
+// 	: _clientAddrLen{sizeof(_clientAddr)}
+// 	, _sockFd{-1}
+// {
+
+// }
 
 ClientHandler::~ClientHandler()
 {

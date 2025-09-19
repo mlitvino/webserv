@@ -2,7 +2,7 @@
 
 int	main(int ac, char **av)
 {
-	GlobalData	data;
+	Data	data;
 
 	if (ac > 2)
 	{

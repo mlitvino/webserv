@@ -3,14 +3,14 @@
 #include <stdexcept>
 #include <string>
 
-#define BUFF_SIZE 128
+#define EXCEPT_BUFF_SIZE 128
 #define THROW(msg) throw CustomException(__FILE__, __LINE__, msg, "")
 #define THROW_ERRNO(msg) throw CustomException(__FILE__, __LINE__, msg, strerror(errno))
 
 class CustomException : public std::exception
 {
 	private:
-		char	_buf[BUFF_SIZE];
+		char	_buf[EXCEPT_BUFF_SIZE];
 	public:
 		CustomException(const char* file, int line, const char* msg, const char *strerror) noexcept
 		{

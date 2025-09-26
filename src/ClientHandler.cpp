@@ -11,50 +11,98 @@ void	ClientHandler::acceptConnect(int srvSockFd, int epoll_fd)
 
 	int flags = fcntl(_sockFd, F_GETFL, 0);
 	fcntl(_sockFd, F_SETFL, flags | O_NONBLOCK);
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = EPOLLIN | EPOLLOUT;
 	ev.data.ptr = static_cast<void*>(this);
 	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _sockFd, &ev);
 	if (err)
 		THROW_ERRNO("epoll_ctl");
+	_state = READING_REQUEST;
+}
+
+void	ClientHandler::readAll()
+{
+
 }
 
 void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd)
 {
-	std::cout << "Accepting new data from " << std::endl;
-
-	char	buffer[1024] = {0};
-	int		err;
-
-	err = read(_sockFd, buffer, sizeof(buffer));
-	if (err == -1)
-		THROW_ERRNO("read");
-
-	std::cout << "ClientHandler REQUEST:\n" << buffer << std::endl;
-
-	if (strcmp(buffer, "ex\r\n") == 0)
+	switch (_state)
 	{
-		return CloseConnection(epoll_fd);
+		case READING_REQUEST:
+		{
+			if (ev.events == EPOLLIN)
+			{
+
+			}
+			break;
+		}
+		case WRITING_RESPONSE:
+		{
+			if (ev.events == EPOLLOUT)
+			{
+
+			}
+			break;
+		}
+		case READING_FILE:
+		{
+			if (ev.events == EPOLLIN)
+			{
+
+			}
+			break;
+		}
+		case WRITING_FILE:
+		{
+			if (ev.events == EPOLLOUT)
+			{
+
+			}
+			break;
+		}
+		default:
+		{
+			THROW("unknown ClientHandler state");
+			break;
+		}
 	}
 
-	bzero(buffer, sizeof(buffer));
-	strcpy(buffer, HTTP_STATUS);
+	// std::cout << "Accepting new data from " << std::endl;
 
-	int html_fd = open(STATIC_SITE, O_RDWR);
-	if (html_fd == -1)
-		THROW_ERRNO("open");
+	// char	tmp[IO_BUFFER_SIZE];
 
-	int len = read(html_fd, &buffer[sizeof(HTTP_STATUS) - 1], sizeof(buffer) / 2);
-	if (len == -1)
-		THROW_ERRNO("read");
+	// int len = read(_sockFd, tmp, sizeof(tmp));
 
-	close(html_fd);
+	// if (len > 0)
+	// 	_buffer.append(tmp, len);
+	// else if (len == 0)
+	// 	return CloseConnection(epoll_fd);
+	// else
+	// 	THROW_ERRNO("read");
 
-	std::cout << "SERVER RESPONSE:\n" << buffer << std::endl;
+	// std::cout << "ClientHandler REQUEST:\n" << _buffer << std::endl;
 
-	err = send(_sockFd, buffer, sizeof(buffer), 0);
-	if (err == -1)
-		THROW_ERRNO("send");
+	// if (_buffer.find("ex\r\n") != std::string::npos)
+	// 	return CloseConnection(epoll_fd);
+	// if (_buffer.find("ec\r\n") == std::string::npos)
+	// 	return ;
 
+	// _buffer = HTTP_STATUS;
+
+	// std::fstream infile(STATIC_SITE);
+
+	// if (infile.fail())
+	// 	THROW_ERRNO("std::fstream failed to open file");
+
+	// infile.readsome(&_buffer[_buffer.size()], _buffer.capacity() - _buffer.size());
+
+	// infile.close();
+
+	// std::cout << "SERVER RESPONSE:\n" << _buffer << std::endl;
+
+	// len = send(_sockFd, &_buffer[0], _buffer.size(), 0);
+	// if (len == -1)
+	// 	THROW_ERRNO("send");
 }
 void	ClientHandler::CloseConnection(int epoll_fd)
 {
@@ -73,9 +121,11 @@ void	ClientHandler::setIndex(size_t index)
 }
 
 ClientHandler::ClientHandler(Server& owner)
-	: _owner{owner}
+	: _clientAddrLen{sizeof(_clientAddr)}
+	, _owner{owner}
+	, _index{owner.getSizeClients()}
 {
-
+	_buffer.reserve(IO_BUFFER_SIZE);
 }
 
 // ClientHandler::ClientHandler()

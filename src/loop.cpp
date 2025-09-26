@@ -56,6 +56,12 @@ void	accepting_loop(Data &data)
 
 		for (int i = 0; i < nbr_events; ++i)
 		{
+			if (data.events[i].events == EPOLLIN)
+				std::cout << "READING EPOLL EVENT" << std::endl;
+			else if (data.events[i].events == EPOLLOUT)
+				std::cout << "WRITING EPOLL EVENT" << std::endl;
+
+
 			IEpollFdOwner *owner = static_cast<IEpollFdOwner*>(data.events[i].data.ptr);
 			owner->handleEpollEvent(data.ev, data.epoll_fd);
 		}

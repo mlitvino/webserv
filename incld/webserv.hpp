@@ -15,7 +15,7 @@
 #include <fcntl.h>
 
 #define QUEUE_SIZE 20
-#define BUFFER_SIZE 1024
+#define IO_BUFFER_SIZE 1024
 #define MAX_EVENTS 10
 #define DEFAULT_EPOLL_SIZE 10
 

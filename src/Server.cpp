@@ -2,15 +2,14 @@
 
 void	Server::RemoveClientHandler(ClientHandler& handler, size_t index)
 {
-	std::cout << "size: " << _clients.size() << std::endl;
-
 	auto temp = std::move(_clients.back());
 	// add numbers checking
 	temp->setIndex(index);
 	_clients.erase(_clients.begin() + index);
-	_clients.insert(_clients.begin() + index, std::move(temp));
+	if (index != _clients.size())
+		_clients.insert(_clients.begin() + index, std::move(temp));
 
-	std::cout << "size: " << _clients.size() << std::endl;
+	std::cout << "Size after removing: " << _clients.size() << std::endl;
 }
 
 void	Server::handleEpollEvent(epoll_event &ev, int epoll_fd)
@@ -87,6 +86,11 @@ std::string	&Server::getPort()
 int	Server::getSockfd()
 {
 	return _sockfd;
+}
+
+size_t	Server::getSizeClients()
+{
+	return _clients.size();
 }
 
 // Constructors

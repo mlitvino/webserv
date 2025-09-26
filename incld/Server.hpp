@@ -34,6 +34,7 @@ class Server : public IEpollFdOwner
 		std::string	&getHost();
 		std::string	&getPort();
 		int			getSockfd();
+		size_t		getSizeClients();
 		void		RemoveClientHandler(ClientHandler& handler, size_t index);
 
 		void	handleEpollEvent(epoll_event &ev, int epoll_fd);

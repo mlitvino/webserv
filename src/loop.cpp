@@ -19,29 +19,6 @@ int	parseRequest(t_request &req, std::string& use_buf)
 	return leftBytes;
 }
 
-// void	readRequest(t_request &req, int client_sockfd)
-// {
-// 	char		buffer[1024];
-// 	std::string	use_buf(0);
-// 	int		res;
-// 	int		leftBytes;
-
-// 	while(true)
-// 	{
-// 		res = read(client_sockfd, buffer, sizeof(buffer));
-// 		if (res > 0)
-// 		{
-// 			buffer[res] = 0;
-// 			use_buf += buffer;
-// 		}
-// 		else if (res == 0)
-// 		{} // connection was closed
-// 		else
-// 		{} // error
-// 	}
-// 	leftBytes = parseRequest(req, use_buf);
-// }
-
 void	accepting_loop(Data &data)
 {
 	int	nbr_events;
@@ -58,12 +35,12 @@ void	accepting_loop(Data &data)
 		{
 			if (data.events[i].events == EPOLLIN)
 				std::cout << "READING EPOLL EVENT" << std::endl;
-			else if (data.events[i].events == EPOLLOUT)
-				std::cout << "WRITING EPOLL EVENT" << std::endl;
+			// else if (data.events[i].events == EPOLLOUT)
+			// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
 
 
 			IEpollFdOwner *owner = static_cast<IEpollFdOwner*>(data.events[i].data.ptr);
-			owner->handleEpollEvent(data.ev, data.epoll_fd);
+			owner->handleEpollEvent(data.events[i], data.epoll_fd);
 		}
 	}
 	close(data.epoll_fd);

@@ -7,7 +7,8 @@
 
 typedef enum
 {
-	READING_REQUEST,
+	READING_CLIENT_HEADER,
+	READING_CLIENT_BODY,
 	WRITING_RESPONSE,
 	READING_FILE,
 	WRITING_FILE,
@@ -39,7 +40,7 @@ class ClientHandler : public IEpollFdOwner
 		void		CloseConnection(int epoll_fd);
 
 		void	acceptConnect(int srvSockFd, int epoll_fd);
-		void	readAll();
+		void	readRequest(int epoll_fd);
 
 		void	handleEpollEvent(epoll_event &ev, int epoll_fd);
 };

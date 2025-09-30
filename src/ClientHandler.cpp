@@ -11,28 +11,75 @@ void	ClientHandler::acceptConnect(int srvSockFd, int epoll_fd)
 
 	int flags = fcntl(_sockFd, F_GETFL, 0);
 	fcntl(_sockFd, F_SETFL, flags | O_NONBLOCK);
-	ev.events = EPOLLIN | EPOLLOUT;
+	ev.events = EPOLLIN ;
 	ev.data.ptr = static_cast<void*>(this);
 	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _sockFd, &ev);
 	if (err)
 		THROW_ERRNO("epoll_ctl");
-	_state = READING_REQUEST;
+	_state = READING_CLIENT_HEADER;
 }
 
-void	ClientHandler::readAll()
+void	ClientHandler::readRequest(int epoll_fd)
 {
+	char	read_buf[IO_BUFFER_SIZE];
+	int		leftBytes;
 
+	std::cout << "Accepting new data from " << std::endl;
+	leftBytes = read(_sockFd, read_buf, sizeof(read_buf) - 1);
+	if (leftBytes > 0)
+	{
+		read_buf[leftBytes] = 0;
+		_buffer += read_buf;
+
+		std::cout << "ClientHandler REQUEST:\n" << _buffer << std::endl;
+
+		if (_buffer.find("close\r\n") != std::string::npos)
+		{
+			return CloseConnection(epoll_fd);
+		}
+		else if (_buffer.find(DOUBLE_CRLF) != std::string::npos)
+		{
+			// parseRequest
+
+			//_state = WRITING_RESPONSE;
+		}
+		else if (_buffer.size() > CLIENT_HEADER_LIMIT)
+		{
+			// too large header
+			// sendError();
+			THROW("too large client's header");
+		}
+
+		_buffer.clear();
+	}
+	else if (leftBytes == 0)
+	{
+		CloseConnection(epoll_fd);
+	}
+	else if (leftBytes < 0)
+	{
+		CloseConnection(epoll_fd);
+		THROW_ERRNO("read");
+	}
 }
 
 void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd)
 {
 	switch (_state)
 	{
-		case READING_REQUEST:
+		case READING_CLIENT_HEADER:
 		{
 			if (ev.events == EPOLLIN)
 			{
-
+				readRequest(epoll_fd);
+			}
+			break;
+		}
+		case READING_CLIENT_BODY:
+		{
+			if (ev.events == EPOLLIN)
+			{
+				readRequest(epoll_fd);
 			}
 			break;
 		}
@@ -62,7 +109,7 @@ void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd)
 		}
 		default:
 		{
-			THROW("unknown ClientHandler state");
+			THROW("unknown ClientHandler's state");
 			break;
 		}
 	}
@@ -109,6 +156,7 @@ void	ClientHandler::CloseConnection(int epoll_fd)
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, _sockFd, 0))
 		THROW("epoll_ctl(DEL)");
 	close(_sockFd);
+	_buffer.clear();
 
 	_owner.RemoveClientHandler(*this, _index);
 
@@ -125,7 +173,7 @@ ClientHandler::ClientHandler(Server& owner)
 	, _owner{owner}
 	, _index{owner.getSizeClients()}
 {
-	_buffer.reserve(IO_BUFFER_SIZE);
+	_buffer.reserve(IO_BUFFER_SIZE * 2);
 }
 
 // ClientHandler::ClientHandler()

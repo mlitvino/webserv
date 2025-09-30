@@ -16,16 +16,17 @@
 
 #define QUEUE_SIZE 20
 #define IO_BUFFER_SIZE 1024
+#define CLIENT_HEADER_LIMIT 1024
 #define MAX_EVENTS 10
 #define DEFAULT_EPOLL_SIZE 10
 
 #define HTTP_STATUS "HTTP/1.1 200\r\n\r\n"
 #define CRLF "\r\n"
-#define DBLE_CRLF "\r\n\r\n"
+#define DOUBLE_CRLF "\r\n\r\n"
 
 // default conf_file
 #define PORT "8080"
-#define HOST "localhost"
+#define HOST "0.0.0.0"
 #define DEFAULT_CONF "web/default_conf"
 #define STATIC_SITE "web/www/index.html"
 

@@ -3,6 +3,7 @@
 int	main(int ac, char **av)
 {
 	Data	data;
+	Program	program;
 
 	if (ac > 2)
 	{
@@ -15,6 +16,9 @@ int	main(int ac, char **av)
 		parser(data, av[1]);
 		init_servers(data);
 		accepting_loop(data);
+
+		program.parseConfigFile(av[1]);
+		program.initServers();
 	}
 	catch (std::exception& e)
 	{

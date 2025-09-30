@@ -32,16 +32,21 @@
 
 class Server;
 class ClientHandler;
+class IpPort;
 
-using ServerPtr  = std::unique_ptr<Server>;
+using ServerPtr  = std::shared_ptr<Server>;
 using ServerDeq = std::deque<ServerPtr>;
-using ClientHandlerPtr = std::unique_ptr<ClientHandler>;
+using ClientHandlerPtr = std::shared_ptr<ClientHandler>;
 using ClientHandlerDeq = std::deque<ClientHandlerPtr>;
+
+using IpPortPtr = std::unique_ptr<IpPort>;
 
 #include "CustomException.hpp"
 #include "Server.hpp"
 #include "IEpollFdOwner.hpp"
 #include "ClientHanlder.hpp"
+
+#include "Program.hpp"
 
 typedef struct	s_request
 {

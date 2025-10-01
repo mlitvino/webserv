@@ -33,13 +33,18 @@
 class Server;
 class ClientHandler;
 class IpPort;
+class Client;
 
 using ServerPtr  = std::shared_ptr<Server>;
 using ServerDeq = std::deque<ServerPtr>;
+
 using ClientHandlerPtr = std::shared_ptr<ClientHandler>;
 using ClientHandlerDeq = std::deque<ClientHandlerPtr>;
 
 using IpPortPtr = std::unique_ptr<IpPort>;
+
+using ClientPtr = std::shared_ptr<Client>;
+using ClientDeq = std::deque<ClientPtr>;
 
 #include "CustomException.hpp"
 #include "Server.hpp"
@@ -47,6 +52,7 @@ using IpPortPtr = std::unique_ptr<IpPort>;
 #include "ClientHanlder.hpp"
 
 #include "Program.hpp"
+#include "Client.hpp"
 
 typedef struct	s_request
 {

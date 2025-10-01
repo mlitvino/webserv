@@ -1,15 +1,29 @@
 #pragma once
 
-#include <utility>
-
 #include "webserv.hpp"
 
-class IpPort
+class IpPort : public IEpollFdOwner2
 {
 	public:
 		std::string		_addrPort;
+		std::string		_buffer;
 		ServerDeq		_servers;
-		int				_sockFd;
+		ClientDeq		_unsortedClients;
 
-		void	OpenSocket(addrinfo &hints, addrinfo *_servInfo);
+		int				_sockFd;
+		IEpollInfo		*_epollInfo;
+
+		void			OpenSocket(addrinfo &hints, addrinfo *_servInfo);
+		void			handleEpollEvent(IEpollInfo *epollInfo, int epoll_fd, epoll_event event);
+		void			acceptConnection(IEpollInfo *epollInfo, int epoll_fd, epoll_event event);
+
+		void			parseRequest(IEpollInfo *epollInfo, int epoll_fd, epoll_event event);
+		//void			parseRequest(ClientPtr	client);
+
+		void			setEpollInfo(IEpollInfo *epollInfo);
+		void			setAddrPort(std::string addrPort);
+		int				getSockFd();
+
+		~IpPort();
+		IpPort();
 };

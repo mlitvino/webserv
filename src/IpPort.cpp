@@ -35,3 +35,137 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	if (err)
 		THROW_ERRNO("listen");
 }
+
+void	IpPort::handleEpollEvent(IEpollInfo *epollInfo, int epollFd, epoll_event event)
+{
+	// if (epollInfo->state == SENDING_ERROR)
+	// {
+
+	// }
+	if (epollInfo->_fd == getSockFd())
+	{
+		std::cout << "Accepting new connection..." << std::endl;
+		acceptConnection(epollInfo, epollFd, event);
+		std::cout << "Connection was accepted" << std::endl;
+	}
+	else
+	{
+		std::cout << "Parsing request of existed client..." << std::endl;
+		parseRequest(epollInfo, epollFd, event);
+		std::cout << "Parsing is done" << std::endl;
+	}
+}
+
+void	IpPort::parseRequest(IEpollInfo *epollInfo, int epoll_fd, epoll_event event)
+{
+	char		read_buf[IO_BUFFER_SIZE];
+	int			leftBytes;
+	ClientPtr	client = epollInfo->_client;
+
+	std::cout << "Accepting new data from " << std::endl;
+	leftBytes = read(client->getFd(), read_buf, sizeof(read_buf) - 1);
+	if (leftBytes > 0)
+	{
+		read_buf[leftBytes] = 0;
+		client->_buffer += read_buf;
+
+		std::cout << "ClientHandler REQUEST:\n" << client->_buffer << std::endl;
+
+		if (client->_buffer.find("close\r\n") != std::string::npos)
+		{
+			//return CloseConnection(epoll_fd);
+		}
+		else if (client->_buffer.find(DOUBLE_CRLF) != std::string::npos)
+		{
+			// parseRequest
+
+			//_state = WRITING_RESPONSE;
+		}
+		else if (client->_buffer.size() > CLIENT_HEADER_LIMIT)
+		{
+			// too large header
+			// sendError();
+			THROW("too large client's header");
+		}
+
+		client->_buffer.clear();
+	}
+	else if (leftBytes == 0)
+	{
+		//client->CloseConnection(epoll_fd);
+	}
+	else if (leftBytes < 0)
+	{
+		//client->CloseConnection(epoll_fd);
+		THROW_ERRNO("read");
+	}
+}
+
+void	IpPort::acceptConnection(IEpollInfo *epollInfo, int epollFd, epoll_event event)
+{
+	int					clientFd;
+	sockaddr_storage	clientAddr;
+	socklen_t			clientAddrLen;
+
+	int	err;
+	epoll_event ev;
+
+	try
+	{
+		clientFd = accept(_sockFd, (sockaddr *)&clientAddr, &clientAddrLen);
+		if (clientFd == -1)
+			THROW_ERRNO("accept");
+		int flags = fcntl(clientFd, F_GETFL, 0);
+		fcntl(clientFd, F_SETFL, flags | O_NONBLOCK);
+
+		ClientPtr	newClient = std::make_shared<Client>(clientAddr, clientAddrLen, clientFd);
+		IEpollInfo	*newEpollInfo = new IEpollInfo;
+
+		newEpollInfo->_owner = this;
+		newEpollInfo->_fd = clientFd;
+		newEpollInfo->_client = newClient;
+		_unsortedClients.push_back(newClient);
+
+		ev.events = EPOLLIN | EPOLLOUT;
+		ev.data.ptr = static_cast<void*>(newEpollInfo);
+		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev);
+		if (err)
+			THROW_ERRNO("epoll_ctl");
+	}
+	catch(const std::exception& e)
+	{
+		close(clientFd);
+		std::cerr << "Exception:" << e.what() << std::endl;
+	}
+}
+
+// Getters + Setters
+
+int	IpPort::getSockFd()
+{
+	return _sockFd;
+}
+
+void	IpPort::setEpollInfo(IEpollInfo *epollInfo)
+{
+	_epollInfo = epollInfo;
+}
+
+void	IpPort::setAddrPort(std::string addrPort)
+{
+	_addrPort = addrPort;
+}
+
+// Constructors + Destructor
+
+IpPort::~IpPort()
+{
+	delete _epollInfo;
+	if (_sockFd != -1)
+		close(_sockFd);
+}
+
+IpPort::IpPort()
+	: _sockFd{-1}
+	, _epollInfo{nullptr}
+{}

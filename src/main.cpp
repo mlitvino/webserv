@@ -2,7 +2,6 @@
 
 int	main(int ac, char **av)
 {
-	Data	data;
 	Program	program;
 
 	if (ac > 2)
@@ -13,12 +12,9 @@ int	main(int ac, char **av)
 
 	try
 	{
-		parser(data, av[1]);
-		init_servers(data);
-		accepting_loop(data);
-
 		program.parseConfigFile(av[1]);
 		program.initServers();
+		program.waitEpollEvent();
 	}
 	catch (std::exception& e)
 	{

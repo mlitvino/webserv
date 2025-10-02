@@ -5,15 +5,15 @@
 #include "webserv.hpp"
 #include "IEpollFdOwner.hpp"
 
-typedef enum
-{
-	READING_CLIENT_HEADER,
-	READING_CLIENT_BODY,
-	WRITING_RESPONSE,
-	READING_FILE,
-	WRITING_FILE,
+// typedef enum
+// {
+// 	READING_CLIENT_HEADER,
+// 	READING_CLIENT_BODY,
+// 	WRITING_RESPONSE,
+// 	READING_FILE,
+// 	WRITING_FILE,
 
-}	t_state;
+// }	t_state;
 
 class ClientHandler : public IEpollFdOwner
 {
@@ -42,7 +42,7 @@ class ClientHandler : public IEpollFdOwner
 		void	acceptConnect(int srvSockFd, int epoll_fd);
 		void	readRequest(int epoll_fd);
 
-		void	handleEpollEvent(epoll_event &ev, int epoll_fd);
+		void	handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
 };
 
 

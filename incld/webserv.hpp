@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <deque>
+#include <unordered_map>
 
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -13,6 +14,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #define QUEUE_SIZE 20
 #define IO_BUFFER_SIZE 1024
@@ -34,6 +36,7 @@ class Server;
 class ClientHandler;
 class IpPort;
 class Client;
+struct IEpollFdOwner;
 
 using ServerPtr  = std::shared_ptr<Server>;
 using ServerDeq = std::deque<ServerPtr>;
@@ -41,10 +44,13 @@ using ServerDeq = std::deque<ServerPtr>;
 using ClientHandlerPtr = std::shared_ptr<ClientHandler>;
 using ClientHandlerDeq = std::deque<ClientHandlerPtr>;
 
-using IpPortPtr = std::unique_ptr<IpPort>;
+using IpPortPtr = std::shared_ptr<IpPort>;
 
 using ClientPtr = std::shared_ptr<Client>;
 using ClientDeq = std::deque<ClientPtr>;
+
+using FdClientMap = std::unordered_map<int, ClientPtr>;
+using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
 
 #include "CustomException.hpp"
 #include "Server.hpp"

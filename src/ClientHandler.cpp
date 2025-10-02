@@ -63,7 +63,7 @@ void	ClientHandler::readRequest(int epoll_fd)
 	}
 }
 
-void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd)
+void	ClientHandler::handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd)
 {
 	switch (_state)
 	{

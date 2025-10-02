@@ -2,7 +2,7 @@
 
 void	Program::parseConfigFile(char *config_file)
 {
-	IpPortPtr	addr_port = std::make_unique<IpPort>();
+	IpPortPtr	addr_port = std::make_shared<IpPort>(_clientMap, _handlersMap);
 	ServerPtr	new_server = std::make_shared<Server>();
 
 	new_server->setHost(HOST);
@@ -13,7 +13,7 @@ void	Program::parseConfigFile(char *config_file)
 	_addrPortVec.push_back(std::move(addr_port));
 }
 
-void	Program::initServers()
+void	Program::initSockets()
 {
 	addrinfo	hints;
 	int			err;
@@ -31,14 +31,9 @@ void	Program::initServers()
 	for (IpPortPtr &ipPort: _addrPortVec)
 	{
 		ipPort->OpenSocket(hints, _servInfo);
-
-		IEpollInfo *epollInfo = new IEpollInfo;
-		epollInfo->_owner = ipPort.get();
-		epollInfo->_fd = ipPort->getSockFd();
-		ev.data.ptr = static_cast<void*>(epollInfo);
 		ev.events = EPOLLIN;
-		ipPort->setEpollInfo(epollInfo);
-
+		ev.data.fd = ipPort->getSockFd();
+		_handlersMap.emplace(ipPort->getSockFd(), ipPort.get());
 		err = epoll_ctl(_epollFd, EPOLL_CTL_ADD, ipPort->getSockFd(), &ev);
 		if (err)
 			THROW_ERRNO("epoll_ctl");
@@ -58,10 +53,16 @@ void	Program::waitEpollEvent()
 		if (nbr_events == -1)
 			THROW_ERRNO("epoll_wait");
 
+		// check time_out clients and close them
+		// checkTimeOut
+
 		for (int i = 0; i < nbr_events; ++i)
 		{
-			IEpollInfo	*epollInfo = static_cast<IEpollInfo*>(_events[i].data.ptr);
-			epollInfo->_owner->handleEpollEvent(epollInfo, _events[i].events, _events[i]);
+			int eventFd = _events[i].data.fd;
+			auto fdHandlerPair = _handlersMap.find(eventFd);
+			if (fdHandlerPair == _handlersMap.end())
+				THROW("Unknown fd in map");
+			(*fdHandlerPair).second->handleEpollEvent(_events[i], _epollFd, eventFd);
 		}
 	}
 }

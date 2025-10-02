@@ -1,0 +1,5 @@
+nohup: ignoring input
+Configuration parsing error: Port conflict detected: Port 8080 is used by multiple servers (localhost and example.com)
+Using default configuration...
+addrinfo nodes: 1
+Epoll fd: 4

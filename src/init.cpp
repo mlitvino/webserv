@@ -1,44 +1,41 @@
 #include "webserv.hpp"
 
-void	init_servers(Data &data)
-{
-	addrinfo	hints;
-	addrinfo	*srv_info;
+void initServers(Data& data) {
+	addrinfo hints{};
+	addrinfo* srv_info = nullptr;
 
-	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	for (ServerPtr &srv : data.servers)
-	{
-		try
-		{
+	
+	for (auto& srv : data.servers) {
+		try {
 			srv_info = nullptr;
 			srv->prepareSockFd(hints, srv_info);
-			freeaddrinfo(srv_info);
+			if (srv_info) {
+				freeaddrinfo(srv_info);
+			}
 		}
-		catch (std::exception &e)
-		{
-			freeaddrinfo(srv_info);
+		catch (const std::exception& e) {
+			if (srv_info) {
+				freeaddrinfo(srv_info);
+			}
 			throw;
 		}
 	}
 }
 
-void	init_epoll(Data &data)
-{
-	int			err;
-	epoll_event	&ev = data.ev;
+void initEpoll(Data& data) {
+	epoll_event& ev = data.ev;
 
-	data.epoll_fd = epoll_create(DEFAULT_EPOLL_SIZE);
-	if (data.epoll_fd == -1)
+	data.epollFd = epoll_create(DEFAULT_EPOLL_SIZE);
+	if (data.epollFd == -1)
 		THROW_ERRNO("epoll_create");
 
 	ev.events = EPOLLIN;
-	for (ServerPtr &srv : data.servers)
-	{
+	for (auto& srv : data.servers) {
 		ev.data.ptr = static_cast<void*>(srv.get());
-		err = epoll_ctl(data.epoll_fd, EPOLL_CTL_ADD, srv->getSockfd(), &ev);
+		int err = epoll_ctl(data.epollFd, EPOLL_CTL_ADD, srv->getSockfd(), &ev);
 		if (err)
 			THROW_ERRNO("epoll_ctl");
 	}

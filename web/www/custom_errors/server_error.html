@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>500 - Custom Server Error</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+			color: white;
+			margin: 0;
+			padding: 20px;
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.error-container {
+			text-align: center;
+			background: rgba(0,0,0,0.7);
+			padding: 40px;
+			border-radius: 15px;
+			backdrop-filter: blur(10px);
+		}
+		h1 {
+			font-size: 4em;
+			margin: 0;
+			text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+		}
+		h2 {
+			margin: 10px 0;
+			font-size: 1.5em;
+		}
+		p {
+			font-size: 1.1em;
+			line-height: 1.6;
+			margin: 15px 0;
+		}
+	</style>
+</head>
+<body>
+	<div class="error-container">
+		<h1>500</h1>
+		<h2>Custom Server Error Page</h2>
+		<p>Internal Server Error</p>
+		<p>This custom error page demonstrates server-side error handling in webserv.</p>
+		<p><strong>Server:</strong> Webserv/1.0 | <strong>Config:</strong> Custom error pages enabled</p>
+	</div>
+</body>
+</html>

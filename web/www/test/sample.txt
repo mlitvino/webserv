@@ -1,0 +1,12 @@
+This is a test file for testing GET requests.
+You can access this file at: http://localhost:8080/test/sample.txt
+
+Server: Webserv/1.0
+Date: 2025-09-29
+Content-Type: text/plain
+
+This file demonstrates:
+- Static file serving
+- GET method handling
+- Proper MIME type detection (if implemented)
+- Directory structure navigation

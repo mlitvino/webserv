@@ -1,0 +1,12 @@
+nohup: ignoring input
+addrinfo nodes: 1
+Erpoll fd: 4
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted

@@ -1,0 +1,873 @@
+nohup: ignoring input
+Configuration parsing error: Port conflict detected: Port 8080 is used by multiple servers (localhost and example.com)
+Using default configuration...
+addrinfo nodes: 1
+Epoll fd: 4
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 78 bytes
+DEBUG: Total buffer size now: 78
+DEBUG: New data: [GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 78
+DEBUG: Buffer content (first 200 chars): GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET / HTTP/1.1
+Method: GET, Path: /, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /
+DEBUG: Added index.html, filePath now: /index.html
+DEBUG: Full file path: web/www/index.html
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 5967
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 5967
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 5861
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content
+DEBUG: send() returned: 5967
+Sent 5967 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 94 bytes
+DEBUG: Total buffer size now: 94
+DEBUG: New data: [GET /nonexistent.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 94
+DEBUG: Buffer content (first 200 chars): GET /nonexistent.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET /nonexistent.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET /nonexistent.html HTTP/1.1
+Method: GET, Path: /nonexistent.html, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /nonexistent.html
+DEBUG: Full file path: web/www/nonexistent.html
+DEBUG: File not found, generating 404 response
+DEBUG: Response buffer size after generation: 1470
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 1470
+DEBUG: Response content (first 200 chars): HTTP/1.1 404 Not Found
+Content-Type: text/html
+Content-Length: 1357
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" 
+DEBUG: send() returned: 1470
+Sent 1470 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 78 bytes
+DEBUG: Total buffer size now: 78
+DEBUG: New data: [GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 78
+DEBUG: Buffer content (first 200 chars): GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET / HTTP/1.1
+Method: GET, Path: /, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /
+DEBUG: Added index.html, filePath now: /index.html
+DEBUG: Full file path: web/www/index.html
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 5967
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 5967
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 5861
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content
+DEBUG: send() returned: 5967
+Sent 5967 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 78 bytes
+DEBUG: Total buffer size now: 78
+DEBUG: New data: [GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 78
+DEBUG: Buffer content (first 200 chars): GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET / HTTP/1.1
+Method: GET, Path: /, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /
+DEBUG: Added index.html, filePath now: /index.html
+DEBUG: Full file path: web/www/index.html
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 5967
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 5967
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 5861
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content
+DEBUG: send() returned: 5967
+Sent 5967 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 94 bytes
+DEBUG: Total buffer size now: 94
+DEBUG: New data: [GET /nonexistent.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 94
+DEBUG: Buffer content (first 200 chars): GET /nonexistent.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET /nonexistent.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET /nonexistent.html HTTP/1.1
+Method: GET, Path: /nonexistent.html, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /nonexistent.html
+DEBUG: Full file path: web/www/nonexistent.html
+DEBUG: File not found, generating 404 response
+DEBUG: Response buffer size after generation: 1470
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 1470
+DEBUG: Response content (first 200 chars): HTTP/1.1 404 Not Found
+Content-Type: text/html
+Content-Length: 1357
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" 
+DEBUG: send() returned: 1470
+Sent 1470 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 83 bytes
+DEBUG: Total buffer size now: 83
+DEBUG: New data: [GET /test/ HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 83
+DEBUG: Buffer content (first 200 chars): GET /test/ HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET /test/ HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET /test/ HTTP/1.1
+Method: GET, Path: /test/, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /test/
+DEBUG: Added index.html, filePath now: /test/index.html
+DEBUG: Full file path: web/www/test/index.html
+DEBUG: File not found, generating 404 response
+DEBUG: Response buffer size after generation: 1470
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 1470
+DEBUG: Response content (first 200 chars): HTTP/1.1 404 Not Found
+Content-Type: text/html
+Content-Length: 1357
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" 
+DEBUG: send() returned: 1470
+Sent 1470 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 93 bytes
+DEBUG: Total buffer size now: 93
+DEBUG: New data: [GET /test/sample.txt HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 93
+DEBUG: Buffer content (first 200 chars): GET /test/sample.txt HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET /test/sample.txt HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET /test/sample.txt HTTP/1.1
+Method: GET, Path: /test/sample.txt, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /test/sample.txt
+DEBUG: Full file path: web/www/test/sample.txt
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 430
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 430
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 324
+Server: Webserv/1.0
+Connection: close
+
+This is a test file for testing GET requests.
+You can access this file at: http://localhost:80
+DEBUG: send() returned: 430
+Sent 430 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 78 bytes
+DEBUG: Total buffer size now: 78
+DEBUG: New data: [GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 78
+DEBUG: Buffer content (first 200 chars): GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET / HTTP/1.1
+Method: GET, Path: /, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /
+DEBUG: Added index.html, filePath now: /index.html
+DEBUG: Full file path: web/www/index.html
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 5967
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 5967
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 5861
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content
+DEBUG: send() returned: 5967
+Sent 5967 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 88 bytes
+DEBUG: Total buffer size now: 88
+DEBUG: New data: [GET /index.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 88
+DEBUG: Buffer content (first 200 chars): GET /index.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET /index.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET /index.html HTTP/1.1
+Method: GET, Path: /index.html, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /index.html
+DEBUG: Full file path: web/www/index.html
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 5967
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 5967
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 5861
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content
+DEBUG: send() returned: 5967
+Sent 5967 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 82 bytes
+DEBUG: Total buffer size now: 82
+DEBUG: New data: [GET /test HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 82
+DEBUG: Buffer content (first 200 chars): GET /test HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET /test HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET /test HTTP/1.1
+Method: GET, Path: /test, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /test
+DEBUG: Full file path: web/www/test
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 184
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 184
+DEBUG: Response content (first 200 chars): HTTP/1.1 500 Internal Server Error
+Content-Type: text/plain
+Content-Length: 60
+Server: Webserv/1.0
+Connection: close
+
+<html><body><h1>500 Internal Server Error</h1></body></html>
+DEBUG: send() returned: 184
+Sent 184 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 78 bytes
+DEBUG: Total buffer size now: 78
+DEBUG: New data: [GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 78
+DEBUG: Buffer content (first 200 chars): GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: GET / HTTP/1.1
+Method: GET, Path: /, Version: HTTP/1.1
+DEBUG: handleGetRequest() called with path: /
+DEBUG: Added index.html, filePath now: /index.html
+DEBUG: Full file path: web/www/index.html
+DEBUG: File exists, generating 200 response
+DEBUG: Response buffer size after generation: 5967
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 5967
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 5861
+Server: Webserv/1.0
+Connection: close
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content
+DEBUG: send() returned: 5967
+Sent 5967 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 128 bytes
+DEBUG: Total buffer size now: 128
+DEBUG: New data: [POST / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+Content-Type: text/plain
+Content-Length: 4
+
+test]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 128
+DEBUG: Buffer content (first 200 chars): POST / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+Content-Type: text/plain
+Content-Length: 4
+
+test
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: POST / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+Content-Type: text/plain
+Content-Length: 4
+
+test
+DEBUG: Request line: POST / HTTP/1.1
+Method: POST, Path: /, Version: HTTP/1.1
+DEBUG: handlePostRequest() called with path: /
+DEBUG: POST body data: test
+DEBUG: POST response generated, size: 319
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 319
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Content-Length: 174
+Server: Webserv/1.0
+Connection: close
+Cache-Control: no-cache
+
+<html><body><h1>POST Method Received</h1><p><strong>Pat
+DEBUG: send() returned: 319
+Sent 319 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 469 bytes
+DEBUG: Total buffer size now: 469
+DEBUG: New data: [POST /upload.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+Content-Length: 266
+Content-Type: multipart/form-data; boundary=------------------------oSsJTsSzs7QfR3dwKj0A62
+
+--------------------------oSsJTsSzs7QfR3dwKj0A62
+Content-Disposition: form-data; name="file"; filename="test_upload.txt"
+Content-Type: text/plain
+
+This is a test upload file for webserv configuration testing
+
+--------------------------oSsJTsSzs7QfR3dwKj0A62--
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 469
+DEBUG: Buffer content (first 200 chars): POST /upload.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+Content-Length: 266
+Content-Type: multipart/form-data; boundary=------------------------oSsJTsSzs7QfR3dwKj0A62
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: POST /upload.html HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+Content-Length: 266
+Content-Type: multipart/form-data; boundary=------------------------oSsJTsSzs7QfR3dwKj0A62
+
+--------------------------oSsJTsSzs7QfR3dwKj0A62
+Content-Disposition: form-data; name="file"; filename="test_upload.txt"
+Content-Type: text/plain
+
+This is a test upload file for webserv configuration testing
+
+--------------------------oSsJTsSzs7QfR3dwKj0A62--
+
+DEBUG: Request line: POST /upload.html HTTP/1.1
+Method: POST, Path: /upload.html, Version: HTTP/1.1
+DEBUG: handlePostRequest() called with path: /upload.html
+DEBUG: POST body data: --------------------------oSsJTsSzs7QfR3dwKj0A62
+Content-Disposition: form-data; name="file"; filename="test_upload.txt"
+Content-Type: text/plain
+
+This is a test upload file for webserv configuration testing
+
+--------------------------oSsJTsSzs7QfR3dwKj0A62--
+
+DEBUG: POST response generated, size: 592
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 592
+DEBUG: Response content (first 200 chars): HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Content-Length: 447
+Server: Webserv/1.0
+Connection: close
+Cache-Control: no-cache
+
+<html><body><h1>POST Method Received</h1><p><strong>Pat
+DEBUG: send() returned: 592
+Sent 592 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED
+READING EPOLL EVENT
+Accepting new connection...
+New connection was accepted
+READING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 0
+DEBUG: EPOLLIN event - reading request
+DEBUG: Received 80 bytes
+DEBUG: Total buffer size now: 80
+DEBUG: New data: [PATCH / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+]
+DEBUG: isCompleteRequest() = true
+DEBUG: Buffer size = 80
+DEBUG: Buffer content (first 200 chars): PATCH / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: processHttpRequest() called
+DEBUG: Buffer content: PATCH / HTTP/1.1
+Host: localhost:8080
+User-Agent: curl/8.15.0
+Accept: */*
+
+
+DEBUG: Request line: PATCH / HTTP/1.1
+Method: PATCH, Path: /, Version: HTTP/1.1
+DEBUG: Successfully switched to EPOLLOUT for writing response
+WRITING EPOLL EVENT
+DEBUG: handleEpollEvent called with events: 1
+DEBUG: Current state: 1
+DEBUG: EPOLLIN event while in WRITING_RESPONSE state
+WRITING EPOLL EVENT
+DEBUG: Attempting to send response despite EPOLLIN event
+DEBUG: sendHttpResponse() called
+DEBUG: Response buffer size: 177
+DEBUG: Response content (first 200 chars): HTTP/1.1 405 Method Not Allowed
+Content-Type: text/html
+Content-Length: 57
+Server: Webserv/1.0
+Connection: close
+
+<html><body><h1>405 Method Not Allowed</h1></body></html>
+DEBUG: send() returned: 177
+Sent 177 bytes successfully
+DEBUG: Connection: close header detected, closing connection
+Size after removing: 0
+CLOSED

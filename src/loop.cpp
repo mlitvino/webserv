@@ -19,31 +19,31 @@ int	parseRequest(t_request &req, std::string& use_buf)
 	return leftBytes;
 }
 
-void	accepting_loop(Data &data)
-{
-	int	nbr_events;
+// void	accepting_loop(Data &data)
+// {
+// 	int	nbr_events;
 
-	init_epoll(data);
-	std::cout << "Erpoll fd: " << data.epoll_fd << std::endl;
-	while (true)
-	{
-		nbr_events = epoll_wait(data.epoll_fd, data.events, MAX_EVENTS, -1);
-		if (nbr_events == -1)
-			THROW_ERRNO("epoll_wait");
+// 	init_epoll(data);
+// 	std::cout << "Erpoll fd: " << data.epoll_fd << std::endl;
+// 	while (true)
+// 	{
+// 		nbr_events = epoll_wait(data.epoll_fd, data.events, MAX_EVENTS, -1);
+// 		if (nbr_events == -1)
+// 			THROW_ERRNO("epoll_wait");
 
-		for (int i = 0; i < nbr_events; ++i)
-		{
-			if (data.events[i].events == EPOLLIN)
-				std::cout << "READING EPOLL EVENT" << std::endl;
-			// else if (data.events[i].events == EPOLLOUT)
-			// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
+// 		for (int i = 0; i < nbr_events; ++i)
+// 		{
+// 			if (data.events[i].events == EPOLLIN)
+// 				std::cout << "READING EPOLL EVENT" << std::endl;
+// 			// else if (data.events[i].events == EPOLLOUT)
+// 			// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
 
 
-			IEpollFdOwner *owner = static_cast<IEpollFdOwner*>(data.events[i].data.ptr);
-			owner->handleEpollEvent(data.events[i], data.epoll_fd);
-		}
-	}
-	close(data.epoll_fd);
+// 			IEpollFdOwner *owner = static_cast<IEpollFdOwner*>(data.events[i].data.ptr);
+// 			owner->handleEpollEvent(data.events[i], data.epoll_fd);
+// 		}
+// 	}
+// 	close(data.epoll_fd);
 
-	return ;
-}
+// 	return ;
+// }

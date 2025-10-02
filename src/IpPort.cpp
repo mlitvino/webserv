@@ -36,34 +36,60 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 		THROW_ERRNO("listen");
 }
 
-void	IpPort::handleEpollEvent(IEpollInfo *epollInfo, int epollFd, epoll_event event)
+void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 {
+	if (ev.events & (EPOLLIN | EPOLLHUP))
+		std::cout << "READING EPOLL EVENT" << std::endl;
+	// if (ev.events == EPOLLOUT)
+	// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
+
 	// if (epollInfo->state == SENDING_ERROR)
 	// {
 
 	// }
-	if (epollInfo->_fd == getSockFd())
+	if (eventFd == getSockFd())
 	{
 		std::cout << "Accepting new connection..." << std::endl;
-		acceptConnection(epollInfo, epollFd, event);
+		acceptConnection(ev, epollFd, eventFd);
 		std::cout << "Connection was accepted" << std::endl;
 	}
 	else
 	{
-		std::cout << "Parsing request of existed client..." << std::endl;
-		parseRequest(epollInfo, epollFd, event);
-		std::cout << "Parsing is done" << std::endl;
+
+		ClientPtr	client = (*_clientsMap.find(eventFd)).second;
+
+		if (ev.events & (EPOLLIN | EPOLLHUP))
+		{
+			std::cout << "EXISTING CLIENT" << std::endl;
+
+
+			if (client->_state == clientState::READING_CLIENT_HEADER)
+			{
+				std::cout << "Parsing request of existed client..." << std::endl;
+				parseRequest(ev, epollFd, eventFd);
+				std::cout << "Parsing is done" << std::endl;
+			}
+		}
+		else
+		{
+			if (client->_state == clientState::SENDING_RESPONSE)
+			{
+				std::cout << "Sending response..." << std::endl;
+				//parseRequest(ev, epollFd, eventFd);
+				std::cout << "Sending response is done" << std::endl;
+			}
+		}
 	}
 }
 
-void	IpPort::parseRequest(IEpollInfo *epollInfo, int epoll_fd, epoll_event event)
+void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 {
 	char		read_buf[IO_BUFFER_SIZE];
 	int			leftBytes;
-	ClientPtr	client = epollInfo->_client;
+	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 
 	std::cout << "Accepting new data from " << std::endl;
-	leftBytes = read(client->getFd(), read_buf, sizeof(read_buf) - 1);
+	leftBytes = read(eventFd, read_buf, sizeof(read_buf) - 1);
 	if (leftBytes > 0)
 	{
 		read_buf[leftBytes] = 0;
@@ -79,7 +105,7 @@ void	IpPort::parseRequest(IEpollInfo *epollInfo, int epoll_fd, epoll_event event
 		{
 			// parseRequest
 
-			//_state = WRITING_RESPONSE;
+			client->openFileAddEpoll(ev, epollFd, eventFd);
 		}
 		else if (client->_buffer.size() > CLIENT_HEADER_LIMIT)
 		{
@@ -101,14 +127,14 @@ void	IpPort::parseRequest(IEpollInfo *epollInfo, int epoll_fd, epoll_event event
 	}
 }
 
-void	IpPort::acceptConnection(IEpollInfo *epollInfo, int epollFd, epoll_event event)
+void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 {
 	int					clientFd;
 	sockaddr_storage	clientAddr;
 	socklen_t			clientAddrLen;
 
 	int	err;
-	epoll_event ev;
+	epoll_event newEv;
 
 	try
 	{
@@ -118,23 +144,19 @@ void	IpPort::acceptConnection(IEpollInfo *epollInfo, int epollFd, epoll_event ev
 		int flags = fcntl(clientFd, F_GETFL, 0);
 		fcntl(clientFd, F_SETFL, flags | O_NONBLOCK);
 
-		ClientPtr	newClient = std::make_shared<Client>(clientAddr, clientAddrLen, clientFd);
-		IEpollInfo	*newEpollInfo = new IEpollInfo;
-
-		newEpollInfo->_owner = this;
-		newEpollInfo->_fd = clientFd;
-		newEpollInfo->_client = newClient;
-		_unsortedClients.push_back(newClient);
-
-		ev.events = EPOLLIN | EPOLLOUT;
-		ev.data.ptr = static_cast<void*>(newEpollInfo);
-		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev);
+		ClientPtr	newClient = std::make_shared<Client>(clientAddr, clientAddrLen, clientFd, *this);
+		_clientsMap.emplace(clientFd, newClient);
+		_handlersMap.emplace(clientFd, this);
+		newEv.events = EPOLLIN | EPOLLOUT;
+		newEv.data.fd = clientFd;
+		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &newEv);
 		if (err)
 			THROW_ERRNO("epoll_ctl");
 	}
 	catch(const std::exception& e)
 	{
-		close(clientFd);
+		if (clientFd != -1)
+			close(clientFd);
 		std::cerr << "Exception:" << e.what() << std::endl;
 	}
 }
@@ -165,7 +187,9 @@ IpPort::~IpPort()
 		close(_sockFd);
 }
 
-IpPort::IpPort()
-	: _sockFd{-1}
+IpPort::IpPort(FdClientMap	&clientsMap, FdEpollOwnerMap &handlersMap)
+	: _clientsMap{clientsMap}
+	, _handlersMap{handlersMap}
+	, _sockFd{-1}
 	, _epollInfo{nullptr}
-{}
+{};

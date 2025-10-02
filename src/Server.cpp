@@ -12,21 +12,21 @@ void	Server::RemoveClientHandler(ClientHandler& handler, size_t index)
 	std::cout << "Size after removing: " << _clients.size() << std::endl;
 }
 
-void	Server::handleEpollEvent(epoll_event &ev, int epoll_fd)
+void	Server::handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd)
 {
 	std::cout << "Accepting new connection..." << std::endl;
 
-	try
-	{
-		ClientHandlerPtr	new_client = std::make_unique<ClientHandler>(*this);
-		new_client->acceptConnect(_sockfd, epoll_fd);
-		_clients.push_back(std::move(new_client));
-		std::cout << "New connection was accepted" << std::endl;
-	}
-	catch(const std::exception& e)
-	{
-		std::cout << "Connection failed: " << e.what() << std::endl;
-	}
+	// try
+	// {
+	// 	ClientHandlerPtr	new_client = std::make_unique<ClientHandler>(*this);
+	// 	new_client->acceptConnect(_sockfd, epoll_fd);
+	// 	_clients.push_back(std::move(new_client));
+	// 	std::cout << "New connection was accepted" << std::endl;
+	// }
+	// catch(const std::exception& e)
+	// {
+	// 	std::cout << "Connection failed: " << e.what() << std::endl;
+	// }
 }
 
 void	Server::prepareSockFd(addrinfo &hints, addrinfo *server)

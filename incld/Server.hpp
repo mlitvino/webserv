@@ -37,6 +37,6 @@ class Server : public IEpollFdOwner
 		size_t		getSizeClients();
 		void		RemoveClientHandler(ClientHandler& handler, size_t index);
 
-		void	handleEpollEvent(epoll_event &ev, int epoll_fd);
+		void	handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
 };
 

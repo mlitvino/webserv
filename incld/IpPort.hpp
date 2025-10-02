@@ -2,9 +2,13 @@
 
 #include "webserv.hpp"
 
-class IpPort : public IEpollFdOwner2
+class IpPort : public IEpollFdOwner2, public IEpollFdOwner
 {
 	public:
+		FdClientMap		&_clientsMap;
+		FdEpollOwnerMap	&_handlersMap;
+
+
 		std::string		_addrPort;
 		std::string		_buffer;
 		ServerDeq		_servers;
@@ -14,10 +18,14 @@ class IpPort : public IEpollFdOwner2
 		IEpollInfo		*_epollInfo;
 
 		void			OpenSocket(addrinfo &hints, addrinfo *_servInfo);
-		void			handleEpollEvent(IEpollInfo *epollInfo, int epoll_fd, epoll_event event);
-		void			acceptConnection(IEpollInfo *epollInfo, int epoll_fd, epoll_event event);
 
-		void			parseRequest(IEpollInfo *epollInfo, int epoll_fd, epoll_event event);
+		void			handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
+
+		void			handleEpollEvent(IEpollInfo *epollInfo, int epoll_fd, epoll_event event) {};
+
+		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
+
+		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
 		//void			parseRequest(ClientPtr	client);
 
 		void			setEpollInfo(IEpollInfo *epollInfo);
@@ -25,5 +33,5 @@ class IpPort : public IEpollFdOwner2
 		int				getSockFd();
 
 		~IpPort();
-		IpPort();
+		IpPort(FdClientMap	&clientsMap, FdEpollOwnerMap &handlersMap);
 };

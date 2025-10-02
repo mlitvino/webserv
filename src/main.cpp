@@ -13,7 +13,7 @@ int	main(int ac, char **av)
 	try
 	{
 		program.parseConfigFile(av[1]);
-		program.initServers();
+		program.initSockets();
 		program.waitEpollEvent();
 	}
 	catch (std::exception& e)

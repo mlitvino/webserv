@@ -2,14 +2,36 @@
 
 #include "webserv.hpp"
 
-class Client : public IEpollFdOwner2
+enum clientState
+{
+	READING_CLIENT_HEADER,
+	READING_CLIENT_BODY,
+	WRITING_RESPONSE,
+	READING_FILE,
+	WRITING_FILE,
+
+	SENDING_RESPONSE,
+};
+
+class Client : public IEpollFdOwner
 {
 	public:
 		std::string			_buffer;
+
+		clientState			_state;
+		FdClientMap			&_clientsMap;
+		FdEpollOwnerMap		&_handlersMap;
+		IpPort				&_ipPort;
 	private:
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;
 		int					_clientFd;
+
+		int					_fileFd;
+		std::string			_filePath;
+		std::string			_fileBuffer;
+		int					_fileSize;
+		int					_readFileBytes;
 
 		IEpollInfo			*_epollInfo;
 
@@ -17,10 +39,16 @@ class Client : public IEpollFdOwner2
 		// request?
 		// buffer?
 	public:
-		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd);
+		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);
 		~Client();
 
 		void	setEpollInfo(IEpollInfo *epollInfo);
 		int		getFd();
-		void	handleEpollEvent(IEpollInfo *epollInfo, int epollFd, epoll_event event);
+		void	handleEpollEvent(epoll_event &ev, int epollFd, int eventFd);
+
+		void	sendResponse(epoll_event &ev, int epollFd, int eventFd);
+
+		void	closeFileDelEpoll(epoll_event &ev, int epollFd, int eventFd);
+		void	readFile(epoll_event &ev, int epollFd, int eventFd);
+		void	openFileAddEpoll(epoll_event &ev, int epollFd, int eventFd);
 };

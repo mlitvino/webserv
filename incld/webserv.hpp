@@ -40,6 +40,10 @@ struct IEpollFdOwner;
 class Server;
 class IpPort;
 class Client;
+struct HttRequest;
+enum class HttpMethod;
+struct HttpResponse;
+struct Data;
 
 using ServerPtr  = std::shared_ptr<Server>;
 using ServerContainer = std::deque<ServerPtr>;
@@ -82,6 +86,9 @@ struct HttpResponse {
 	std::unordered_map<std::string, std::string> headers;
 	std::string body;
 };
+
+#include "ClientHanlder.hpp"
+#include "ConfigParser.hpp"
 
 struct Data {
 	ServerContainer servers;

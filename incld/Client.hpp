@@ -11,6 +11,8 @@ enum clientState
 	WRITING_FILE,
 
 	SENDING_RESPONSE,
+	SENDING_FILE,
+	GETTING_FILE,
 };
 
 class Client : public IEpollFdOwner
@@ -33,7 +35,6 @@ class Client : public IEpollFdOwner
 		int					_fileSize;
 		int					_readFileBytes;
 
-		IEpollInfo			*_epollInfo;
 
 		// response?
 		// request?
@@ -42,13 +43,13 @@ class Client : public IEpollFdOwner
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);
 		~Client();
 
-		void	setEpollInfo(IEpollInfo *epollInfo);
 		int		getFd();
 		void	handleEpollEvent(epoll_event &ev, int epollFd, int eventFd);
 
 		void	sendResponse(epoll_event &ev, int epollFd, int eventFd);
+		void	sendFile(epoll_event &ev, int epollFd, int eventFd);
 
-		void	closeFileDelEpoll(epoll_event &ev, int epollFd, int eventFd);
+		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
 		void	readFile(epoll_event &ev, int epollFd, int eventFd);
-		void	openFileAddEpoll(epoll_event &ev, int epollFd, int eventFd);
+		void	openFile(epoll_event &ev, int epollFd, int eventFd);
 };

@@ -17,7 +17,7 @@ void	Client::sendFile(epoll_event &ev, int epollFd, int eventFd)
 	if (_fileSize == _readFileBytes)
 	{
 		closeFile(ev, epollFd, eventFd);
-		_state = clientState::READING_CLIENT_HEADER;
+		_state = ClientState::READING_CLIENT_HEADER;
 		auto it = _handlersMap.find(_clientFd);
 		if (it == _handlersMap.end())
 		{
@@ -44,7 +44,7 @@ void	Client::sendResponse(epoll_event &ev, int epollFd, int eventFd)
 	{
 		THROW_ERRNO("send");
 	}
-	_state = clientState::READING_FILE;
+	_state = ClientState::READING_FILE;
 }
 
 void	Client::closeFile(epoll_event &ev, int epollFd, int eventFd)
@@ -73,7 +73,7 @@ void	Client::openFile(epoll_event &ev, int epollFd, int eventFd)
 	_readFileBytes = 0;
 
 
-	_state = clientState::SENDING_RESPONSE;
+	_state = ClientState::SENDING_RESPONSE;
 	auto it = _handlersMap.find(_clientFd);
 	if (it == _handlersMap.end())
 	{
@@ -96,7 +96,7 @@ void	Client::readFile(epoll_event &ev, int epollFd, int eventFd)
 		_readFileBytes += readBytes;
 
 		std::cout << "FILE BUFFER:\n" << _fileBuffer << std::endl;
-		_state = clientState::SENDING_FILE;
+		_state = ClientState::SENDING_FILE;
 	}
 	else if (readBytes == 0)
 	{
@@ -113,23 +113,23 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 {
 	if (ev.events & EPOLLIN)
 	{
-		if (_state == clientState::GETTING_FILE)
+		if (_state == ClientState::GETTING_FILE)
 		{
 
 		}
 	}
 	else if (ev.events & (EPOLLOUT | EPOLLHUP))
 	{
-		if (_state == clientState::SENDING_RESPONSE)
+		if (_state == ClientState::SENDING_RESPONSE)
 		{
 			sendResponse(ev, epollFd, eventFd);
 		}
 
-		if (_state == clientState::SENDING_FILE)
+		if (_state == ClientState::SENDING_FILE)
 		{
 			sendFile(ev, epollFd, eventFd);
 		}
-		if (_state == clientState::READING_FILE)
+		if (_state == ClientState::READING_FILE)
 		{
 			readFile(ev, epollFd, eventFd);
 		}
@@ -147,7 +147,7 @@ int		Client::getFd()
 
 Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
 	: _buffer()
-	, _state(READING_CLIENT_HEADER)
+	, _state(ClientState::READING_CLIENT_HEADER)
 	, _clientsMap(owner._clientsMap)
 	, _handlersMap(owner._handlersMap)
 	, _ipPort(owner)

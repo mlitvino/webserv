@@ -44,6 +44,7 @@ struct HttRequest;
 enum class HttpMethod;
 struct HttpResponse;
 struct Data;
+enum class ClientState;
 
 using ServerPtr  = std::shared_ptr<Server>;
 using ServerContainer = std::deque<ServerPtr>;

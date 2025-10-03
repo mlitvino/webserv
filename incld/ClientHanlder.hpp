@@ -10,7 +10,13 @@ enum class ClientState {
 	READING_REQUEST,
 	WRITING_RESPONSE,
 	READING_FILE,
-	WRITING_FILE
+	WRITING_FILE,
+
+	READING_CLIENT_HEADER,
+	READING_CLIENT_BODY,
+	SENDING_RESPONSE,
+	SENDING_FILE,
+	GETTING_FILE,
 };
 
 class Server;
@@ -46,7 +52,7 @@ public:
 	ClientHandler& operator=(const ClientHandler&) = delete;
 
 	// Move constructor (move assignment disabled due to reference member)
-	ClientHandler(ClientHandler&& other) noexcept;
+	// ClientHandler(ClientHandler&& other) noexcept;
 
 	void setIndex(size_t index);
 	void CloseConnection(int epoll_fd);

@@ -8,7 +8,7 @@ void	Program::parseConfigFile(char *config_file)
 	new_server->setHost(HOST);
 	new_server->setPort(PORT);
 
-	addr_port->_servers.push_back(new_server);
+	//addr_port->_servers.push_back(new_server);
 	addr_port->setAddrPort(new_server->getHost() + ":" + new_server->getPort());
 	_addrPortVec.push_back(std::move(addr_port));
 }
@@ -44,12 +44,9 @@ void	Program::initSockets()
 
 void	Program::waitEpollEvent()
 {
-	int	nbr_events;
-
-	std::cout << "Erpoll fd: " << _epollFd << std::endl;
 	while (true)
 	{
-		nbr_events = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
+		int	nbr_events = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
 		if (nbr_events == -1)
 			THROW_ERRNO("epoll_wait");
 
@@ -58,6 +55,11 @@ void	Program::waitEpollEvent()
 
 		for (int i = 0; i < nbr_events; ++i)
 		{
+			if (_events[i].events & EPOLLIN)
+				std::cout << "READING EPOLL EVENT" << std::endl;
+			// if (ev.events == EPOLLOUT)
+			// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
+
 			int eventFd = _events[i].data.fd;
 			auto fdHandlerPair = _handlersMap.find(eventFd);
 			if (fdHandlerPair == _handlersMap.end())

@@ -6,7 +6,7 @@ void	parser(Data &data, char *conf_file)
 	ServerPtr	new_server = std::make_unique<Server>();
 	new_server->setHost(std::string(HOST));
 	new_server->setPort(std::string(PORT));
-	data.servers.push_back(std::move(new_server));
+	//data.servers.push_back(std::move(new_server));
 
 	if (conf_file)
 	{

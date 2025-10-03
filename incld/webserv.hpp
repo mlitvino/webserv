@@ -1,12 +1,15 @@
 #pragma once
 
 #include <iostream>
-#include <cstring>
+#include <string>
 #include <fstream>
 #include <vector>
-#include <memory>
 #include <deque>
+#include <memory>
+#include <map>
 #include <unordered_map>
+#include <sstream>
+#include <fstream>
 
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -18,11 +21,12 @@
 
 #define QUEUE_SIZE 20
 #define IO_BUFFER_SIZE 1024
-#define CLIENT_HEADER_LIMIT 1024
 #define MAX_EVENTS 10
 #define DEFAULT_EPOLL_SIZE 10
 
-#define HTTP_STATUS "HTTP/1.1 200\r\n\r\n"
+#define CLIENT_HEADER_LIMIT 1024
+
+#define HTTP_STATUS "HTTP/1.1 200 OK\r\nContent-Length: 131\r\n\r\n"
 #define CRLF "\r\n"
 #define DOUBLE_CRLF "\r\n\r\n"
 
@@ -32,17 +36,13 @@
 #define DEFAULT_CONF "web/default_conf"
 #define STATIC_SITE "web/www/index.html"
 
+struct IEpollFdOwner;
 class Server;
-class ClientHandler;
 class IpPort;
 class Client;
-struct IEpollFdOwner;
 
 using ServerPtr  = std::shared_ptr<Server>;
-using ServerDeq = std::deque<ServerPtr>;
-
-using ClientHandlerPtr = std::shared_ptr<ClientHandler>;
-using ClientHandlerDeq = std::deque<ClientHandlerPtr>;
+using ServerContainer = std::deque<ServerPtr>;
 
 using IpPortPtr = std::shared_ptr<IpPort>;
 
@@ -52,67 +52,49 @@ using ClientDeq = std::deque<ClientPtr>;
 using FdClientMap = std::unordered_map<int, ClientPtr>;
 using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
 
+#include "IEpollFdOwner.hpp"
 #include "CustomException.hpp"
 #include "Server.hpp"
-#include "IEpollFdOwner.hpp"
-#include "ClientHanlder.hpp"
-
+#include "IpPort.hpp"
 #include "Program.hpp"
 #include "Client.hpp"
 
-typedef struct	s_request
-{
-	std::string	method;
-	char	*path;
-	char	*proocol;
+enum class HttpMethod {
+	GET = 1,
+	POST = 2,
+	DELETE = 4,
+	PUT = 8,
+	HEAD = 16
+};
 
-	std::string	body;
-}				t_request;
+struct HttpRequest {
+	HttpMethod method;
+	std::string path;
+	std::string protocol;
+	std::unordered_map<std::string, std::string> headers;
+	std::string body;
+};
 
-typedef struct	s_response
-{
-	char	*protocol;
-	int		status_code;
-	char	*optional_phrase;
+struct HttpResponse {
+	std::string protocol = "HTTP/1.1";
+	int statusCode = 200;
+	std::string statusText = "OK";
+	std::unordered_map<std::string, std::string> headers;
+	std::string body;
+};
 
-	char	*content_length;
-	char	*body;
-}				t_response;
+struct Data {
+	ServerContainer servers;
+	epoll_event ev;
+	epoll_event events[MAX_EVENTS];
+	int epollFd;
 
-typedef struct	s_server
-{
-	// conf
-	char	*host_address;
-	int		port;
-
-	char	*server_name;
-	size_t	client_body_size;
-	char	*error_pages_path[10];
-
-	char	*accepted_HTTP_methods;
-	char	*HTTP_redirection;
-	char	*root_directory;
-
-	bool	directory_listing;
-	char	*default_direcory_file;
-
-	// runtime
-	char	*clients;
-
-
-}		t_server;
-
-typedef struct	s_data
-{
-		ServerDeq	servers;
-
-		epoll_event	ev;
-		epoll_event	events[MAX_EVENTS];
-		int			epoll_fd;
-
-}		Data;
+	Data() : epollFd(-1) {}
+	~Data() {
+		if (epollFd != -1) {
+			close(epollFd);
+		}
+	}
+};
 
 void	parser(Data &data, char *conf_file);
-void	init_servers(Data &data);
-void	accepting_loop(Data &data);
-void	init_epoll(Data &data);

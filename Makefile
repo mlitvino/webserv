@@ -7,10 +7,7 @@ INC_DIR = incld
 
 SRC_FILES =	main.cpp \
 			parser.cpp \
-			init.cpp \
-			loop.cpp \
 			Server.cpp \
-			ClientHandler.cpp \
 			Program.cpp \
 			IpPort.cpp \
 			Client.cpp

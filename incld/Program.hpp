@@ -1,9 +1,6 @@
 #pragma once
 
-#include <vector>
-
 #include "webserv.hpp"
-#include "IpPort.hpp"
 
 struct Program
 {

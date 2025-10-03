@@ -16,21 +16,6 @@ void Server::RemoveClientHandler(size_t index) {
 	std::cout << "Size after removing: " << _clients.size() << std::endl;
 }
 
-void Server::handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd) {
-	std::cout << "Accepting new connection..." << std::endl;
-
-	try {
-		auto new_client = std::make_unique<ClientHandler>(*this);
-		new_client->acceptConnect(_sockfd, epoll_fd);
-		new_client->setIndex(_clients.size());
-		_clients.push_back(std::move(new_client));
-		std::cout << "New connection was accepted" << std::endl;
-	}
-	catch(const std::exception& e) {
-		std::cout << "Connection failed: " << e.what() << std::endl;
-	}
-}
-
 void Server::prepareSockFd(addrinfo& hints, addrinfo* server) {
 	int err = getaddrinfo(_host.c_str(), _port.c_str(), &hints, &server);
 	if (err)
@@ -56,6 +41,11 @@ void Server::prepareSockFd(addrinfo& hints, addrinfo* server) {
 	err = listen(_sockfd, QUEUE_SIZE);
 	if (err)
 		THROW_ERRNO("listen");
+}
+
+// Helper function to convert int to string
+static std::string intToString(int value) {
+	return std::to_string(value);
 }
 
 // Setters
@@ -116,12 +106,13 @@ size_t Server::getSizeClients() const {
 	return _clients.size();
 }
 
-// Helper function to convert int to string
-static std::string intToString(int value) {
-	return std::to_string(value);
+// Constructors + Destructor
+
+Server::~Server() {
+	if (_sockfd != -1)
+		close(_sockfd);
 }
 
-// Constructors
 Server::Server(const ServerConfig& config)
 	: _serverName(config.serverName),
 	_host(config.host),
@@ -131,44 +122,38 @@ Server::Server(const ServerConfig& config)
 	_locations(config.locations) {
 }
 
-// Move constructor
-Server::Server(Server&& other) noexcept
-	: _serverName(std::move(other._serverName)),
-	_host(std::move(other._host)),
-	_port(std::move(other._port)),
-	_clientBodySize(other._clientBodySize),
-	_errorPages(std::move(other._errorPages)),
-	_locations(std::move(other._locations)),
-	_clients(std::move(other._clients)),
-	_sockfd(other._sockfd) {
-	other._sockfd = -1;
-}
+// // Move constructor
+// Server::Server(Server&& other) noexcept
+// 	: _serverName(std::move(other._serverName)),
+// 	_host(std::move(other._host)),
+// 	_port(std::move(other._port)),
+// 	_clientBodySize(other._clientBodySize),
+// 	_errorPages(std::move(other._errorPages)),
+// 	_locations(std::move(other._locations)),
+// 	_clients(std::move(other._clients)),
+// 	_sockfd(other._sockfd) {
+// 	other._sockfd = -1;
+// }
 
-// Move assignment
-Server& Server::operator=(Server&& other) noexcept {
-	if (this != &other) {
-		// Close current socket if open
-		if (_sockfd != -1) {
-			close(_sockfd);
-		}
+// // Move assignment
+// Server& Server::operator=(Server&& other) noexcept {
+// 	if (this != &other) {
+// 		// Close current socket if open
+// 		if (_sockfd != -1) {
+// 			close(_sockfd);
+// 		}
 
-		_serverName = std::move(other._serverName);
-		_host = std::move(other._host);
-		_port = std::move(other._port);
-		_clientBodySize = other._clientBodySize;
-		_errorPages = std::move(other._errorPages);
-		_locations = std::move(other._locations);
-		_clients = std::move(other._clients);
-		_sockfd = other._sockfd;
+// 		_serverName = std::move(other._serverName);
+// 		_host = std::move(other._host);
+// 		_port = std::move(other._port);
+// 		_clientBodySize = other._clientBodySize;
+// 		_errorPages = std::move(other._errorPages);
+// 		_locations = std::move(other._locations);
+// 		_clients = std::move(other._clients);
+// 		_sockfd = other._sockfd;
 
-		other._sockfd = -1;
-	}
-	return *this;
-}
-
-Server::~Server() {
-	// Smart pointers automatically clean up when vector is destroyed
-	if (_sockfd != -1)
-		close(_sockfd);
-}
+// 		other._sockfd = -1;
+// 	}
+// 	return *this;
+// }
 

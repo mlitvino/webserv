@@ -20,7 +20,7 @@ class Client : public IEpollFdOwner
 	public:
 		std::string			_buffer;
 
-		clientState			_state;
+		ClientState			_state;
 		FdClientMap			&_clientsMap;
 		FdEpollOwnerMap		&_handlersMap;
 		IpPort				&_ipPort;

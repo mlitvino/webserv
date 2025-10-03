@@ -5,22 +5,22 @@
 #include <algorithm>
 
 void ClientHandler::acceptConnect(int srvSockFd, int epoll_fd) {
-	epoll_event ev;
+	// epoll_event ev;
 
-	_sockFd = accept(srvSockFd, reinterpret_cast<sockaddr*>(&_clientAddr), &_clientAddrLen);
-	if (_sockFd == -1)
-		THROW_ERRNO("accept");
+	// _sockFd = accept(srvSockFd, reinterpret_cast<sockaddr*>(&_clientAddr), &_clientAddrLen);
+	// if (_sockFd == -1)
+	// 	THROW_ERRNO("accept");
 
-	int flags = fcntl(_sockFd, F_GETFL, 0);
-	fcntl(_sockFd, F_SETFL, flags | O_NONBLOCK);
+	// int flags = fcntl(_sockFd, F_GETFL, 0);
+	// fcntl(_sockFd, F_SETFL, flags | O_NONBLOCK);
 
-	// Initially only register for EPOLLIN (reading) events
-	ev.events = EPOLLIN;
-	ev.data.ptr = static_cast<void*>(this);
-	int err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _sockFd, &ev);
-	if (err)
-		THROW_ERRNO("epoll_ctl");
-	_state = ClientState::READING_REQUEST;
+	// // Initially only register for EPOLLIN (reading) events
+	// ev.events = EPOLLIN;
+	// ev.data.ptr = static_cast<void*>(this);
+	// int err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _sockFd, &ev);
+	// if (err)
+	// 	THROW_ERRNO("epoll_ctl");
+	// _state = ClientState::READING_REQUEST;
 }
 
 void ClientHandler::readAll() {
@@ -295,40 +295,6 @@ void ClientHandler::CloseConnection(int epoll_fd) {
 
 void ClientHandler::setIndex(size_t index) {
 	_index = index;
-}
-
-ClientHandler::ClientHandler(Server& owner)
-	: _clientAddrLen(sizeof(_clientAddr))
-	, _owner(owner)
-	, _index(owner.getSizeClients()) {
-	_buffer.reserve(IO_BUFFER_SIZE);
-}
-
-// Move constructor
-ClientHandler::ClientHandler(ClientHandler&& other) noexcept
-	: _clientAddr(other._clientAddr)
-	, _clientAddrLen(other._clientAddrLen)
-	, _owner(other._owner)
-	, _index(other._index)
-	, _sockFd(other._sockFd)
-	, _fileFd(other._fileFd)
-	, _state(other._state)
-	, _buffer(std::move(other._buffer))
-	, _headRequest(std::move(other._headRequest))
-	, _body(std::move(other._body))
-	, _httpMethod(std::move(other._httpMethod))
-	, _httpPath(std::move(other._httpPath))
-	, _httpVersion(std::move(other._httpVersion))
-	, _responseBuffer(std::move(other._responseBuffer)) {
-	other._sockFd = -1;
-	other._fileFd = -1;
-}
-
-ClientHandler::~ClientHandler() {
-	if (_sockFd != -1)
-		close(_sockFd);
-	if (_fileFd != -1)
-		close(_fileFd);
 }
 
 void ClientHandler::handleGetRequest(const std::string& path) {
@@ -699,3 +665,40 @@ std::string ClientHandler::findIndexFile(const std::string& path) {
 
 	return indexFile;
 }
+
+// Constructors + Destructor
+
+ClientHandler::ClientHandler(Server& owner)
+	: _clientAddrLen(sizeof(_clientAddr))
+	, _owner(owner)
+	, _index(owner.getSizeClients()) {
+	_buffer.reserve(IO_BUFFER_SIZE);
+}
+
+// // Move constructor
+// ClientHandler::ClientHandler(ClientHandler&& other) noexcept
+// 	: _clientAddr(other._clientAddr)
+// 	, _clientAddrLen(other._clientAddrLen)
+// 	, _owner(other._owner)
+// 	, _index(other._index)
+// 	, _sockFd(other._sockFd)
+// 	, _fileFd(other._fileFd)
+// 	, _state(other._state)
+// 	, _buffer(std::move(other._buffer))
+// 	, _headRequest(std::move(other._headRequest))
+// 	, _body(std::move(other._body))
+// 	, _httpMethod(std::move(other._httpMethod))
+// 	, _httpPath(std::move(other._httpPath))
+// 	, _httpVersion(std::move(other._httpVersion))
+// 	, _responseBuffer(std::move(other._responseBuffer)) {
+// 	other._sockFd = -1;
+// 	other._fileFd = -1;
+// }
+
+ClientHandler::~ClientHandler() {
+	if (_sockFd != -1)
+		close(_sockFd);
+	if (_fileFd != -1)
+		close(_fileFd);
+}
+

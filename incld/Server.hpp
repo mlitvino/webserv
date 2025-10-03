@@ -17,7 +17,7 @@ struct ServerConfig;
 struct Location;
 class ClientHandler;
 
-class Server : public IEpollFdOwner {
+class Server {
 private:
 	std::string _serverName;
 	std::string _host;
@@ -41,8 +41,8 @@ public:
 	Server& operator=(const Server&) = delete;
 
 	// Move constructor and assignment
-	Server(Server&& other) noexcept;
-	Server& operator=(Server&& other) noexcept;
+	// Server(Server&& other) noexcept;
+	// Server& operator=(Server&& other) noexcept;
 
 	void prepareSockFd(addrinfo& hints, addrinfo* server);
 	void setHost(std::string host);
@@ -62,6 +62,5 @@ public:
 	size_t getSizeClients() const;
 	void RemoveClientHandler(size_t index);
 
-	void handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd);
 };
 

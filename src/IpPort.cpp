@@ -45,7 +45,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 
 		if (ev.events & EPOLLIN)
 		{
-			if (client->_state == clientState::READING_CLIENT_HEADER)
+			if (client->_state == ClientState::READING_CLIENT_HEADER)
 			{
 				std::cout << "Parsing request of existed client..." << std::endl;
 				parseRequest(ev, epollFd, eventFd);
@@ -54,7 +54,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 		}
 		else
 		{
-			if (client->_state == clientState::SENDING_RESPONSE)
+			if (client->_state == ClientState::SENDING_RESPONSE)
 			{
 				std::cout << "Sending response..." << std::endl;
 				//parseRequest(ev, epollFd, eventFd);

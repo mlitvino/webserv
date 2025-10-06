@@ -33,7 +33,7 @@
 // default conf_file
 #define PORT "8080"
 #define HOST "0.0.0.0"
-#define DEFAULT_CONF "web/default_conf"
+#define DEFAULT_CONF "web/default.conf"
 #define STATIC_SITE "web/www/index.html"
 
 struct IEpollFdOwner;
@@ -45,9 +45,10 @@ enum class HttpMethod;
 struct HttpResponse;
 struct Data;
 enum class ClientState;
+class Program;
 
 using ServerPtr  = std::shared_ptr<Server>;
-using ServerContainer = std::deque<ServerPtr>;
+using ServerDeq = std::deque<ServerPtr>;
 
 using IpPortPtr = std::shared_ptr<IpPort>;
 
@@ -90,19 +91,3 @@ struct HttpResponse {
 
 #include "ClientHanlder.hpp"
 #include "ConfigParser.hpp"
-
-struct Data {
-	ServerContainer servers;
-	epoll_event ev;
-	epoll_event events[MAX_EVENTS];
-	int epollFd;
-
-	Data() : epollFd(-1) {}
-	~Data() {
-		if (epollFd != -1) {
-			close(epollFd);
-		}
-	}
-};
-
-void	parser(Data &data, char *conf_file);

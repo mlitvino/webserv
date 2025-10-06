@@ -49,5 +49,5 @@ public:
 
 	void parseConfig(const std::string& configFile);
 	const std::vector<ServerConfig>& getServerConfigs() const;
-	void createServersFromConfig(Data& data);
+	void	createServersFromConfig(Program &program);
 };

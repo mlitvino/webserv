@@ -8,6 +8,8 @@ class IpPort : public IEpollFdOwner
 		FdClientMap		&_clientsMap;
 		FdEpollOwnerMap	&_handlersMap;
 
+		ServerDeq		_servers;
+
 
 		std::string		_addrPort;
 		std::string		_buffer;

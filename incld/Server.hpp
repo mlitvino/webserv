@@ -40,11 +40,6 @@ public:
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
 
-	// Move constructor and assignment
-	// Server(Server&& other) noexcept;
-	// Server& operator=(Server&& other) noexcept;
-
-	void prepareSockFd(addrinfo& hints, addrinfo* server);
 	void setHost(std::string host);
 	void setPort(std::string port);
 	void setServerName(const std::string& name);
@@ -60,7 +55,6 @@ public:
 	const std::vector<Location>& getLocations() const;
 	int getSockfd() const;
 	size_t getSizeClients() const;
-	void RemoveClientHandler(size_t index);
 
 };
 

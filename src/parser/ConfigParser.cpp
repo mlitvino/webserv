@@ -20,7 +20,7 @@ std::vector<std::string> ConfigParser::split(const std::string& str, char delimi
 	std::vector<std::string> tokens;
 	std::stringstream ss(str);
 	std::string token;
-	
+
 	while (std::getline(ss, token, delimiter)) {
 		std::string trimmed = trim(token);
 		if (!trimmed.empty()) {
@@ -33,7 +33,7 @@ std::vector<std::string> ConfigParser::split(const std::string& str, char delimi
 int ConfigParser::parseHttpMethods(const std::string& methods) {
 	int result = 0;
 	std::vector<std::string> methodList = split(methods, ' ');
-	
+
 	for (const auto& method : methodList) {
 		if (method == "GET") result |= static_cast<int>(HttpMethod::GET);
 		else if (method == "POST") result |= static_cast<int>(HttpMethod::POST);
@@ -48,7 +48,7 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 	std::istringstream iss(line);
 	std::string directive;
 	iss >> directive;
-	
+
 	if (directive == "root") {
 		iss >> location.root;
 	} else if (directive == "index") {
@@ -74,16 +74,16 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 
 void ConfigParser::parseLocationBlock(std::ifstream& file, Location& location) {
 	std::string line;
-	
+
 	while (std::getline(file, line)) {
 		line = trim(line);
-		
+
 		if (line.empty() || line[0] == '#')
 			continue;
-			
+
 		if (line == "}")
 			break;
-			
+
 		parseLocationDirective(line, location);
 	}
 }
@@ -92,7 +92,7 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 	std::istringstream iss(line);
 	std::string directive;
 	iss >> directive;
-	
+
 	if (directive == "listen") {
 		iss >> config.port;
 	} else if (directive == "server_name") {
@@ -113,26 +113,26 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 
 void ConfigParser::parseServerBlock(std::ifstream& file, ServerConfig& config) {
 	std::string line;
-	
+
 	while (std::getline(file, line)) {
 		line = trim(line);
-		
+
 		if (line.empty() || line[0] == '#')
 			continue;
-			
+
 		if (line == "}")
 			break;
-			
+
 		if (line.find("location") == 0) {
 			Location location;
 			std::istringstream iss(line);
 			std::string directive;
 			iss >> directive >> location.path;
-			
+
 			// Skip the opening brace line
 			std::string braceLine;
 			std::getline(file, braceLine);
-			
+
 			parseLocationBlock(file, location);
 			config.locations.push_back(location);
 		} else {
@@ -145,34 +145,34 @@ void ConfigParser::parseConfig(const std::string& configFile) {
 	_configFile = configFile;
 	_serverConfigs.clear(); // Clear previous configurations
 	std::ifstream file(configFile);
-	
+
 	if (!file.is_open()) {
 		throw std::runtime_error("Cannot open configuration file: " + configFile);
 	}
-	
+
 	std::string line;
 	while (std::getline(file, line)) {
 		line = trim(line);
-		
+
 		if (line.empty() || line[0] == '#')
 			continue;
-			
+
 		if (line.find("server") == 0) {
 			ServerConfig config;
-			
+
 			// Don't skip any line - the opening brace is on the same line as 'server'
-			
+
 			parseServerBlock(file, config);
 			_serverConfigs.push_back(config);
 		}
 	}
-	
+
 	file.close();
-	
+
 	if (_serverConfigs.empty()) {
 		throw std::runtime_error("No server configurations found in file: " + configFile);
 	}
-	
+
 	// Add port conflict validation
 	validatePortConflicts();
 }
@@ -181,24 +181,24 @@ const std::vector<ServerConfig>& ConfigParser::getServerConfigs() const {
 	return _serverConfigs;
 }
 
-void ConfigParser::createServersFromConfig(Data& data) {
+void ConfigParser::createServersFromConfig(Program &program) {
 	for (const auto& config : _serverConfigs) {
 		auto server = std::make_unique<Server>(config);
-		data.servers.push_back(std::move(server));
+		program._servers.push_back(std::move(server));
 	}
 }
 
 void ConfigParser::validatePortConflicts() {
 	std::map<int, std::string> usedPorts;
-	
+
 	for (const auto& config : _serverConfigs) {
 		auto it = usedPorts.find(config.port);
 		if (it != usedPorts.end()) {
-			throw std::runtime_error("Port conflict detected: Port " + 
-				std::to_string(config.port) + " is used by multiple servers (" + 
+			throw std::runtime_error("Port conflict detected: Port " +
+				std::to_string(config.port) + " is used by multiple servers (" +
 				it->second + " and " + config.serverName + ")");
 		}
-		usedPorts[config.port] = config.serverName.empty() ? 
+		usedPorts[config.port] = config.serverName.empty() ?
 			("server_" + std::to_string(config.port)) : config.serverName;
 	}
 }

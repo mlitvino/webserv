@@ -1,17 +1,53 @@
 #include "Program.hpp"
 
-void	Program::parseConfigFile(char *config_file)
+void	Program::parseConfigFile(char *conf_file)
 {
-	IpPortPtr	addr_port = std::make_shared<IpPort>(_clientMap, _handlersMap);
-	ServerPtr	new_server = std::make_shared<Server>();
+	try {
+		ConfigParser configParser;
 
-	new_server->setHost(HOST);
-	new_server->setPort(PORT);
+		if (conf_file) {
+			configParser.parseConfig(std::string(conf_file));
+		} else {
+			// Try default configuration file
+			configParser.parseConfig(std::string(DEFAULT_CONF));
+		}
 
-	//addr_port->_servers.push_back(new_server);
-	addr_port->setAddrPort(new_server->getHost() + ":" + new_server->getPort());
-	_addrPortVec.push_back(std::move(addr_port));
+		configParser.createServersFromConfig(*this);
+
+		// If no servers were created, create a default one
+		if (_servers.empty()) {
+			THROW("none of servers was created");
+
+
+			// auto default_server = std::make_shared<Server>();
+			// default_server->setHost(std::string(HOST));
+			// default_server->setPort(std::string(PORT));
+			// _servers.push_back(std::move(default_server));
+		}
+	} catch (const std::exception& e) {
+		std::string err = std::string("parsing error: ") + e.what();
+		THROW(err.c_str());
+
+		// std::cerr << "Configuration parsing error: " << e.what() << std::endl;
+		// std::cerr << "Using default configuration..." << std::endl;
+
+		// // Create default server as fallback
+		// auto default_server = std::make_shared<Server>();
+		// default_server->setHost(std::string(HOST));
+		// default_server->setPort(std::string(PORT));
+		// _servers.push_back(std::move(default_server));
+	}
+
+
+	IpPortPtr test = std::make_shared<IpPort>(_clientMap, _handlersMap);
+
+	test->_addrPort = _servers.front()->getHost() + std::string(":") + _servers.front()->getPort();
+
+	_addrPortVec.push_back(test);
+	_addrPortVec.front()->_servers = _servers;
+
 }
+
 
 void	Program::initSockets()
 {
@@ -44,6 +80,7 @@ void	Program::initSockets()
 
 void	Program::waitEpollEvent()
 {
+	std::cout << "Waiting for epoll event..." << std::endl;
 	while (true)
 	{
 		int	nbr_events = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
@@ -73,9 +110,9 @@ void	Program::waitEpollEvent()
 // Constructors + Destructor
 
 Program::Program()
-{
-	_servInfo = nullptr;
-}
+	: _epollFd{-1}
+	, _servInfo{nullptr}
+{}
 
 Program::~Program()
 {

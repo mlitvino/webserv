@@ -2,47 +2,6 @@
 #include "ClientHanlder.hpp"
 #include <sstream>
 
-void Server::RemoveClientHandler(size_t index) {
-	if (index >= _clients.size()) return;
-
-	// Simply remove the client at the index - unique_ptr will automatically clean up
-	_clients.erase(_clients.begin() + index);
-
-	// Update indices for remaining clients
-	for (size_t i = index; i < _clients.size(); ++i) {
-		_clients[i]->setIndex(i);
-	}
-
-	std::cout << "Size after removing: " << _clients.size() << std::endl;
-}
-
-void Server::prepareSockFd(addrinfo& hints, addrinfo* server) {
-	int err = getaddrinfo(_host.c_str(), _port.c_str(), &hints, &server);
-	if (err)
-		THROW(gai_strerror(err));
-
-	int i = 0;
-	for (addrinfo* p = server; p; p = p->ai_next, i++) {}
-	std::cout << "addrinfo nodes: " << i << std::endl;
-
-	_sockfd = socket(server->ai_family, server->ai_socktype, server->ai_protocol);
-	if (_sockfd == -1)
-		THROW_ERRNO("socket");
-
-	int opt = 1;
-	err = setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	if (err)
-		THROW_ERRNO("setsockopt(SO_REUSEADDR)");
-
-	err = bind(_sockfd, server->ai_addr, server->ai_addrlen);
-	if (err)
-		THROW_ERRNO("bind");
-
-	err = listen(_sockfd, QUEUE_SIZE);
-	if (err)
-		THROW_ERRNO("listen");
-}
-
 // Helper function to convert int to string
 static std::string intToString(int value) {
 	return std::to_string(value);
@@ -121,39 +80,4 @@ Server::Server(const ServerConfig& config)
 	_errorPages(config.errorPages),
 	_locations(config.locations) {
 }
-
-// // Move constructor
-// Server::Server(Server&& other) noexcept
-// 	: _serverName(std::move(other._serverName)),
-// 	_host(std::move(other._host)),
-// 	_port(std::move(other._port)),
-// 	_clientBodySize(other._clientBodySize),
-// 	_errorPages(std::move(other._errorPages)),
-// 	_locations(std::move(other._locations)),
-// 	_clients(std::move(other._clients)),
-// 	_sockfd(other._sockfd) {
-// 	other._sockfd = -1;
-// }
-
-// // Move assignment
-// Server& Server::operator=(Server&& other) noexcept {
-// 	if (this != &other) {
-// 		// Close current socket if open
-// 		if (_sockfd != -1) {
-// 			close(_sockfd);
-// 		}
-
-// 		_serverName = std::move(other._serverName);
-// 		_host = std::move(other._host);
-// 		_port = std::move(other._port);
-// 		_clientBodySize = other._clientBodySize;
-// 		_errorPages = std::move(other._errorPages);
-// 		_locations = std::move(other._locations);
-// 		_clients = std::move(other._clients);
-// 		_sockfd = other._sockfd;
-
-// 		other._sockfd = -1;
-// 	}
-// 	return *this;
-// }
 

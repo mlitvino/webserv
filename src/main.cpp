@@ -12,7 +12,7 @@ int	main(int ac, char **av)
 
 	try
 	{
-		program.parseConfigFile(av[1]);
+		program.parseConfFile(av[1]);
 		program.initSockets();
 		program.waitEpollEvent();
 	}

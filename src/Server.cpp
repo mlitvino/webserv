@@ -60,11 +60,6 @@ const std::vector<Location>& Server::getLocations() const {
 int Server::getSockfd() const {
 	return _sockfd;
 }
-
-size_t Server::getSizeClients() const {
-	return _clients.size();
-}
-
 // Constructors + Destructor
 
 Server::~Server() {
@@ -78,6 +73,7 @@ Server::Server(const ServerConfig& config)
 	_port(intToString(config.port)),
 	_clientBodySize(config.clientMaxBodySize),
 	_errorPages(config.errorPages),
-	_locations(config.locations) {
+	_locations(config.locations),
+	_sockfd{-1} {
 }
 

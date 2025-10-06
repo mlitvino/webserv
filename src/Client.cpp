@@ -17,7 +17,7 @@ void	Client::sendFile(epoll_event &ev, int epollFd, int eventFd)
 	if (_fileSize == _readFileBytes)
 	{
 		closeFile(ev, epollFd, eventFd);
-		_state = ClientState::READING_CLIENT_HEADER;
+		_state = ClientState::READING_REQUEST;
 		auto it = _handlersMap.find(_clientFd);
 		if (it == _handlersMap.end())
 		{
@@ -147,7 +147,7 @@ int		Client::getFd()
 
 Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
 	: _buffer()
-	, _state(ClientState::READING_CLIENT_HEADER)
+	, _state(ClientState::READING_REQUEST)
 	, _clientsMap(owner._clientsMap)
 	, _handlersMap(owner._handlersMap)
 	, _ipPort(owner)

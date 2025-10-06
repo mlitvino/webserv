@@ -24,10 +24,20 @@ class Client : public IEpollFdOwner
 		FdClientMap			&_clientsMap;
 		FdEpollOwnerMap		&_handlersMap;
 		IpPort				&_ipPort;
+		ServerPtr			_ownerServer;
+
+		// HTTP request data
+		std::string			_httpMethod;
+		std::string			_httpPath;
+		std::string			_httpVersion;
+		std::string			_responseBuffer;
 	private:
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;
 		int					_clientFd;
+
+
+
 
 		int					_fileFd;
 		std::string			_filePath;

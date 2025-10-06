@@ -1,6 +1,6 @@
 #include "Program.hpp"
 
-void	Program::parseConfigFile(char *conf_file)
+void	Program::parseConfFile(char *conf_file)
 {
 	try {
 		ConfigParser configParser;
@@ -40,12 +40,18 @@ void	Program::parseConfigFile(char *conf_file)
 
 
 	IpPortPtr test = std::make_shared<IpPort>(_clientMap, _handlersMap);
-
 	test->_addrPort = _servers.front()->getHost() + std::string(":") + _servers.front()->getPort();
-
 	_addrPortVec.push_back(test);
 	_addrPortVec.front()->_servers = _servers;
 
+	for (auto &ipPort : _addrPortVec)
+	{
+		for (auto &server : ipPort->_servers)
+		{
+			server->_handlersMap = &_handlersMap;
+			server->_clientsMap = &_clientMap;
+		}
+	}
 }
 
 
@@ -92,8 +98,8 @@ void	Program::waitEpollEvent()
 
 		for (int i = 0; i < nbr_events; ++i)
 		{
-			if (_events[i].events & EPOLLIN)
-				std::cout << "READING EPOLL EVENT" << std::endl;
+			// if (_events[i].events & EPOLLIN)
+			// 	std::cout << "READING EPOLL EVENT" << std::endl;
 			// if (ev.events == EPOLLOUT)
 			// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
 

@@ -12,7 +12,7 @@ class IpPort : public IEpollFdOwner
 
 
 		std::string		_addrPort;
-		std::string		_buffer;
+		//std::string		_buffer;
 		ClientDeq		_unsortedClients;
 
 		int				_sockFd;
@@ -23,9 +23,14 @@ class IpPort : public IEpollFdOwner
 
 		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
 		void			closeConnection(epoll_event &ev, int epollFd, int eventFd);
+		void			closeConnection(int epollFd, int clientFd);
 
+		bool			readRequest(ClientPtr &client, int clientFd);
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
-		//void			parseRequest(ClientPtr	client);
+		std::string		parseRequestLine(ClientPtr &client, std::string& line);
+		void			assignServerToClient(ClientPtr &client);
+		bool			isMethodAllowed(ClientPtr &client, std::string& path);
+		bool			isBodySizeValid(ClientPtr &client);
 
 		void			setAddrPort(std::string addrPort);
 		int				getSockFd();

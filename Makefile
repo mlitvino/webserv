@@ -6,7 +6,6 @@ OBJ_DIR = objs
 INC_DIR = incld
 
 SRC_FILES =	main.cpp \
-			parser.cpp \
 			Server.cpp \
 			Program.cpp \
 			IpPort.cpp \

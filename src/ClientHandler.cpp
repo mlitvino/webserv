@@ -4,28 +4,6 @@
 #include <fstream>
 #include <algorithm>
 
-void ClientHandler::acceptConnect(int srvSockFd, int epoll_fd) {
-	// epoll_event ev;
-
-	// _sockFd = accept(srvSockFd, reinterpret_cast<sockaddr*>(&_clientAddr), &_clientAddrLen);
-	// if (_sockFd == -1)
-	// 	THROW_ERRNO("accept");
-
-	// int flags = fcntl(_sockFd, F_GETFL, 0);
-	// fcntl(_sockFd, F_SETFL, flags | O_NONBLOCK);
-
-	// // Initially only register for EPOLLIN (reading) events
-	// ev.events = EPOLLIN;
-	// ev.data.ptr = static_cast<void*>(this);
-	// int err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _sockFd, &ev);
-	// if (err)
-	// 	THROW_ERRNO("epoll_ctl");
-	// _state = ClientState::READING_REQUEST;
-}
-
-void ClientHandler::readAll() {
-	// Legacy method - keeping for compatibility
-}
 
 bool ClientHandler::readHttpRequest() {
 	char buffer[IO_BUFFER_SIZE];
@@ -172,7 +150,7 @@ void ClientHandler::sendHttpResponse(int epoll_fd) {
 
 		if (shouldCloseConnection) {
 			std::cout << "DEBUG: Connection: close header detected, closing connection" << std::endl;
-			CloseConnection(epoll_fd);
+			//CloseConnection(epoll_fd);
 			return;
 		}
 
@@ -208,7 +186,7 @@ void ClientHandler::handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd)
 	// Check for error conditions first
 	if (ev.events & (EPOLLHUP | EPOLLERR)) {
 		std::cout << "DEBUG: Connection error or hangup detected, closing connection" << std::endl;
-		CloseConnection(epoll_fd);
+		//CloseConnection(epoll_fd);
 		return;
 	}
 
@@ -220,12 +198,12 @@ void ClientHandler::handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd)
 					if (!readHttpRequest()) {
 						// Client disconnected
 						std::cout << "DEBUG: Client disconnected, closing connection" << std::endl;
-						CloseConnection(epoll_fd);
+						//CloseConnection(epoll_fd);
 						return;  // Don't process further
 					}
 				} catch (const std::exception& e) {
 					std::cout << "DEBUG: Exception in readHttpRequest: " << e.what() << std::endl;
-					CloseConnection(epoll_fd);
+					//CloseConnection(epoll_fd);
 					return;
 				}
 
@@ -281,20 +259,6 @@ void ClientHandler::handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd)
 			break;
 		}
 	}
-}
-
-void ClientHandler::CloseConnection(int epoll_fd) {
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, _sockFd, nullptr))
-		THROW("epoll_ctl(DEL)");
-	close(_sockFd);
-
-	_owner.RemoveClientHandler(_index);
-
-	std::cout << "CLOSED" << std::endl;
-}
-
-void ClientHandler::setIndex(size_t index) {
-	_index = index;
 }
 
 void ClientHandler::handleGetRequest(const std::string& path) {
@@ -539,7 +503,7 @@ bool ClientHandler::isMethodAllowed(const std::string& method, const std::string
 	std::cout << "DEBUG: isMethodAllowed() called with method: " << method << ", path: " << path << std::endl;
 
 	// Get server configuration
-	const std::vector<Location>& locations = _owner.getLocations();
+	const std::vector<Location>& locations = _ownerServer.getLocations();
 	std::cout << "DEBUG: Found " << locations.size() << " locations" << std::endl;
 
 	// Find matching location
@@ -599,7 +563,7 @@ bool ClientHandler::isBodySizeValid() {
 
 	try {
 		size_t contentLength = std::stoul(contentLengthStr);
-		size_t maxBodySize = _owner.getClientBodySize();
+		size_t maxBodySize = _ownerServer.getClientBodySize();
 
 		std::cout << "DEBUG: Content-Length: " << contentLength << ", Max allowed: " << maxBodySize << std::endl;
 
@@ -612,7 +576,7 @@ bool ClientHandler::isBodySizeValid() {
 
 // Get custom error page path for given status code
 std::string ClientHandler::getCustomErrorPage(int statusCode) {
-	const std::map<int, std::string>& errorPages = _owner.getErrorPages();
+	const std::map<int, std::string>& errorPages = _ownerServer.getErrorPages();
 	auto it = errorPages.find(statusCode);
 	if (it != errorPages.end()) {
 		return it->second;
@@ -623,7 +587,7 @@ std::string ClientHandler::getCustomErrorPage(int statusCode) {
 // Find appropriate index file for a directory
 std::string ClientHandler::findIndexFile(const std::string& path) {
 	// Get server configuration
-	const std::vector<Location>& locations = _owner.getLocations();
+	const std::vector<Location>& locations = _ownerServer.getLocations();
 
 	// Find matching location
 	const Location* matchedLocation = nullptr;
@@ -668,32 +632,18 @@ std::string ClientHandler::findIndexFile(const std::string& path) {
 
 // Constructors + Destructor
 
-ClientHandler::ClientHandler(Server& owner)
-	: _clientAddrLen(sizeof(_clientAddr))
-	, _owner(owner)
-	, _index(owner.getSizeClients()) {
+ClientHandler::ClientHandler(Server& server, IpPort& ipPort)
+	: _clientsMap{ipPort._clientsMap}
+	, _handlersMap{ipPort._handlersMap}
+	, _ownerServer{server}
+	, _ownerIpPort{ipPort}
+	, _clientAddrLen(sizeof(_clientAddr))
+	, _sockFd{-1}
+	, _fileFd{-1}
+	, _state{ClientState::READING_REQUEST}
+{
 	_buffer.reserve(IO_BUFFER_SIZE);
 }
-
-// // Move constructor
-// ClientHandler::ClientHandler(ClientHandler&& other) noexcept
-// 	: _clientAddr(other._clientAddr)
-// 	, _clientAddrLen(other._clientAddrLen)
-// 	, _owner(other._owner)
-// 	, _index(other._index)
-// 	, _sockFd(other._sockFd)
-// 	, _fileFd(other._fileFd)
-// 	, _state(other._state)
-// 	, _buffer(std::move(other._buffer))
-// 	, _headRequest(std::move(other._headRequest))
-// 	, _body(std::move(other._body))
-// 	, _httpMethod(std::move(other._httpMethod))
-// 	, _httpPath(std::move(other._httpPath))
-// 	, _httpVersion(std::move(other._httpVersion))
-// 	, _responseBuffer(std::move(other._responseBuffer)) {
-// 	other._sockFd = -1;
-// 	other._fileFd = -1;
-// }
 
 ClientHandler::~ClientHandler() {
 	if (_sockFd != -1)

@@ -23,19 +23,21 @@ class Server;
 
 class ClientHandler : public IEpollFdOwner {
 private:
-	sockaddr_storage _clientAddr{};
-	socklen_t _clientAddrLen = 0;
-	Server& _owner;
-	size_t _index = 0;
+	FdClientMap			&_clientsMap;
+	FdEpollOwnerMap		&_handlersMap;
+	Server				&_ownerServer;
+	IpPort				&_ownerIpPort;
 
-	int _sockFd = -1;
-	int _fileFd = -1;
+	sockaddr_storage	_clientAddr{};
+	socklen_t			_clientAddrLen = 0;
 
-	ClientState _state = ClientState::READING_REQUEST;
+	int _sockFd;
+	int _fileFd;
 
-	std::string _buffer;
-	std::string _headRequest;
-	std::string _body;
+	ClientState	_state;
+	std::string	_buffer;
+	std::string	_headRequest;
+	std::string	_body;
 
 	// HTTP request data
 	std::string _httpMethod;
@@ -44,21 +46,13 @@ private:
 	std::string _responseBuffer;
 
 public:
+	ClientHandler() = delete; // Prevent default construction
 	~ClientHandler();
-	explicit ClientHandler(Server& owner);
+	explicit ClientHandler(Server& server, IpPort& ipPort);
 
 	// Delete copy constructor and assignment
 	ClientHandler(const ClientHandler&) = delete;
 	ClientHandler& operator=(const ClientHandler&) = delete;
-
-	// Move constructor (move assignment disabled due to reference member)
-	// ClientHandler(ClientHandler&& other) noexcept;
-
-	void setIndex(size_t index);
-	void CloseConnection(int epoll_fd);
-
-	void acceptConnect(int srvSockFd, int epoll_fd);
-	void readAll();
 
 	// HTTP handling methods
 	bool readHttpRequest();  // Returns false if client disconnected
@@ -87,7 +81,6 @@ public:
 	void handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd);
 
 private:
-	ClientHandler() = delete; // Prevent default construction
 };
 
 

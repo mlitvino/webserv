@@ -17,7 +17,7 @@ struct Program
 		FdClientMap				_clientMap;
 		FdEpollOwnerMap			_handlersMap;
 
-		void	parseConfigFile(char *conf_file);
+		void	parseConfFile(char *conf_file);
 		void	initSockets();
 		void	waitEpollEvent();
 

@@ -19,20 +19,25 @@ class ClientHandler;
 
 class Server {
 private:
-	std::string _serverName;
-	std::string _host;
-	std::string _port;
 
-	size_t _clientBodySize = 1024 * 1024; // 1MB default
-	std::map<int, std::string> _errorPages;
-	std::vector<Location> _locations;
+	std::string					_serverName;
+	std::string					_host;
+	std::string					_port;
 
-	std::vector<std::unique_ptr<ClientHandler>> _clients;
+	size_t						_clientBodySize;
+	std::map<int, std::string>	_errorPages;
+	std::vector<Location>		_locations;
 
-	int _sockfd = -1;
+	//std::vector<std::unique_ptr<ClientHandler>>	_clients;
+
+	int _sockfd;
 
 public:
-	Server() = default;
+	FdClientMap					*_clientsMap;
+	FdEpollOwnerMap				*_handlersMap;
+
+
+	//Server() = default;
 	Server(const ServerConfig& config);
 	~Server();
 
@@ -40,21 +45,19 @@ public:
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
 
-	void setHost(std::string host);
-	void setPort(std::string port);
-	void setServerName(const std::string& name);
-	void setClientBodySize(size_t size);
-	void setErrorPages(const std::map<int, std::string>& errorPages);
-	void setLocations(const std::vector<Location>& locations);
+	void	setHost(std::string host);
+	void	setPort(std::string port);
+	void	setServerName(const std::string& name);
+	void	setClientBodySize(size_t size);
+	void	setErrorPages(const std::map<int, std::string>& errorPages);
+	void	setLocations(const std::vector<Location>& locations);
 
-	std::string& getHost();
-	std::string& getPort();
-	const std::string& getServerName() const;
-	size_t getClientBodySize() const;
-	const std::map<int, std::string>& getErrorPages() const;
-	const std::vector<Location>& getLocations() const;
-	int getSockfd() const;
-	size_t getSizeClients() const;
-
+	std::string&						getHost();
+	std::string&						getPort();
+	const std::string&					getServerName() const;
+	size_t								getClientBodySize() const;
+	const std::map<int, std::string>&	getErrorPages() const;
+	const std::vector<Location>&		getLocations() const;
+	int									getSockfd() const;
 };
 

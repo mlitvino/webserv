@@ -23,6 +23,7 @@ class Server;
 
 class ClientHandler : public IEpollFdOwner {
 private:
+public:
 	FdClientMap			&_clientsMap;
 	FdEpollOwnerMap		&_handlersMap;
 	Server				&_ownerServer;
@@ -31,8 +32,7 @@ private:
 	sockaddr_storage	_clientAddr{};
 	socklen_t			_clientAddrLen = 0;
 
-	int _sockFd;
-	int _fileFd;
+	int					_sockFd;
 
 	ClientState	_state;
 	std::string	_buffer;
@@ -40,12 +40,18 @@ private:
 	std::string	_body;
 
 	// HTTP request data
-	std::string _httpMethod;
-	std::string _httpPath;
-	std::string _httpVersion;
-	std::string _responseBuffer;
+	std::string	_httpMethod;
+	std::string	_httpPath;
+	std::string	_httpVersion;
+	std::string	_responseBuffer;
 
-public:
+	// File manip
+	int					_fileFd;
+	std::string			_filePath;
+	std::string			_fileBuffer;
+	int					_fileSize;
+	int					_readFileBytes;
+
 	ClientHandler() = delete; // Prevent default construction
 	~ClientHandler();
 	explicit ClientHandler(Server& server, IpPort& ipPort);
@@ -79,8 +85,6 @@ public:
 	std::string intToString(int value);
 
 	void handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd);
-
-private:
 };
 
 

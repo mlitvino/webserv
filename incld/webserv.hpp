@@ -46,6 +46,7 @@ struct HttpResponse;
 struct Data;
 enum class ClientState;
 class Program;
+class ClientHandler;
 
 using ServerPtr  = std::shared_ptr<Server>;
 using ServerDeq = std::deque<ServerPtr>;

@@ -4,7 +4,6 @@
 #include <fstream>
 #include <algorithm>
 
-
 bool ClientHandler::readHttpRequest() {
 	char buffer[IO_BUFFER_SIZE];
 	int bytesRead = read(_sockFd, buffer, sizeof(buffer) - 1);
@@ -183,35 +182,31 @@ void ClientHandler::handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd)
 	std::cout << "DEBUG: handleEpollEvent called with events: " << ev.events << std::endl;
 	std::cout << "DEBUG: Current state: " << static_cast<int>(_state) << std::endl;
 
-	// Check for error conditions first
 	if (ev.events & (EPOLLHUP | EPOLLERR)) {
 		std::cout << "DEBUG: Connection error or hangup detected, closing connection" << std::endl;
 		//CloseConnection(epoll_fd);
 		return;
 	}
-
-	switch (_state) {
-		case ClientState::READING_REQUEST: {
-			if (ev.events & EPOLLIN) {
+	if (ev.events & EPOLLIN) {
+		switch (_state) {
+			case ClientState::READING_REQUEST: {
 				std::cout << "DEBUG: EPOLLIN event - reading request" << std::endl;
 				try {
 					if (!readHttpRequest()) {
 						// Client disconnected
 						std::cout << "DEBUG: Client disconnected, closing connection" << std::endl;
 						//CloseConnection(epoll_fd);
-						return;  // Don't process further
+						return;
 					}
 				} catch (const std::exception& e) {
 					std::cout << "DEBUG: Exception in readHttpRequest: " << e.what() << std::endl;
 					//CloseConnection(epoll_fd);
 					return;
 				}
-
 				if (isCompleteRequest()) {
 					processHttpRequest();
 					_state = ClientState::WRITING_RESPONSE;
 
-					// Change epoll registration to EPOLLOUT for writing
 					epoll_event new_ev;
 					new_ev.events = EPOLLOUT;
 					new_ev.data.ptr = static_cast<void*>(this);
@@ -222,41 +217,42 @@ void ClientHandler::handleEpollEvent(epoll_event& ev, int epoll_fd, int eventFd)
 					}
 					std::cout << "DEBUG: Successfully switched to EPOLLOUT for writing response" << std::endl;
 				}
+				break;
 			}
-			if (ev.events & EPOLLOUT) {
-				std::cout << "DEBUG: EPOLLOUT event while in READING_REQUEST state (ignoring)" << std::endl;
-			}
-			break;
-		}
-		case ClientState::WRITING_RESPONSE: {
-			if (ev.events & EPOLLOUT) {
-				std::cout << "DEBUG: EPOLLOUT event - sending response" << std::endl;
-				sendHttpResponse(epoll_fd);
-			}
-			if (ev.events & EPOLLIN) {
+			case ClientState::WRITING_RESPONSE: {
 				std::cout << "DEBUG: EPOLLIN event while in WRITING_RESPONSE state" << std::endl;
 				std::cout << "WRITING EPOLL EVENT" << std::endl;
-				// Try to send the response anyway - the socket might be ready for writing
 				std::cout << "DEBUG: Attempting to send response despite EPOLLIN event" << std::endl;
 				sendHttpResponse(epoll_fd);
+				break;
 			}
-			break;
-		}
-		case ClientState::READING_FILE: {
-			if (ev.events & EPOLLIN) {
-				// File reading logic would go here
+			case ClientState::READING_FILE: {
+				break;
 			}
-			break;
-		}
-		case ClientState::WRITING_FILE: {
-			if (ev.events & EPOLLOUT) {
-				// File writing logic would go here
+			default: {
+				std::cout << "DEBUG: EPOLLIN event in unexpected state: " << static_cast<int>(_state) << std::endl;
+				break;
 			}
-			break;
 		}
-		default: {
-			THROW("unknown ClientHandler state");
-			break;
+	}
+	if (ev.events & EPOLLOUT) {
+		switch (_state) {
+			case ClientState::WRITING_RESPONSE: {
+				std::cout << "DEBUG: EPOLLOUT event - sending response" << std::endl;
+				sendHttpResponse(epoll_fd);
+				break;
+			}
+			case ClientState::WRITING_FILE: {
+				break;
+			}
+			case ClientState::READING_REQUEST: {
+				std::cout << "DEBUG: EPOLLOUT event while in READING_REQUEST state (ignoring)" << std::endl;
+				break;
+			}
+			default: {
+				std::cout << "DEBUG: EPOLLOUT event in unexpected state: " << static_cast<int>(_state) << std::endl;
+				break;
+			}
 		}
 	}
 }
@@ -639,8 +635,8 @@ ClientHandler::ClientHandler(Server& server, IpPort& ipPort)
 	, _ownerIpPort{ipPort}
 	, _clientAddrLen(sizeof(_clientAddr))
 	, _sockFd{-1}
-	, _fileFd{-1}
 	, _state{ClientState::READING_REQUEST}
+	, _fileFd{-1}
 {
 	_buffer.reserve(IO_BUFFER_SIZE);
 }

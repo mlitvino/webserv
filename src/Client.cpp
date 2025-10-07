@@ -14,7 +14,7 @@ void	Client::sendFile(epoll_event &ev, int epollFd, int eventFd)
 		}
 	}
 
-	if (_fileSize == _readFileBytes)
+	if (_fileSize == _fileOffset)
 	{
 		closeFile(ev, epollFd, eventFd);
 		_state = ClientState::READING_REQUEST;
@@ -52,7 +52,7 @@ void	Client::closeFile(epoll_event &ev, int epollFd, int eventFd)
 	close(_fileFd);
 	_fileBuffer.clear();
 	_fileSize = 0;
-	_readFileBytes = 0;
+	_fileOffset = 0;
 }
 
 void	Client::openFile(epoll_event &ev, int epollFd, int eventFd)
@@ -70,7 +70,7 @@ void	Client::openFile(epoll_event &ev, int epollFd, int eventFd)
 		THROW_ERRNO("fstat");
 	}
 	_fileSize = fileInfo.st_size;
-	_readFileBytes = 0;
+	_fileOffset = 0;
 
 
 	_state = ClientState::SENDING_RESPONSE;
@@ -80,6 +80,33 @@ void	Client::openFile(epoll_event &ev, int epollFd, int eventFd)
 		THROW_ERRNO("Unknown fd in map");
 	}
 	(*it).second = this;
+}
+
+void	Client::openFile(std::string &filePath)
+{
+	int			err;
+	struct stat	fileInfo;
+	_filePath = filePath;
+
+	_fileFd = open(_filePath.c_str(), O_RDWR, 667);
+	if (_fileFd < 0)
+		return ;
+
+	err = fstat(_fileFd, &fileInfo);
+	if (err)
+	{
+		THROW_ERRNO("fstat");
+	}
+	_fileSize = fileInfo.st_size;
+	_fileOffset = 0;
+
+
+	// auto it = _handlersMap.find(_clientFd);
+	// if (it == _handlersMap.end())
+	// {
+	// 	THROW_ERRNO("Unknown fd in map");
+	// }
+	// (*it).second = this;
 }
 
 void	Client::readFile(epoll_event &ev, int epollFd, int eventFd)
@@ -93,14 +120,14 @@ void	Client::readFile(epoll_event &ev, int epollFd, int eventFd)
 	{
 		read_buf[readBytes] = 0;
 		_fileBuffer = read_buf;
-		_readFileBytes += readBytes;
+		_fileOffset += readBytes;
 
 		std::cout << "FILE BUFFER:\n" << _fileBuffer << std::endl;
 		_state = ClientState::SENDING_FILE;
 	}
 	else if (readBytes == 0)
 	{
-		std::cout << "file size: " << _fileSize << ", readByes" << _readFileBytes << std::endl;
+		std::cout << "file size: " << _fileSize << ", readByes" << _fileOffset << std::endl;
 		THROW_ERRNO("read");
 	}
 	else if (readBytes < 0)
@@ -147,6 +174,7 @@ int		Client::getFd()
 
 Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
 	: _buffer()
+	, _responseOffset{0}
 	, _state(ClientState::READING_REQUEST)
 	, _clientsMap(owner._clientsMap)
 	, _handlersMap(owner._handlersMap)
@@ -158,7 +186,7 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _filePath{STATIC_SITE}
 	, _fileBuffer()
 	, _fileSize{0}
-	, _readFileBytes{0}
+	, _fileOffset{0}
 {}
 
 Client::~Client()

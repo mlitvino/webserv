@@ -20,6 +20,9 @@ class Client : public IEpollFdOwner
 	public:
 		std::string			_buffer;
 
+		std::string			_responseBuffer;
+		size_t				_responseOffset;
+
 		ClientState			_state;
 		FdClientMap			&_clientsMap;
 		FdEpollOwnerMap		&_handlersMap;
@@ -30,20 +33,22 @@ class Client : public IEpollFdOwner
 		std::string			_httpMethod;
 		std::string			_httpPath;
 		std::string			_httpVersion;
-		std::string			_responseBuffer;
-	private:
+
+
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;
 		int					_clientFd;
-
-
-
 
 		int					_fileFd;
 		std::string			_filePath;
 		std::string			_fileBuffer;
 		int					_fileSize;
-		int					_readFileBytes;
+		int					_fileOffset;
+	private:
+
+
+
+
 
 
 		// response?
@@ -62,4 +67,5 @@ class Client : public IEpollFdOwner
 		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
 		void	readFile(epoll_event &ev, int epollFd, int eventFd);
 		void	openFile(epoll_event &ev, int epollFd, int eventFd);
+		void	openFile(std::string &filePath);
 };

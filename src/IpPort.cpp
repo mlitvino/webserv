@@ -191,28 +191,28 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 
 	std::string filePath = path;
 
-	// If path is "/" or ends with "/", try to serve index file
-	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/')) {
+	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/'))
+	{
 		std::string indexFile = client->_ownerServer->findIndexFile(client, path);
 		filePath += indexFile;
 		std::cout << "DEBUG: Added " << indexFile << ", filePath now: " << filePath << std::endl;
 	}
 
-	// Remove leading slash and prepend document root
 	if (!filePath.empty() && filePath[0] == '/')
 		filePath = filePath.substr(1);
 
 	std::string fullPath = "web/www/" + filePath;
 	std::cout << "DEBUG: Full file path: " << fullPath << std::endl;
 
-	// Check if file exists and generate response
 	std::ifstream file(fullPath);
-	if (file.good()) {
+	if (file.good())
+	{
 		std::cout << "DEBUG: File exists, generating 200 response" << std::endl;
 		file.close();
 		generateResponse(client, fullPath, 200);
 	}
-	else {
+	else
+	{
 		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
 		//client->_responseBuffer = generateHttpResponse("web/www/errors/404.html", 404);
 	}
@@ -235,6 +235,9 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 		default: statusText = "Unknown"; break;
 	}
 
+	if (statusCode != 200)
+		filePath = getCustomErrorPage(client->_ownerServer, statusCode);
+
 	if (!filePath.empty())
 	{
 		client->openFile(filePath);
@@ -255,7 +258,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 	response += "\r\n";
 
 	client->_state = ClientState::SENDING_RESPONSE;
-	std::cout << "CHANGES STATE" << std::endl;
 	client->_responseBuffer = std::move(response);
 }
 
@@ -301,8 +303,8 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 
 bool IpPort::readRequest(ClientPtr &client, int clientFd)
 {
-	char buffer[IO_BUFFER_SIZE];
-	int bytesRead = read(clientFd, buffer, sizeof(buffer) - 1);
+	char	buffer[IO_BUFFER_SIZE];
+	int		bytesRead = read(clientFd, buffer, sizeof(buffer) - 1);
 
 	try
 	{
@@ -319,16 +321,7 @@ bool IpPort::readRequest(ClientPtr &client, int clientFd)
 		}
 		else if (bytesRead == -1)
 		{
-			if (errno != EAGAIN && errno != EWOULDBLOCK)
-			{
-				std::cout << "DEBUG: Read error: " << strerror(errno) << std::endl;
-				THROW_ERRNO("read");
-			}
-			else
-			{
-				std::cout << "DEBUG: Read would block (EAGAIN/EWOULDBLOCK)" << std::endl;
-			}
-			return false;
+			THROW_ERRNO("read");
 		}
 	}
 	catch (std::exception& e)
@@ -338,6 +331,52 @@ bool IpPort::readRequest(ClientPtr &client, int clientFd)
 	}
 
 	return true;
+}
+
+std::string	IpPort::getMimeType(const std::string& filePath)
+{
+	if (filePath.empty())
+		return "text/html";
+
+	size_t dotPos = filePath.find_last_of('.');
+	if (dotPos == std::string::npos)
+		return "text/plain";
+
+	std::string extension = filePath.substr(dotPos + 1);
+
+	// Convert to lowercase
+	std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+	if (extension == "html" || extension == "htm")
+		return "text/html";
+	else if (extension == "css")
+		return "text/css";
+	else if (extension == "js")
+		return "application/javascript";
+	else if (extension == "json")
+		return "application/json";
+	else if (extension == "txt")
+		return "text/plain";
+	else if (extension == "png")
+		return "image/png";
+	else if (extension == "jpg" || extension == "jpeg")
+		return "image/jpeg";
+	else if (extension == "gif")
+		return "image/gif";
+	else if (extension == "ico")
+		return "image/x-icon";
+	else
+		return "application/octet-stream";
+}
+
+std::string	IpPort::getCustomErrorPage(ServerPtr& server, int statusCode)
+{
+	const std::map<int, std::string>& errorPages = server->getErrorPages();
+	auto it = errorPages.find(statusCode);
+	if (it != errorPages.end()) {
+		return it->second;
+	}
+	return "";
 }
 
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)

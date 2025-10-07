@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -63,24 +64,6 @@ enum class HttpMethod {
 	GET = 1,
 	POST = 2,
 	DELETE = 4,
-	PUT = 8,
-	HEAD = 16
 };
-
-// struct HttpRequest {
-// 	HttpMethod method;
-// 	std::string path;
-// 	std::string protocol;
-// 	std::unordered_map<std::string, std::string> headers;
-// 	std::string body;
-// };
-
-// struct HttpResponse {
-// 	std::string protocol = "HTTP/1.1";
-// 	int statusCode = 200;
-// 	std::string statusText = "OK";
-// 	std::unordered_map<std::string, std::string> headers;
-// 	std::string body;
-// };
 
 #include "ConfigParser.hpp"

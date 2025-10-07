@@ -1,5 +1,4 @@
 #include "Server.hpp"
-#include "ClientHanlder.hpp"
 #include <sstream>
 
 std::string Server::findIndexFile(ClientPtr &client, const std::string& path)

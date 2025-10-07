@@ -44,8 +44,8 @@ private:
 	void validatePortConflicts();
 
 public:
-	ConfigParser();
-	~ConfigParser();
+	ConfigParser() = default;
+	~ConfigParser() = default;
 
 	void parseConfig(const std::string& configFile);
 	const std::vector<ServerConfig>& getServerConfigs() const;

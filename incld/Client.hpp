@@ -2,14 +2,14 @@
 
 #include "webserv.hpp"
 
-enum clientState
-{
-	READING_CLIENT_HEADER,
-	READING_CLIENT_BODY,
+enum class ClientState {
+	READING_REQUEST,
 	WRITING_RESPONSE,
 	READING_FILE,
 	WRITING_FILE,
 
+	READING_CLIENT_HEADER,
+	READING_CLIENT_BODY,
 	SENDING_RESPONSE,
 	SENDING_FILE,
 	GETTING_FILE,
@@ -17,6 +17,8 @@ enum clientState
 
 class Client : public IEpollFdOwner
 {
+	private:
+
 	public:
 		std::string			_buffer;
 
@@ -44,17 +46,8 @@ class Client : public IEpollFdOwner
 		std::string			_fileBuffer;
 		int					_fileSize;
 		int					_fileOffset;
-	private:
 
 
-
-
-
-
-		// response?
-		// request?
-		// buffer?
-	public:
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);
 		~Client();
 

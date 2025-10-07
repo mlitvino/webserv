@@ -43,8 +43,9 @@ public:
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
 
-	bool	isMethodAllowed(ClientPtr &client, std::string& path);
-	bool	isBodySizeValid(ClientPtr &client);
+	bool		isMethodAllowed(ClientPtr &client, std::string& path);
+	bool		isBodySizeValid(ClientPtr &client);
+	std::string	findIndexFile(ClientPtr &client, const std::string& path);
 
 	void	setHost(std::string host);
 	void	setPort(std::string port);

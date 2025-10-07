@@ -27,7 +27,6 @@ class IpPort : public IEpollFdOwner
 		void			assignServerToClient(ClientPtr &client);
 
 		void			handleGetRequest(ClientPtr &client, const std::string& path);
-		std::string		findIndexFile(ClientPtr &client, const std::string& path);
 		void			generateResponse(ClientPtr &client, std::string &path, int statusCode);
 
 		void			sendResponse(ClientPtr &client, int clientFd);

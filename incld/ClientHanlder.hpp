@@ -6,19 +6,6 @@
 #include "webserv.hpp"
 #include "IEpollFdOwner.hpp"
 
-enum class ClientState {
-	READING_REQUEST,
-	WRITING_RESPONSE,
-	READING_FILE,
-	WRITING_FILE,
-
-	READING_CLIENT_HEADER,
-	READING_CLIENT_BODY,
-	SENDING_RESPONSE,
-	SENDING_FILE,
-	GETTING_FILE,
-};
-
 class Server;
 
 class ClientHandler : public IEpollFdOwner {

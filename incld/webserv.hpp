@@ -24,18 +24,9 @@
 #define IO_BUFFER_SIZE 1024
 #define MAX_EVENTS 10
 #define DEFAULT_EPOLL_SIZE 10
-
 #define CLIENT_HEADER_LIMIT 1024
 
-#define HTTP_STATUS "HTTP/1.1 200 OK\r\nContent-Length: 131\r\n\r\n"
-#define CRLF "\r\n"
-#define DOUBLE_CRLF "\r\n\r\n"
-
-// default conf_file
-#define PORT "8080"
-#define HOST "0.0.0.0"
 #define DEFAULT_CONF "web/default.conf"
-#define STATIC_SITE "web/www/index.html"
 
 struct IEpollFdOwner;
 class Server;
@@ -92,5 +83,4 @@ enum class HttpMethod {
 // 	std::string body;
 // };
 
-#include "ClientHanlder.hpp"
 #include "ConfigParser.hpp"

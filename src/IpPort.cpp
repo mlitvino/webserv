@@ -193,7 +193,7 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 
 	// If path is "/" or ends with "/", try to serve index file
 	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/')) {
-		std::string indexFile = findIndexFile(client, path);
+		std::string indexFile = client->_ownerServer->findIndexFile(client, path);
 		filePath += indexFile;
 		std::cout << "DEBUG: Added " << indexFile << ", filePath now: " << filePath << std::endl;
 	}
@@ -257,51 +257,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 	client->_state = ClientState::SENDING_RESPONSE;
 	std::cout << "CHANGES STATE" << std::endl;
 	client->_responseBuffer = std::move(response);
-}
-
-std::string IpPort::findIndexFile(ClientPtr &client, const std::string& path) {
-	// Get server configuration
-	const std::vector<Location>& locations = client->_ownerServer->getLocations();
-
-	// Find matching location
-	const Location* matchedLocation = nullptr;
-	size_t longestMatch = 0;
-
-	for (const auto& location : locations) {
-		if (path.find(location.path) == 0 && location.path.length() > longestMatch) {
-			matchedLocation = &location;
-			longestMatch = location.path.length();
-		}
-	}
-
-	std::string indexFile = "index.html"; // Default
-	if (matchedLocation && !matchedLocation->index.empty()) {
-		// Parse the first index file from the space-separated list
-		std::string indexFiles = matchedLocation->index;
-
-		// Remove trailing semicolon if present
-		if (!indexFiles.empty() && indexFiles.back() == ';') {
-			indexFiles.pop_back();
-		}
-
-		// Find first space or use entire string
-		size_t spacePos = indexFiles.find(' ');
-		if (spacePos != std::string::npos) {
-			indexFile = indexFiles.substr(0, spacePos);
-		} else {
-			indexFile = indexFiles;
-		}
-
-		// Trim any remaining whitespace
-		while (!indexFile.empty() && (indexFile.front() == ' ' || indexFile.front() == '\t')) {
-			indexFile.erase(0, 1);
-		}
-		while (!indexFile.empty() && (indexFile.back() == ' ' || indexFile.back() == '\t')) {
-			indexFile.pop_back();
-		}
-	}
-
-	return indexFile;
 }
 
 void	IpPort::assignServerToClient(ClientPtr &client)

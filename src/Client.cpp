@@ -183,7 +183,6 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _clientAddrLen{clientAddrLen}
 	, _clientFd{clientFd}
 	, _fileFd{-1}
-	, _filePath{STATIC_SITE}
 	, _fileBuffer()
 	, _fileSize{0}
 	, _fileOffset{0}

@@ -4,10 +4,6 @@
 #include <algorithm>
 #include <iostream>
 
-ConfigParser::ConfigParser() = default;
-
-ConfigParser::~ConfigParser() = default;
-
 std::string ConfigParser::trim(const std::string& str) {
 	size_t first = str.find_first_not_of(" \t\r\n");
 	if (std::string::npos == first)
@@ -38,8 +34,6 @@ int ConfigParser::parseHttpMethods(const std::string& methods) {
 		if (method == "GET") result |= static_cast<int>(HttpMethod::GET);
 		else if (method == "POST") result |= static_cast<int>(HttpMethod::POST);
 		else if (method == "DELETE") result |= static_cast<int>(HttpMethod::DELETE);
-		else if (method == "PUT") result |= static_cast<int>(HttpMethod::PUT);
-		else if (method == "HEAD") result |= static_cast<int>(HttpMethod::HEAD);
 	}
 	return result ? result : static_cast<int>(HttpMethod::GET); // Default to GET if no methods specified
 }

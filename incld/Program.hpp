@@ -14,7 +14,7 @@ struct Program
 		epoll_event				_ev;
 		epoll_event				_events[MAX_EVENTS];
 
-		FdClientMap				_clientMap;
+		FdClientMap				_clientsMap;
 		FdEpollOwnerMap			_handlersMap;
 
 		void	parseConfFile(char *conf_file);

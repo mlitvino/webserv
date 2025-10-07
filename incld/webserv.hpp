@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/sendfile.h>
 
 #define QUEUE_SIZE 20
 #define IO_BUFFER_SIZE 1024
@@ -65,6 +66,7 @@ using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
 #include "IpPort.hpp"
 #include "Program.hpp"
 #include "Client.hpp"
+#include "utils.hpp"
 
 enum class HttpMethod {
 	GET = 1,
@@ -74,21 +76,21 @@ enum class HttpMethod {
 	HEAD = 16
 };
 
-struct HttpRequest {
-	HttpMethod method;
-	std::string path;
-	std::string protocol;
-	std::unordered_map<std::string, std::string> headers;
-	std::string body;
-};
+// struct HttpRequest {
+// 	HttpMethod method;
+// 	std::string path;
+// 	std::string protocol;
+// 	std::unordered_map<std::string, std::string> headers;
+// 	std::string body;
+// };
 
-struct HttpResponse {
-	std::string protocol = "HTTP/1.1";
-	int statusCode = 200;
-	std::string statusText = "OK";
-	std::unordered_map<std::string, std::string> headers;
-	std::string body;
-};
+// struct HttpResponse {
+// 	std::string protocol = "HTTP/1.1";
+// 	int statusCode = 200;
+// 	std::string statusText = "OK";
+// 	std::unordered_map<std::string, std::string> headers;
+// 	std::string body;
+// };
 
 #include "ClientHanlder.hpp"
 #include "ConfigParser.hpp"

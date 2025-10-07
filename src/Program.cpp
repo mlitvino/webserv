@@ -39,7 +39,7 @@ void	Program::parseConfFile(char *conf_file)
 	}
 
 
-	IpPortPtr test = std::make_shared<IpPort>(_clientMap, _handlersMap);
+	IpPortPtr test = std::make_shared<IpPort>(*this);
 	test->_addrPort = _servers.front()->getHost() + std::string(":") + _servers.front()->getPort();
 	_addrPortVec.push_back(test);
 	_addrPortVec.front()->_servers = _servers;
@@ -49,11 +49,10 @@ void	Program::parseConfFile(char *conf_file)
 		for (auto &server : ipPort->_servers)
 		{
 			server->_handlersMap = &_handlersMap;
-			server->_clientsMap = &_clientMap;
+			server->_clientsMap = &_clientsMap;
 		}
 	}
 }
-
 
 void	Program::initSockets()
 {
@@ -98,13 +97,8 @@ void	Program::waitEpollEvent()
 
 		for (int i = 0; i < nbr_events; ++i)
 		{
-			// if (_events[i].events & EPOLLIN)
-			// 	std::cout << "READING EPOLL EVENT" << std::endl;
-			// if (ev.events == EPOLLOUT)
-			// 	std::cout << "WRITING EPOLL EVENT" << std::endl;
-
-			int eventFd = _events[i].data.fd;
-			auto fdHandlerPair = _handlersMap.find(eventFd);
+			int		eventFd = _events[i].data.fd;
+			auto	fdHandlerPair = _handlersMap.find(eventFd);
 			if (fdHandlerPair == _handlersMap.end())
 				THROW("Unknown fd in map");
 			(*fdHandlerPair).second->handleEpollEvent(_events[i], _epollFd, eventFd);

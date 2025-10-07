@@ -9,32 +9,32 @@ class IpPort : public IEpollFdOwner
 		FdEpollOwnerMap	&_handlersMap;
 
 		ServerDeq		_servers;
-
-
 		std::string		_addrPort;
-		//std::string		_buffer;
-		ClientDeq		_unsortedClients;
 
 		int				_sockFd;
+		int				&_epollFd;
 
 		void			OpenSocket(addrinfo &hints, addrinfo *_servInfo);
 
 		void			handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
 
 		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
-		void			closeConnection(epoll_event &ev, int epollFd, int eventFd);
-		void			closeConnection(int epollFd, int clientFd);
+		void			closeConnection(int clientFd);
 
 		bool			readRequest(ClientPtr &client, int clientFd);
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
 		std::string		parseRequestLine(ClientPtr &client, std::string& line);
 		void			assignServerToClient(ClientPtr &client);
-		bool			isMethodAllowed(ClientPtr &client, std::string& path);
-		bool			isBodySizeValid(ClientPtr &client);
+
+		void			handleGetRequest(ClientPtr &client, const std::string& path);
+		std::string		findIndexFile(ClientPtr &client, const std::string& path);
+		void			generateResponse(ClientPtr &client, std::string &path, int statusCode);
+
+		void			sendResponse(ClientPtr &client, int clientFd);
 
 		void			setAddrPort(std::string addrPort);
 		int				getSockFd();
 
 		~IpPort();
-		IpPort(FdClientMap	&clientsMap, FdEpollOwnerMap &handlersMap);
+		IpPort(Program &program);
 };

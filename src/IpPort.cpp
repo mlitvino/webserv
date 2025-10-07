@@ -41,7 +41,6 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else
 	{
-		std::cout << "Existing client" << std::endl;
 		ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 		if (ev.events & EPOLLIN)
 		{
@@ -49,23 +48,75 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			{
 				std::cout << "Accepting data from existing client..." << std::endl;
 				if (!readRequest(client, eventFd))
-					return closeConnection(ev, epollFd, eventFd);
+					return closeConnection(eventFd);
 				if (client->_buffer.find("\r\n\r\n") != std::string::npos)
 				{
 					std::cout << "Full request recieved" << std::endl;
 					parseRequest(ev, epollFd, eventFd);
 				}
-				else if (client->_buffer.size() > CLIENT_HEADER_LIMIT)
-				{
-					std::cout << "Client's header is too large" << std::endl;
-					closeConnection(ev, epollFd, eventFd);
-				}
+				// else if (client->_buffer.size() > CLIENT_HEADER_LIMIT)
+				// {
+				// 	std::cout << "Client's header is too large" << std::endl;
+				// 	closeConnection(ev, epollFd, eventFd);
+				// }
 				std::cout << "Accepting data is done" << std::endl;
+			}
+		}
+		else if (ev.events & EPOLLOUT)
+		{
+			if (client->_state == ClientState::SENDING_RESPONSE)
+			{
+				std::cout << "Sending response..." << std::endl;
+				sendResponse(client, eventFd);
+				std::cout << "Sending response is done" << std::endl;
 			}
 		}
 	}
 }
-std::string		IpPort::parseRequestLine(ClientPtr &client, std::string& line)
+
+void	IpPort::sendResponse(ClientPtr &client, int clientFd)
+{
+	int	bytesSent;
+	size_t	resOffset = client->_responseOffset;
+
+	if (resOffset < client->_responseBuffer.size())
+	{
+		bytesSent = send(clientFd, &client->_responseBuffer.c_str()[resOffset], client->_responseBuffer.size() - resOffset, 0);
+
+		if (bytesSent > 0)
+			client->_responseOffset += bytesSent;
+	}
+	else if (client->_fileOffset < client->_fileSize)
+	{
+		off_t	offset = client->_fileOffset;
+
+		bytesSent = sendfile(clientFd, client->_fileFd, &offset, client->_fileSize - offset);
+
+		if (bytesSent > 0)
+			client->_fileOffset += bytesSent;
+	}
+
+	if (resOffset >= client->_responseBuffer.size()
+		&& client->_fileOffset >= client->_fileSize)
+	{
+		client->_responseBuffer.clear();
+		client->_buffer.clear();
+		close(client->_fileFd);
+		client->_state = ClientState::READING_REQUEST;
+	}
+
+	if (bytesSent == 0)
+	{
+		std::cout << "Connection was closed in resndResponse" << std::endl;
+		closeConnection(clientFd);
+	}
+	else if (bytesSent == -1)
+	{
+		THROW_ERRNO("send");
+	}
+}
+
+std::string	IpPort::parseRequestLine(ClientPtr &client, std::string& line)
 {
 	size_t firstSpace = line.find(' ');
 	size_t secondSpace = line.find(' ', firstSpace + 1);
@@ -101,20 +152,20 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 
 	assignServerToClient(client);
 
-	if (!isMethodAllowed(client, requestedPath))
+	if (!client->_ownerServer->isMethodAllowed(client, requestedPath))
 	{
 		std::cout << "Invalid Method" << std::endl;
-		closeConnection(ev, epollFd, eventFd);
+		closeConnection(eventFd);
 		//_responseBuffer = generateHttpResponse("", 405);
 		return;
 	}
 
 	if (client->_httpMethod == "POST")
 	{
-		if (!isBodySizeValid(client))
+		if (!client->_ownerServer->isBodySizeValid(client))
 		{
 			std::cout << "Invalid Content-Length" << std::endl;
-			closeConnection(ev, epollFd, eventFd);
+			closeConnection(eventFd);
 			//_responseBuffer = generateHttpResponse("", 413);
 			return;
 		}
@@ -122,7 +173,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 
 	if (client->_httpMethod == "GET")
 	{
-		//handleGetRequest(requestedPath);
+		handleGetRequest(client, requestedPath);
 	}
 	else if (client->_httpMethod == "POST")
 	{
@@ -134,70 +185,123 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 }
 
-bool	IpPort::isBodySizeValid(ClientPtr &client)
+void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 {
-	size_t headerStart = client->_buffer.find("Content-Length: ");
-	if (headerStart == std::string::npos) {
-		return false; // No Content-Length header, assume valid
+	std::cout << "DEBUG: handleGetRequest() called with path: " << path << std::endl;
+
+	std::string filePath = path;
+
+	// If path is "/" or ends with "/", try to serve index file
+	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/')) {
+		std::string indexFile = findIndexFile(client, path);
+		filePath += indexFile;
+		std::cout << "DEBUG: Added " << indexFile << ", filePath now: " << filePath << std::endl;
 	}
 
-	headerStart += 16; // Move past "Content-Length: "
-	size_t headerEnd = client->_buffer.find("\r\n", headerStart);
+	// Remove leading slash and prepend document root
+	if (!filePath.empty() && filePath[0] == '/')
+		filePath = filePath.substr(1);
 
-	std::string contentLengthStr = client->_buffer.substr(headerStart, headerEnd - headerStart);
-	try
-	{
-		size_t contentLength = std::stoul(contentLengthStr);
-		size_t maxBodySize = client->_ownerServer->getClientBodySize();
+	std::string fullPath = "web/www/" + filePath;
+	std::cout << "DEBUG: Full file path: " << fullPath << std::endl;
 
-		std::cout << "DEBUG: Content-Length: " << contentLength << ", Max allowed: " << maxBodySize << std::endl;
-		return contentLength <= maxBodySize;
-	} catch (const std::exception& e)
-	{
-		std::cout << "DEBUG: Error parsing Content-Length: " << e.what() << std::endl;
-		return false;
+	// Check if file exists and generate response
+	std::ifstream file(fullPath);
+	if (file.good()) {
+		std::cout << "DEBUG: File exists, generating 200 response" << std::endl;
+		file.close();
+		generateResponse(client, fullPath, 200);
 	}
+	else {
+		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
+		//client->_responseBuffer = generateHttpResponse("web/www/errors/404.html", 404);
+	}
+
+	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
 }
 
-bool	IpPort::isMethodAllowed(ClientPtr &client, std::string& path)
+void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int statusCode)
 {
+	std::string	statusText;
+	std::string	response;
+
+	switch (statusCode)
+	{
+		case 200: statusText = "OK"; break;
+		case 404: statusText = "Not Found"; break;
+		case 405: statusText = "Method Not Allowed"; break;
+		case 413: statusText = "Payload Too Large"; break;
+		case 500: statusText = "Internal Server Error"; break;
+		default: statusText = "Unknown"; break;
+	}
+
+	if (!filePath.empty())
+	{
+		client->openFile(filePath);
+		if (client->_fileFd < 0)
+		{
+			statusCode = 500;
+			statusText = "Internal Server Error";
+		}
+	}
+
+	// add MIME TYPE
+	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
+	response += "Content-Type: text/html\r\n";
+	response += "Content-Length: " + std::to_string(client->_fileSize) + "\r\n";
+	response += "Server: webserv/1.0\r\n";
+	response += "Connection: close\r\n";
+	response += "Cache-Control: no-cache\r\n";
+	response += "\r\n";
+
+	client->_state = ClientState::SENDING_RESPONSE;
+	std::cout << "CHANGES STATE" << std::endl;
+	client->_responseBuffer = std::move(response);
+}
+
+std::string IpPort::findIndexFile(ClientPtr &client, const std::string& path) {
+	// Get server configuration
 	const std::vector<Location>& locations = client->_ownerServer->getLocations();
-	std::cout << "DEBUG: Found " << locations.size() << " locations" << std::endl;
 
 	// Find matching location
 	const Location* matchedLocation = nullptr;
 	size_t longestMatch = 0;
 
 	for (const auto& location : locations) {
-		std::cout << "DEBUG: Checking location: " << location.path << " against path: " << path << std::endl;
 		if (path.find(location.path) == 0 && location.path.length() > longestMatch) {
 			matchedLocation = &location;
 			longestMatch = location.path.length();
-			std::cout << "DEBUG: Matched location: " << location.path << std::endl;
 		}
 	}
 
-	if (!matchedLocation) {
-		std::cout << "DEBUG: No specific location found, allowing GET by default" << std::endl;
-		return client->_httpMethod == "GET";
+	std::string indexFile = "index.html"; // Default
+	if (matchedLocation && !matchedLocation->index.empty()) {
+		// Parse the first index file from the space-separated list
+		std::string indexFiles = matchedLocation->index;
+
+		// Remove trailing semicolon if present
+		if (!indexFiles.empty() && indexFiles.back() == ';') {
+			indexFiles.pop_back();
+		}
+
+		// Find first space or use entire string
+		size_t spacePos = indexFiles.find(' ');
+		if (spacePos != std::string::npos) {
+			indexFile = indexFiles.substr(0, spacePos);
+		} else {
+			indexFile = indexFiles;
+		}
+
+		// Trim any remaining whitespace
+		while (!indexFile.empty() && (indexFile.front() == ' ' || indexFile.front() == '\t')) {
+			indexFile.erase(0, 1);
+		}
+		while (!indexFile.empty() && (indexFile.back() == ' ' || indexFile.back() == '\t')) {
+			indexFile.pop_back();
+		}
 	}
 
-	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
-
-	// Check if method is allowed in this location
-	int methodFlag = 0;
-	if (client->_httpMethod == "GET") methodFlag = static_cast<int>(HttpMethod::GET);
-	else if (client->_httpMethod == "POST") methodFlag = static_cast<int>(HttpMethod::POST);
-	else if (client->_httpMethod == "DELETE") methodFlag = static_cast<int>(HttpMethod::DELETE);
-	else {
-		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;
-		return false; // Unknown method
-	}
-
-	bool allowed = (matchedLocation->allowedMethods & methodFlag) != 0;
-	std::cout << "DEBUG: Method " << client->_httpMethod << " (flag: " << methodFlag << ") allowed: " << (allowed ? "YES" : "NO") << std::endl;
-
-	return allowed;
+	return indexFile;
 }
 
 void	IpPort::assignServerToClient(ClientPtr &client)
@@ -269,7 +373,7 @@ bool IpPort::readRequest(ClientPtr &client, int clientFd)
 			{
 				std::cout << "DEBUG: Read would block (EAGAIN/EWOULDBLOCK)" << std::endl;
 			}
-			return true;
+			return false;
 		}
 	}
 	catch (std::exception& e)
@@ -294,9 +398,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 		clientFd = accept(_sockFd, (sockaddr *)&clientAddr, &clientAddrLen);
 		if (clientFd == -1)
 			THROW_ERRNO("accept");
-		int flags = fcntl(clientFd, F_GETFL, 0);
-		fcntl(clientFd, F_SETFL, flags | O_NONBLOCK);
-
+		utils::makeFdNonBlocking(clientFd);
 		ClientPtr	newClient = std::make_shared<Client>(clientAddr, clientAddrLen, clientFd, *this);
 		_clientsMap.emplace(clientFd, newClient);
 		_handlersMap.emplace(clientFd, this);
@@ -314,34 +416,21 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 	}
 }
 
-void	IpPort::closeConnection(int epollFd, int clientFd)
+void	IpPort::closeConnection(int clientFd)
 {
-	std::cout << "Closing client..." << std::endl;
+	std::cout << "Closing connection..." << std::endl;
 
 	_handlersMap.erase(clientFd);
 	_clientsMap.erase(clientFd);
 
-	int err = epoll_ctl(clientFd, EPOLL_CTL_DEL, clientFd, 0);
+	int err = epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
 	if (err)
 	{
 		THROW("epoll_ctl(EPOLL_CTL_DEL)");
 	}
+
+	std::cout << "Closing connection is done" << std::endl;
 }
-
-void	IpPort::closeConnection(epoll_event &ev, int epollFd, int eventFd)
-{
-	std::cout << "Closing client..." << std::endl;
-
-	_handlersMap.erase(eventFd);
-	_clientsMap.erase(eventFd);
-
-	int err = epoll_ctl(epollFd, EPOLL_CTL_DEL, eventFd, 0);
-	if (err)
-	{
-		THROW("epoll_ctl(EPOLL_CTL_DEL)");
-	}
-}
-
 
 // Getters + Setters
 
@@ -363,8 +452,9 @@ IpPort::~IpPort()
 		close(_sockFd);
 }
 
-IpPort::IpPort(FdClientMap	&clientsMap, FdEpollOwnerMap &handlersMap)
-	: _clientsMap{clientsMap}
-	, _handlersMap{handlersMap}
+IpPort::IpPort(Program &program)
+	: _clientsMap{program._clientsMap}
+	, _handlersMap{program._handlersMap}
 	, _sockFd{-1}
+	, _epollFd{program._epollFd}
 {};

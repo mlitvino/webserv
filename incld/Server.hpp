@@ -28,8 +28,6 @@ private:
 	std::map<int, std::string>	_errorPages;
 	std::vector<Location>		_locations;
 
-	//std::vector<std::unique_ptr<ClientHandler>>	_clients;
-
 	int _sockfd;
 
 public:
@@ -44,6 +42,9 @@ public:
 	// Delete copy constructor and assignment to prevent accidental copying
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
+
+	bool	isMethodAllowed(ClientPtr &client, std::string& path);
+	bool	isBodySizeValid(ClientPtr &client);
 
 	void	setHost(std::string host);
 	void	setPort(std::string port);

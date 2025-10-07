@@ -2,9 +2,71 @@
 #include "ClientHanlder.hpp"
 #include <sstream>
 
-// Helper function to convert int to string
-static std::string intToString(int value) {
-	return std::to_string(value);
+bool	Server::isBodySizeValid(ClientPtr &client)
+{
+	size_t headerStart = client->_buffer.find("Content-Length: ");
+	if (headerStart == std::string::npos) {
+		return false; // No Content-Length header, assume valid
+	}
+
+	headerStart += 16; // Move past "Content-Length: "
+	size_t headerEnd = client->_buffer.find("\r\n", headerStart);
+
+	std::string contentLengthStr = client->_buffer.substr(headerStart, headerEnd - headerStart);
+	try
+	{
+		size_t contentLength = std::stoul(contentLengthStr);
+		size_t maxBodySize = getClientBodySize();
+
+		std::cout << "DEBUG: Content-Length: " << contentLength << ", Max allowed: " << maxBodySize << std::endl;
+		return contentLength <= maxBodySize;
+	} catch (const std::exception& e)
+	{
+		std::cout << "DEBUG: Error parsing Content-Length: " << e.what() << std::endl;
+		return false;
+	}
+}
+
+bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
+{
+	const std::vector<Location>& locations = getLocations();
+	std::cout << "DEBUG: Found " << locations.size() << " locations" << std::endl;
+
+	const Location* matchedLocation = nullptr;
+	size_t longestMatch = 0;
+
+	for (const auto& location : locations)
+	{
+		std::cout << "DEBUG: Checking location: " << location.path << " against path: " << path << std::endl;
+		if (path.find(location.path) == 0 && location.path.length() > longestMatch) {
+			matchedLocation = &location;
+			longestMatch = location.path.length();
+			std::cout << "DEBUG: Matched location: " << location.path << std::endl;
+			break;
+		}
+	}
+
+	if (!matchedLocation)
+	{
+		std::cout << "DEBUG: No specific location found, allowing GET by default" << std::endl;
+		return client->_httpMethod == "GET";
+	}
+
+	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
+
+	int methodFlag = 0;
+	if (client->_httpMethod == "GET") methodFlag = static_cast<int>(HttpMethod::GET);
+	else if (client->_httpMethod == "POST") methodFlag = static_cast<int>(HttpMethod::POST);
+	else if (client->_httpMethod == "DELETE") methodFlag = static_cast<int>(HttpMethod::DELETE);
+	else {
+		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;
+		return false;
+	}
+
+	bool allowed = (matchedLocation->allowedMethods & methodFlag) != 0;
+	std::cout << "DEBUG: Method " << client->_httpMethod << " (flag: " << methodFlag << ") allowed: " << (allowed ? "YES" : "NO") << std::endl;
+
+	return allowed;
 }
 
 // Setters
@@ -70,7 +132,7 @@ Server::~Server() {
 Server::Server(const ServerConfig& config)
 	: _serverName(config.serverName),
 	_host(config.host),
-	_port(intToString(config.port)),
+	_port(std::to_string(config.port)),
 	_clientBodySize(config.clientMaxBodySize),
 	_errorPages(config.errorPages),
 	_locations(config.locations),

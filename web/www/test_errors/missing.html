@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Site 404 - Missing Resource</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            margin: 0;
+        }
+        .terminal {
+            background-color: #000;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .prompt {
+            color: #00ff00;
+        }
+        .error {
+            color: #ff0000;
+            font-weight: bold;
+        }
+        .info {
+            color: #ffff00;
+        }
+        .command {
+            color: #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <pre>
+<span class="prompt">webserv@testsite:~$</span> <span class="command">ls -la requested_resource</span>
+<span class="error">ls: cannot access 'requested_resource': No such file or directory</span>
+
+<span class="prompt">webserv@testsite:~$</span> <span class="command">echo "HTTP Status Code: 404"</span>
+<span class="info">HTTP Status Code: 404</span>
+
+<span class="prompt">webserv@testsite:~$</span> <span class="command">cat error_message.txt</span>
+<span class="info">============================================
+     TESTSITE.LOCAL - 404 ERROR
+============================================
+
+The requested resource was not found.
+
+This is a custom 404 page for testsite.local
+Server: Webserv/1.0
+Port: 8082
+
+Available commands:
+- GET /
+- GET /files
+- POST / (with body size limit: 512 bytes)
+
+============================================</span>
+
+<span class="prompt">webserv@testsite:~$</span> <span class="command">curl http://testsite.local:8082/</span>
+<span class="info">Redirecting to homepage...</span>
+
+<span class="prompt">webserv@testsite:~$</span> <span class="command">exit</span>
+        </pre>
+    </div>
+</body>
+</html>

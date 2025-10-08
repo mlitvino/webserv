@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>About - Webserv</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			max-width: 800px;
+			margin: 0 auto;
+			padding: 20px;
+			background-color: #f5f5f5;
+		}
+		.container {
+			background-color: white;
+			padding: 30px;
+			border-radius: 10px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+		}
+		h1 {
+			color: #333;
+			border-bottom: 2px solid #007acc;
+			padding-bottom: 10px;
+		}
+		.nav {
+			background-color: #007acc;
+			padding: 15px;
+			border-radius: 5px;
+			margin: 20px 0;
+		}
+		.nav a {
+			color: white;
+			text-decoration: none;
+			margin-right: 20px;
+			padding: 5px 10px;
+			border-radius: 3px;
+		}
+		.nav a:hover {
+			background-color: #005a8c;
+		}
+		.info-box {
+			background-color: #e3f2fd;
+			padding: 20px;
+			border-radius: 5px;
+			margin: 20px 0;
+		}
+		code {
+			background-color: #f4f4f4;
+			padding: 2px 5px;
+			border-radius: 3px;
+			font-family: monospace;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<nav class="nav">
+			<a href="/">Home</a>
+			<a href="/about.html">About</a>
+			<a href="/upload.html">Upload</a>
+			<a href="/test/">Test Directory</a>
+		</nav>
+
+		<h1>📋 About Webserv</h1>
+
+		<div class="info-box">
+			<h2>Project Overview</h2>
+			<p>Webserv is a HTTP server implementation written in C++20 that follows the HTTP/1.1 protocol specifications. This project demonstrates understanding of network programming, HTTP protocol, and server architecture.</p>
+		</div>
+
+		<h2>🛠 Technical Details</h2>
+		<ul>
+			<li><strong>Language:</strong> C++20</li>
+			<li><strong>I/O Model:</strong> Non-blocking with epoll</li>
+			<li><strong>HTTP Methods:</strong> GET, POST, DELETE</li>
+			<li><strong>Configuration:</strong> NGINX-like syntax</li>
+			<li><strong>CGI Support:</strong> Yes (Python, etc.)</li>
+			<li><strong>File Uploads:</strong> Supported</li>
+		</ul>
+
+		<h2>⚙ Configuration Features</h2>
+		<ul>
+			<li>Multiple virtual hosts</li>
+			<li>Location-based routing</li>
+			<li>Custom error pages</li>
+			<li>Directory listing (autoindex)</li>
+			<li>Client body size limits</li>
+			<li>HTTP redirections</li>
+		</ul>
+
+		<h2>🧪 Testing</h2>
+		<p>You can test various server features:</p>
+		<ul>
+			<li><code>curl http://localhost:8080/</code> - Basic GET request</li>
+			<li><code>curl -X POST http://localhost:8080/upload</code> - POST request</li>
+			<li><code>curl -X DELETE http://localhost:8080/test/file.txt</code> - DELETE request</li>
+		</ul>
+
+		<div class="info-box">
+			<h3>🚀 Project Requirements Met</h3>
+			<ul>
+				<li>✅ Non-blocking I/O with single poll/epoll</li>
+				<li>✅ HTTP/1.1 compliance</li>
+				<li>✅ Configuration file support</li>
+				<li>✅ Multiple server instances</li>
+				<li>✅ Error handling and custom pages</li>
+				<li>✅ File serving and uploads</li>
+				<li>✅ CGI execution</li>
+			</ul>
+		</div>
+
+		<p><a href="/">← Back to Home</a></p>
+	</div>
+</body>
+</html>

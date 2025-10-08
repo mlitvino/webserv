@@ -88,7 +88,7 @@ void	Client::openFile(std::string &filePath)
 	struct stat	fileInfo;
 	_filePath = filePath;
 
-	_fileFd = open(_filePath.c_str(), O_RDWR, 667);
+	_fileFd = open(_filePath.c_str(), O_RDWR | O_NONBLOCK, 667);
 	if (_fileFd < 0)
 		return ;
 

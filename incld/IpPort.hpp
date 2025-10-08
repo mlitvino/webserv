@@ -27,6 +27,8 @@ class IpPort : public IEpollFdOwner
 		void			assignServerToClient(ClientPtr &client);
 
 		void			handleGetRequest(ClientPtr &client, const std::string& path);
+		void			handlePostRequest(ClientPtr &client, const std::string& path);
+		void			handleDeleteRequest(ClientPtr &client, const std::string& path);
 		void			generateResponse(ClientPtr &client, std::string &path, int statusCode);
 		std::string		getMimeType(const std::string& filePath);
 		std::string		getCustomErrorPage(ServerPtr& server, int statusCode);

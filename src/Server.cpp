@@ -17,15 +17,10 @@ std::string Server::findIndexFile(ClientPtr &client, const std::string& path)
 		}
 	}
 
-	std::string indexFile = "index.html"; // Default
+	std::string indexFile = locations.front().root + "/" + "index.html";
 	if (matchedLocation && !matchedLocation->index.empty()) {
 		// Parse the first index file from the space-separated list
 		std::string indexFiles = matchedLocation->index;
-
-		// Remove trailing semicolon if present
-		if (!indexFiles.empty() && indexFiles.back() == ';') {
-			indexFiles.pop_back();
-		}
 
 		// Find first space or use entire string
 		size_t spacePos = indexFiles.find(' ');
@@ -167,6 +162,7 @@ const std::vector<Location>& Server::getLocations() const {
 int Server::getSockfd() const {
 	return _sockfd;
 }
+
 // Constructors + Destructor
 
 Server::~Server() {

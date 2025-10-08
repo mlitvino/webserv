@@ -13,6 +13,7 @@ enum class ClientState {
 	SENDING_RESPONSE,
 	SENDING_FILE,
 	GETTING_FILE,
+	CGI_READING_OUTPUT,
 };
 
 class Client : public IEpollFdOwner
@@ -46,6 +47,12 @@ class Client : public IEpollFdOwner
 		std::string			_fileBuffer;
 		int					_fileSize;
 		int					_fileOffset;
+
+		int				_cgiInFd;
+		int				_cgiOutFd;
+		pid_t			_cgiPid;
+		std::string		_cgiBuffer;
+		bool			_cgiHeadersParsed;
 
 
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);

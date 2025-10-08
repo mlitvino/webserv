@@ -1,4 +1,5 @@
 #include "IpPort.hpp"
+#include "Cgi.hpp"
 
 void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 {
@@ -9,7 +10,7 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	std::string	port = _addrPort.substr(delim + 1, _addrPort.size() - delim);
 
 	err = getaddrinfo(host.c_str(), port.c_str(), &hints, &_servInfo);
-	if (err)
+	if (err == -1)
 		THROW(gai_strerror(err));
 
 	_sockFd = socket(_servInfo->ai_family, _servInfo->ai_socktype, _servInfo->ai_protocol);
@@ -19,15 +20,15 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	int opt = 1;
 
 	err = setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	if (err)
+	if (err == -1)
 		THROW_ERRNO("setsockopt(SO_REUSEADDR)");
 
 	err = bind(_sockFd, _servInfo->ai_addr, _servInfo->ai_addrlen);
-	if (err)
+	if (err == -1)
 		THROW_ERRNO("bind");
 
 	err = listen(_sockFd, QUEUE_SIZE);
-	if (err)
+	if (err == -1)
 		THROW_ERRNO("listen");
 }
 
@@ -54,11 +55,6 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 					std::cout << "Full request recieved" << std::endl;
 					parseRequest(ev, epollFd, eventFd);
 				}
-				// else if (client->_buffer.size() > CLIENT_HEADER_LIMIT)
-				// {
-				// 	std::cout << "Client's header is too large" << std::endl;
-				// 	closeConnection(ev, epollFd, eventFd);
-				// }
 				std::cout << "Accepting data is done" << std::endl;
 			}
 		}
@@ -76,33 +72,35 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 
 void	IpPort::sendResponse(ClientPtr &client, int clientFd)
 {
-	int	bytesSent;
-	size_t	resOffset = client->_responseOffset;
+	int		bytesSent = 0;
 
-	if (resOffset < client->_responseBuffer.size())
+	if (client->_responseOffset < client->_responseBuffer.size())
 	{
-		bytesSent = send(clientFd, &client->_responseBuffer.c_str()[resOffset], client->_responseBuffer.size() - resOffset, 0);
-
+		const char* buf = client->_responseBuffer.c_str() + client->_responseOffset;
+		size_t toSend = client->_responseBuffer.size() - client->_responseOffset;
+		bytesSent = send(clientFd, buf, toSend, 0);
 		if (bytesSent > 0)
-			client->_responseOffset += bytesSent;
+			client->_responseOffset += static_cast<size_t>(bytesSent);
 	}
-	else if (client->_fileOffset < client->_fileSize)
+	else if (client->_fileOffset < client->_fileSize && client->_fileFd >= 0)
 	{
-		off_t	offset = client->_fileOffset;
-
+		off_t offset = static_cast<off_t>(client->_fileOffset);
 		bytesSent = sendfile(clientFd, client->_fileFd, &offset, client->_fileSize - offset);
-
 		if (bytesSent > 0)
-			client->_fileOffset += bytesSent;
+			client->_fileOffset += static_cast<size_t>(bytesSent);
 	}
 
-	if (resOffset >= client->_responseBuffer.size()
+	if (client->_responseOffset >= client->_responseBuffer.size()
 		&& client->_fileOffset >= client->_fileSize)
 	{
 		client->_responseBuffer.clear();
 		client->_buffer.clear();
-		close(client->_fileFd);
+		if (client->_fileFd != -1) {
+			close(client->_fileFd);
+			client->_fileFd = -1;
+		}
 		client->_state = ClientState::READING_REQUEST;
+		return;
 	}
 
 	if (bytesSent == 0)
@@ -155,21 +153,11 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	if (!client->_ownerServer->isMethodAllowed(client, requestedPath))
 	{
 		std::cout << "Invalid Method" << std::endl;
-		closeConnection(eventFd);
-		//_responseBuffer = generateHttpResponse("", 405);
+		generateResponse(client, "", 405);
 		return;
 	}
 
-	if (client->_httpMethod == "POST")
-	{
-		if (!client->_ownerServer->isBodySizeValid(client))
-		{
-			std::cout << "Invalid Content-Length" << std::endl;
-			closeConnection(eventFd);
-			//_responseBuffer = generateHttpResponse("", 413);
-			return;
-		}
-	}
+	// isPathAllowed
 
 	if (client->_httpMethod == "GET")
 	{
@@ -177,6 +165,12 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "POST")
 	{
+		if (!client->_ownerServer->isBodySizeValid(client))
+		{
+			std::cout << "Invalid Content-Length" << std::endl;
+			generateResponse(client, "", 413);
+			return;
+		}
 		//handlePostRequest(requestedPath);
 	}
 	else if (client->_httpMethod == "DELETE")
@@ -214,13 +208,13 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 	else
 	{
 		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
-		//client->_responseBuffer = generateHttpResponse("web/www/errors/404.html", 404);
+		generateResponse(client, "", 404);
 	}
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
 }
 
-void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int statusCode)
+void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statusCode)
 {
 	std::string	statusText;
 	std::string	response;
@@ -240,12 +234,19 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 
 	if (!filePath.empty())
 	{
+		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
 		client->openFile(filePath);
 		if (client->_fileFd < 0)
 		{
+			THROW_ERRNO("open");
+			std::cout << "DEBUG: Coudln't open filePath" << std::endl;
 			statusCode = 500;
 			statusText = "Internal Server Error";
 		}
+	}
+	else
+	{
+		std::cout << "DEBUG: filePath is empty" << std::endl;
 	}
 
 	// add MIME TYPE
@@ -369,6 +370,22 @@ std::string	IpPort::getMimeType(const std::string& filePath)
 		return "application/octet-stream";
 }
 
+void	IpPort::processCgi(ClientPtr &client)
+{
+	try {
+		Cgi cgi(*client);
+		if (!cgi.start()) {
+			generateResponse(client, "", 500);
+			return;
+		}
+		client->_state = ClientState::CGI_READING_OUTPUT;
+	}
+	catch (const std::exception &e) {
+		std::cerr << "CGI start exception: " << e.what() << std::endl;
+		generateResponse(client, "", 500);
+	}
+}
+
 std::string	IpPort::getCustomErrorPage(ServerPtr& server, int statusCode)
 {
 	const std::map<int, std::string>& errorPages = server->getErrorPages();
@@ -400,12 +417,21 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 		newEv.data.fd = clientFd;
 		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &newEv);
 		if (err)
+		{
+			_handlersMap.erase(clientFd);
+			_clientsMap.erase(clientFd);
+			close(clientFd);
 			THROW_ERRNO("epoll_ctl");
+		}
 	}
 	catch (const std::exception& e)
 	{
 		if (clientFd != -1)
+		{
+			_handlersMap.erase(clientFd);
+			_clientsMap.erase(clientFd);
 			close(clientFd);
+		}
 		std::cerr << "Exception:" << e.what() << std::endl;
 	}
 }

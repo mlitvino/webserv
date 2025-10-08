@@ -34,12 +34,9 @@ public:
 	FdClientMap					*_clientsMap;
 	FdEpollOwnerMap				*_handlersMap;
 
-
-	//Server() = default;
 	Server(const ServerConfig& config);
 	~Server();
 
-	// Delete copy constructor and assignment to prevent accidental copying
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
 

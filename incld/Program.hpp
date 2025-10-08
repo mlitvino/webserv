@@ -2,7 +2,7 @@
 
 #include "webserv.hpp"
 
-struct Program
+class Program
 {
 	public:
 		int						_epollFd;

@@ -36,7 +36,10 @@ class Client : public IEpollFdOwner
 		std::string			_httpMethod;
 		std::string			_httpPath;
 		std::string			_httpVersion;
-
+		size_t				_contentLen;
+		bool				_chunked;
+		bool				_keepAlive;
+		std::string			_hostHeader;
 
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;
@@ -48,11 +51,11 @@ class Client : public IEpollFdOwner
 		int					_fileSize;
 		int					_fileOffset;
 
-		int				_cgiInFd;
-		int				_cgiOutFd;
-		pid_t			_cgiPid;
-		std::string		_cgiBuffer;
-		bool			_cgiHeadersParsed;
+		int					_cgiInFd;
+		int					_cgiOutFd;
+		pid_t				_cgiPid;
+		std::string			_cgiBuffer;
+		bool				_cgiHeadersParsed;
 
 
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);

@@ -111,26 +111,6 @@ void	IpPort::sendResponse(ClientPtr &client, int clientFd)
 	}
 }
 
-std::string	IpPort::parseRequestLine(ClientPtr &client, std::string& line)
-{
-	size_t firstSpace = line.find(' ');
-	size_t secondSpace = line.find(' ', firstSpace + 1);
-
-	if (firstSpace == std::string::npos || secondSpace == std::string::npos)
-		return "";
-
-	client->_httpMethod = line.substr(0, firstSpace);
-	client->_httpPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
-	client->_httpVersion = line.substr(secondSpace + 1);
-
-	// Remove \r\n from version
-	size_t crPos = client->_httpVersion.find('\r');
-	if (crPos != std::string::npos)
-		client->_httpVersion = client->_httpVersion.substr(0, crPos);
-
-	return client->_httpPath;
-}
-
 void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 {
 	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
@@ -138,20 +118,13 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	if (client->_buffer.find("\r\n\r\n") == std::string::npos)
 		return ;
 
-	std::cout << "Full request recieved" << std::endl;
 	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
-
-	size_t		firstLine = client->_buffer.find("\r\n");
-	std::string	requestLine = client->_buffer.substr(0, firstLine);
-	std::cout << "DEBUG: Request line: " << requestLine << std::endl;
-
-	std::string	requestedPath = parseRequestLine(client, requestLine);
-
+	parseHeaders(client);
 	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
 
 	assignServerToClient(client);
 
-	if (!client->_ownerServer->isMethodAllowed(client, requestedPath))
+	if (!client->_ownerServer->isMethodAllowed(client, client->_httpPath))
 	{
 		std::cout << "Invalid Method" << std::endl;
 		generateResponse(client, "", 405);
@@ -162,7 +135,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 
 	if (client->_httpMethod == "GET")
 	{
-		handleGetRequest(client, requestedPath);
+		handleGetRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "POST")
 	{
@@ -172,11 +145,68 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 			generateResponse(client, "", 413);
 			return;
 		}
-		//handlePostRequest(requestedPath);
+		//handlePostRequest(client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")
 	{
-		//handleDeleteRequest(requestedPath);
+		//handleDeleteRequest(client->_httpPath);
+	}
+}
+
+void	IpPort::parseHeaders(ClientPtr &client)
+{
+	size_t headersEnd = client->_buffer.find("\r\n\r\n");
+	if (headersEnd == std::string::npos)
+		return;
+
+	std::string			headers = client->_buffer.substr(0, headersEnd);
+	std::istringstream	iss(headers);
+	std::string			line;
+
+	client->_contentLen = 0;
+	client->_chunked = false;
+	client->_keepAlive = false;
+
+	std::getline(iss, line);
+	size_t firstSpace = line.find(' ');
+	size_t secondSpace = line.find(' ', firstSpace + 1);
+	client->_httpMethod = line.substr(0, firstSpace);
+	client->_httpPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+	client->_httpVersion = line.substr(secondSpace + 1);
+
+	while (std::getline(iss, line))
+	{
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+		std::string name = line.substr(0, colon);
+		std::string value = line.substr(colon + 1);
+
+		while (!value.empty() && isspace(value.front()))
+			value.erase(0, 1);
+		while (!value.empty() && isspace(value.back()))
+			value.pop_back();
+
+		if (name == "Host")
+		{
+			client->_hostHeader = value;
+		}
+		else if (name == "Content-Length")
+		{
+			client->_contentLen = std::stoul(value);
+		}
+		else if (name == "Transfer-Encoding")
+		{
+			if (value.find("chunked") != std::string::npos)
+				client->_chunked = true;
+		}
+		else if (name == "Connection")
+		{
+			if (value.find("keep-alive") != std::string::npos)
+				client->_keepAlive = true;
+		}
 	}
 }
 
@@ -262,31 +292,13 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 {
 	client->_ownerServer = _servers.front();
 
-	size_t		headersEnd = client->_buffer.find("\r\n\r\n");
-	std::string	headersSlice = client->_buffer.substr(0, headersEnd);
-	size_t		hostPos = headersSlice.find("Host:");
-
-	std::string hostValue;
-	if (hostPos != std::string::npos)
-	{
-		size_t	lineEnd = headersSlice.find('\r', hostPos);
-		size_t	valueStart = headersSlice.find(':', hostPos);
-		if (valueStart != std::string::npos)
-		{
-			valueStart += 1;
-			while (valueStart < headersSlice.size() && isspace(headersSlice[valueStart]))
-				++valueStart;
-			size_t	valueLen = lineEnd - valueStart;
-			hostValue = headersSlice.substr(valueStart, valueLen);
-
-			size_t colon = hostValue.find(':');
-			if (colon != std::string::npos)
-				hostValue = hostValue.substr(0, colon);
-		}
-	}
-
+	std::string hostValue = client->_hostHeader;
 	if (!hostValue.empty())
 	{
+		size_t colon = hostValue.find(':');
+		if (colon != std::string::npos)
+			hostValue = hostValue.substr(0, colon);
+
 		for (auto &server : _servers)
 		{
 			if (server->getServerName() == hostValue)

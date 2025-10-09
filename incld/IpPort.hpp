@@ -23,7 +23,7 @@ class IpPort : public IEpollFdOwner
 
 		bool			readRequest(ClientPtr &client, int clientFd);
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
-		std::string		parseRequestLine(ClientPtr &client, std::string& line);
+		void			parseHeaders(ClientPtr &client);
 		void			assignServerToClient(ClientPtr &client);
 
 		void			handleGetRequest(ClientPtr &client, const std::string& path);

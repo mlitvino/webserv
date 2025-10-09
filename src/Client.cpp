@@ -179,6 +179,9 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _clientsMap(owner._clientsMap)
 	, _handlersMap(owner._handlersMap)
 	, _ipPort(owner)
+	, _chunked(false)
+	, _keepAlive(false)
+	, _hostHeader()
 	, _clientAddr{clientAddr}
 	, _clientAddrLen{clientAddrLen}
 	, _clientFd{clientFd}

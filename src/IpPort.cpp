@@ -54,60 +54,15 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				std::cout << "Accepting data is done" << std::endl;
 			}
 		}
-		else if (ev.events & EPOLLOUT)
-		{
-			if (client->_state == ClientState::SENDING_RESPONSE)
-			{
-				std::cout << "Sending response..." << std::endl;
-				sendResponse(client, eventFd);
-				std::cout << "Sending response is done" << std::endl;
-			}
-		}
-	}
-}
-
-void	IpPort::sendResponse(ClientPtr &client, int clientFd)
-{
-	int		bytesSent = 0;
-
-	if (client->_responseOffset < client->_responseBuffer.size())
-	{
-		const char* buf = client->_responseBuffer.c_str() + client->_responseOffset;
-		size_t toSend = client->_responseBuffer.size() - client->_responseOffset;
-		bytesSent = send(clientFd, buf, toSend, 0);
-		if (bytesSent > 0)
-			client->_responseOffset += static_cast<size_t>(bytesSent);
-	}
-	else if (client->_fileOffset < client->_fileSize && client->_fileFd >= 0)
-	{
-		off_t offset = static_cast<off_t>(client->_fileOffset);
-		bytesSent = sendfile(clientFd, client->_fileFd, &offset, client->_fileSize - offset);
-		if (bytesSent > 0)
-			client->_fileOffset += static_cast<size_t>(bytesSent);
-	}
-
-	if (client->_responseOffset >= client->_responseBuffer.size()
-		&& client->_fileOffset >= client->_fileSize)
-	{
-		client->_responseBuffer.clear();
-		size_t	endRequest = client->_buffer.find("\r\n\r\n") + 4;
-		client->_buffer.erase(0, endRequest);
-		if (client->_fileFd != -1) {
-			close(client->_fileFd);
-			client->_fileFd = -1;
-		}
-		client->_state = ClientState::READING_REQUEST;
-		return;
-	}
-
-	if (bytesSent == 0)
-	{
-		std::cout << "Connection was closed in resndResponse" << std::endl;
-		closeConnection(clientFd);
-	}
-	else if (bytesSent == -1)
-	{
-		THROW_ERRNO("send");
+		// else if (ev.events & EPOLLOUT)
+		// {
+		// 	if (client->_state == ClientState::SENDING_RESPONSE)
+		// 	{
+		// 		std::cout << "Sending response..." << std::endl;
+		// 		//sendResponse(client, eventFd);
+		// 		std::cout << "Sending response is done" << std::endl;
+		// 	}
+		// }
 	}
 }
 

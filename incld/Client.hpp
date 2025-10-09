@@ -64,11 +64,8 @@ class Client : public IEpollFdOwner
 		int		getFd();
 		void	handleEpollEvent(epoll_event &ev, int epollFd, int eventFd);
 
-		void	sendResponse(epoll_event &ev, int epollFd, int eventFd);
-		void	sendFile(epoll_event &ev, int epollFd, int eventFd);
+		void	sendResponse();
 
 		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
-		void	readFile(epoll_event &ev, int epollFd, int eventFd);
-		void	openFile(epoll_event &ev, int epollFd, int eventFd);
 		void	openFile(std::string &filePath);
 };

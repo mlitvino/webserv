@@ -22,6 +22,8 @@
 #include <sys/sendfile.h>
 #include <sys/wait.h>
 
+#include <string.h>
+
 #define QUEUE_SIZE 20
 #define IO_BUFFER_SIZE 1024
 #define MAX_EVENTS 10
@@ -49,13 +51,14 @@ using ClientDeq = std::deque<ClientPtr>;
 using FdClientMap = std::unordered_map<int, ClientPtr>;
 using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
 
-#include "IEpollFdOwner.hpp"
 #include "CustomException.hpp"
+#include "utils.hpp"
+#include "IEpollFdOwner.hpp"
 #include "Server.hpp"
 #include "IpPort.hpp"
 #include "Program.hpp"
 #include "Client.hpp"
-#include "utils.hpp"
+
 
 enum class HttpMethod {
 	GET = 1,

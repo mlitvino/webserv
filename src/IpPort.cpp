@@ -256,7 +256,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	}
 
 	if (statusCode != 200)
-		filePath = getCustomErrorPage(client->_ownerServer, statusCode);
+		filePath = client->_ownerServer->getCustomErrorPage(statusCode);
 
 	if (!filePath.empty())
 	{
@@ -392,16 +392,6 @@ void	IpPort::processCgi(ClientPtr &client)
 		std::cerr << "CGI start exception: " << e.what() << std::endl;
 		generateResponse(client, "", 500);
 	}
-}
-
-std::string	IpPort::getCustomErrorPage(ServerPtr& server, int statusCode)
-{
-	const std::map<int, std::string>& errorPages = server->getErrorPages();
-	auto it = errorPages.find(statusCode);
-	if (it != errorPages.end()) {
-		return it->second;
-	}
-	return "";
 }
 
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)

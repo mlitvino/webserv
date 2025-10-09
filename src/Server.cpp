@@ -177,6 +177,17 @@ bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
 	return allowed;
 }
 
+std::string	Server::getCustomErrorPage(int statusCode)
+{
+	const std::map<int, std::string>& errorPages = getErrorPages();
+	auto it = errorPages.find(statusCode);
+	if (it != errorPages.end())
+	{
+		return it->second;
+	}
+	return "";
+}
+
 // Setters
 void Server::setHost(std::string host) {
 	_host = std::move(host);

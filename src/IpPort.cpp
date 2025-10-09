@@ -285,6 +285,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	response += "\r\n";
 
 	client->_state = ClientState::SENDING_RESPONSE;
+	utils::changeEpollHandler(_handlersMap, client->_clientFd, client.get());
 	client->_responseBuffer = std::move(response);
 }
 

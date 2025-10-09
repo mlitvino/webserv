@@ -12,45 +12,15 @@ void	Program::parseConfFile(char *conf_file)
 			configParser.parseConfig(std::string(DEFAULT_CONF));
 		}
 
-		configParser.createServersFromConfig(*this);
+		configParser.createServersAndIpPortsFromConfig(*this);
 
 		// If no servers were created, create a default one
 		if (_servers.empty()) {
 			THROW("none of servers was created");
-
-
-			// auto default_server = std::make_shared<Server>();
-			// default_server->setHost(std::string(HOST));
-			// default_server->setPort(std::string(PORT));
-			// _servers.push_back(std::move(default_server));
 		}
 	} catch (const std::exception& e) {
 		std::string err = std::string("parsing error: ") + e.what();
 		THROW(err.c_str());
-
-		// std::cerr << "Configuration parsing error: " << e.what() << std::endl;
-		// std::cerr << "Using default configuration..." << std::endl;
-
-		// // Create default server as fallback
-		// auto default_server = std::make_shared<Server>();
-		// default_server->setHost(std::string(HOST));
-		// default_server->setPort(std::string(PORT));
-		// _servers.push_back(std::move(default_server));
-	}
-
-
-	IpPortPtr test = std::make_shared<IpPort>(*this);
-	test->_addrPort = _servers.front()->getHost() + std::string(":") + _servers.front()->getPort();
-	_addrPortVec.push_back(test);
-	_addrPortVec.front()->_servers = _servers;
-
-	for (auto &ipPort : _addrPortVec)
-	{
-		for (auto &server : ipPort->_servers)
-		{
-			server->_handlersMap = &_handlersMap;
-			server->_clientsMap = &_clientsMap;
-		}
 	}
 }
 

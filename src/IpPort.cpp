@@ -189,6 +189,24 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 {
 	std::cout << "DEBUG: handleGetRequest() called with path: " << path << std::endl;
 
+	// Find the matching location for this path
+	const std::vector<Location>& locations = client->_ownerServer->getLocations();
+	const Location* matchedLocation = nullptr;
+	size_t longestMatch = 0;
+
+	for (const auto& location : locations) {
+		if (path.find(location.path) == 0 && location.path.length() > longestMatch) {
+			matchedLocation = &location;
+			longestMatch = location.path.length();
+		}
+	}
+
+	// Use location's root or default to web/www
+	std::string documentRoot = "web/www";
+	if (matchedLocation && !matchedLocation->root.empty()) {
+		documentRoot = matchedLocation->root;
+	}
+
 	std::string filePath = path;
 
 	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/'))
@@ -201,8 +219,8 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 	if (!filePath.empty() && filePath[0] == '/')
 		filePath = filePath.substr(1);
 
-	std::string fullPath = "web/www/" + filePath;
-	std::cout << "DEBUG: Full file path: " << fullPath << std::endl;
+	std::string fullPath = documentRoot + "/" + filePath;
+	std::cout << "DEBUG: Document root: " << documentRoot << ", Full file path: " << fullPath << std::endl;
 
 	std::ifstream file(fullPath);
 	if (file.good())

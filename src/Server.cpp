@@ -3,6 +3,37 @@
 #include <sys/stat.h>
 #include <fstream>
 
+bool	Server::areHeadersValid(ClientPtr &client)
+{
+	std::cout << "Validating headers..." << std::endl;
+
+	if (client->_contentLen != 0 && client->_chunked)
+	{
+		std::cout << "Chunked body and content's length are presented at the same time" << std::endl;
+		//generateResponse(client, "", 405);
+		return false;
+	}
+
+	if (!isMethodAllowed(client, client->_httpPath))
+	{
+		std::cout << "Invalid Method" << std::endl;
+		//generateResponse(client, "", 405);
+		return false;
+	}
+
+	if (!isBodySizeValid(client))
+	{
+		std::cout << "Invalid Content-Length" << std::endl;
+		//generateResponse(client, "", 413);
+		return false;
+	}
+
+	// isPathAllowed
+
+	std::cout << "Validating headers is done" << std::endl;
+	return true;
+}
+
 std::string	Server::findFile(ClientPtr &client, const std::string& path)
 {
 	const std::vector<Location>& locations = getLocations();
@@ -105,27 +136,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 
 bool	Server::isBodySizeValid(ClientPtr &client)
 {
-	size_t headerStart = client->_buffer.find("Content-Length: ");
-	if (headerStart == std::string::npos) {
-		return false;
-	}
-
-	headerStart += 16;
-	size_t headerEnd = client->_buffer.find("\r\n", headerStart);
-
-	std::string contentLengthStr = client->_buffer.substr(headerStart, headerEnd - headerStart);
-	try
-	{
-		size_t contentLength = std::stoul(contentLengthStr);
-		size_t maxBodySize = getClientBodySize();
-
-		std::cout << "DEBUG: Content-Length: " << contentLength << ", Max allowed: " << maxBodySize << std::endl;
-		return contentLength <= maxBodySize;
-	} catch (const std::exception& e)
-	{
-		std::cout << "DEBUG: Error parsing Content-Length: " << e.what() << std::endl;
-		return false;
-	}
+	return client->_contentLen <= getClientBodySize();
 }
 
 bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
@@ -166,7 +177,8 @@ bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
 	if (client->_httpMethod == "GET") methodFlag = static_cast<int>(HttpMethod::GET);
 	else if (client->_httpMethod == "POST") methodFlag = static_cast<int>(HttpMethod::POST);
 	else if (client->_httpMethod == "DELETE") methodFlag = static_cast<int>(HttpMethod::DELETE);
-	else {
+	else
+	{
 		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;
 		return false;
 	}

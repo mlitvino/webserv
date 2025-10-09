@@ -40,6 +40,7 @@ public:
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
 
+	bool		areHeadersValid(ClientPtr &client);
 	bool		isMethodAllowed(ClientPtr &client, std::string& path);
 	bool		isBodySizeValid(ClientPtr &client);
 	std::string	findFile(ClientPtr &client, const std::string& path);

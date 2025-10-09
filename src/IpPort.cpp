@@ -76,17 +76,11 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
 	parseHeaders(client);
 	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
-
 	assignServerToClient(client);
 
-	if (!client->_ownerServer->isMethodAllowed(client, client->_httpPath))
-	{
-		std::cout << "Invalid Method" << std::endl;
-		generateResponse(client, "", 405);
-		return;
-	}
-
-	// isPathAllowed
+	bool valid = client->_ownerServer->areHeadersValid(client);
+	if (!valid)
+		return ;
 
 	if (client->_httpMethod == "GET")
 	{
@@ -94,12 +88,6 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "POST")
 	{
-		if (!client->_ownerServer->isBodySizeValid(client))
-		{
-			std::cout << "Invalid Content-Length" << std::endl;
-			generateResponse(client, "", 413);
-			return;
-		}
 		//handlePostRequest(client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")

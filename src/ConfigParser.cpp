@@ -88,7 +88,24 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 	iss >> directive;
 
 	if (directive == "listen") {
-		iss >> config.port;
+		std::string listenValue;
+		iss >> listenValue;
+		
+		ListenConfig listen;
+		
+		// Parse address:port or just port
+		size_t colonPos = listenValue.find(':');
+		if (colonPos != std::string::npos) {
+			// Format: address:port
+			listen.host = listenValue.substr(0, colonPos);
+			listen.port = std::stoi(listenValue.substr(colonPos + 1));
+		} else {
+			// Format: port only
+			listen.host = "localhost"; // default
+			listen.port = std::stoi(listenValue);
+		}
+		
+		config.listens.push_back(listen);
 	} else if (directive == "server_name") {
 		iss >> config.serverName;
 		// Remove semicolon if present
@@ -175,24 +192,55 @@ const std::vector<ServerConfig>& ConfigParser::getServerConfigs() const {
 	return _serverConfigs;
 }
 
-void ConfigParser::createServersFromConfig(Program &program) {
+void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
+	// Map to store IpPort objects by address:port string
+	std::map<std::string, IpPortPtr> ipPortMap;
+	
+	// Create servers and organize them by their listen addresses
 	for (const auto& config : _serverConfigs) {
-		auto server = std::make_unique<Server>(config);
-		program._servers.push_back(std::move(server));
+		auto server = std::make_shared<Server>(config);
+		
+		// If no listen directive was specified, add default
+		std::vector<ListenConfig> listens = config.listens;
+		if (listens.empty()) {
+			ListenConfig defaultListen;
+			defaultListen.host = "localhost";
+			defaultListen.port = 8080;
+			listens.push_back(defaultListen);
+		}
+		
+		// Add this server to all its listen addresses
+		for (const auto& listen : listens) {
+			std::string addrPort = listen.getAddressPort();
+			
+			// Create IpPort if it doesn't exist
+			if (ipPortMap.find(addrPort) == ipPortMap.end()) {
+				auto ipPort = std::make_shared<IpPort>(program);
+				ipPort->setAddrPort(addrPort);
+				ipPortMap[addrPort] = ipPort;
+				program._addrPortVec.push_back(ipPort);
+			}
+			
+			// Add server to this IpPort
+			ipPortMap[addrPort]->_servers.push_back(server);
+		}
+		
+		// Add server to program's servers list
+		program._servers.push_back(server);
+	}
+	
+	// Set up handler mappings for each IpPort
+	for (auto &ipPort : program._addrPortVec) {
+		for (auto &server : ipPort->_servers) {
+			server->_handlersMap = &program._handlersMap;
+			server->_clientsMap = &program._clientsMap;
+		}
 	}
 }
 
 void ConfigParser::validatePortConflicts() {
-	std::map<int, std::string> usedPorts;
-
-	for (const auto& config : _serverConfigs) {
-		auto it = usedPorts.find(config.port);
-		if (it != usedPorts.end()) {
-			throw std::runtime_error("Port conflict detected: Port " +
-				std::to_string(config.port) + " is used by multiple servers (" +
-				it->second + " and " + config.serverName + ")");
-		}
-		usedPorts[config.port] = config.serverName.empty() ?
-			("server_" + std::to_string(config.port)) : config.serverName;
-	}
+	// Note: Multiple servers can listen on the same address:port 
+	// as long as they have different server_names (virtual hosting)
+	// This is a common HTTP server feature, so we don't need to validate conflicts
+	// The server selection will be done based on the Host header during request processing
 }

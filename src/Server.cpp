@@ -176,8 +176,8 @@ Server::~Server() {
 
 Server::Server(const ServerConfig& config)
 	: _serverName(config.serverName),
-	_host(config.host),
-	_port(std::to_string(config.port)),
+	_host(config.getHost()),
+	_port(std::to_string(config.getPort())),
 	_clientBodySize(config.clientMaxBodySize),
 	_errorPages(config.errorPages),
 	_locations(config.locations),

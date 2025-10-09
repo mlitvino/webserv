@@ -19,13 +19,22 @@ struct Location {
 	std::string cgiPath;
 };
 
-struct ServerConfig {
+struct ListenConfig {
 	std::string host = "localhost";
 	int port = 8080;
+	std::string getAddressPort() const { return host + ":" + std::to_string(port); }
+};
+
+struct ServerConfig {
+	std::vector<ListenConfig> listens;
 	std::string serverName;
 	size_t clientMaxBodySize = 1000000;
 	std::map<int, std::string> errorPages;
 	std::vector<Location> locations;
+	
+	// Backward compatibility - get first listen config's host and port
+	std::string getHost() const { return listens.empty() ? "localhost" : listens[0].host; }
+	int getPort() const { return listens.empty() ? 8080 : listens[0].port; }
 };
 
 class ConfigParser {
@@ -49,5 +58,5 @@ public:
 
 	void parseConfig(const std::string& configFile);
 	const std::vector<ServerConfig>& getServerConfigs() const;
-	void	createServersFromConfig(Program &program);
+	void createServersAndIpPortsFromConfig(Program &program);
 };

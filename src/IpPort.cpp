@@ -220,6 +220,110 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
 }
 
+void IpPort::handlePostRequest(ClientPtr &client, const std::string& path)
+{
+	std::cout << "DEBUG: handlePostRequest() called with path: " << path << std::endl;
+
+	// Extract Content-Length from headers
+	size_t headersEnd = client->_buffer.find("\r\n\r\n");
+	std::string headers = client->_buffer.substr(0, headersEnd);
+	size_t contentLengthPos = headers.find("Content-Length:");
+	
+	int contentLength = 0;
+	if (contentLengthPos != std::string::npos)
+	{
+		size_t valueStart = headers.find(':', contentLengthPos) + 1;
+		while (valueStart < headers.size() && isspace(headers[valueStart]))
+			++valueStart;
+		size_t lineEnd = headers.find('\r', valueStart);
+		std::string lengthStr = headers.substr(valueStart, lineEnd - valueStart);
+		contentLength = std::stoi(lengthStr);
+	}
+
+	std::cout << "DEBUG: Content-Length: " << contentLength << std::endl;
+
+	// Get the request body
+	std::string requestBody;
+	if (headersEnd != std::string::npos && headersEnd + 4 < client->_buffer.size())
+	{
+		requestBody = client->_buffer.substr(headersEnd + 4);
+	}
+
+	std::cout << "DEBUG: Request body: " << requestBody << std::endl;
+
+	// Process the POST request (e.g., save uploaded file, process form data)
+	std::string filePath = path;
+	if (!filePath.empty() && filePath[0] == '/')
+		filePath = filePath.substr(1);
+
+	std::string uploadPath = "web/www/uploads/" + filePath;
+	std::cout << "DEBUG: Upload path: " << uploadPath << std::endl;
+
+	// Create uploads directory if it doesn't exist
+	system("mkdir -p web/www/uploads");
+
+	// Write the body content to file
+	std::ofstream outFile(uploadPath, std::ios::binary);
+	if (outFile.good())
+	{
+		outFile.write(requestBody.c_str(), requestBody.size());
+		outFile.close();
+		std::cout << "DEBUG: File uploaded successfully, generating 201 response" << std::endl;
+		generateResponse(client, uploadPath, 201);
+	}
+	else
+	{
+		std::cout << "DEBUG: Failed to create file, generating 500 response" << std::endl;
+		std::string emptyPath = "";
+		generateResponse(client, emptyPath, 500);
+	}
+
+	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+}
+
+void IpPort::handleDeleteRequest(ClientPtr &client, const std::string& path)
+{
+	std::cout << "DEBUG: handleDeleteRequest() called with path: " << path << std::endl;
+
+	std::string filePath = path;
+
+	// Remove leading slash if present
+	if (!filePath.empty() && filePath[0] == '/')
+		filePath = filePath.substr(1);
+
+	std::string fullPath = "web/www/" + filePath;
+	std::cout << "DEBUG: Full file path for deletion: " << fullPath << std::endl;
+
+	// Check if file exists before attempting to delete
+	std::ifstream file(fullPath);
+	if (file.good())
+	{
+		file.close();
+		
+		// Attempt to delete the file
+		if (std::remove(fullPath.c_str()) == 0)
+		{
+			std::cout << "DEBUG: File deleted successfully, generating 204 response" << std::endl;
+			std::string emptyPath = "";
+			generateResponse(client, emptyPath, 204);
+		}
+		else
+		{
+			std::cout << "DEBUG: Failed to delete file, generating 500 response" << std::endl;
+			std::string emptyPath = "";
+			generateResponse(client, emptyPath, 500);
+		}
+	}
+	else
+	{
+		std::cout << "DEBUG: File not found for deletion, generating 404 response" << std::endl;
+		std::string emptyPath = "";
+		generateResponse(client, emptyPath, 404);
+	}
+
+	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+}
+
 void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int statusCode)
 {
 	std::string	statusText;
@@ -228,6 +332,8 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 	switch (statusCode)
 	{
 		case 200: statusText = "OK"; break;
+		case 201: statusText = "Created"; break;
+		case 204: statusText = "No Content"; break;
 		case 404: statusText = "Not Found"; break;
 		case 405: statusText = "Method Not Allowed"; break;
 		case 413: statusText = "Payload Too Large"; break;
@@ -235,8 +341,21 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 		default: statusText = "Unknown"; break;
 	}
 
-	if (statusCode != 200)
+	if (statusCode != 200 && statusCode != 201)
 		filePath = getCustomErrorPage(client->_ownerServer, statusCode);
+
+	// For 204 No Content, we don't send a body
+	if (statusCode == 204)
+	{
+		response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
+		response += "Server: webserv/1.0\r\n";
+		response += "Connection: close\r\n";
+		response += "\r\n";
+		
+		client->_state = ClientState::SENDING_RESPONSE;
+		client->_responseBuffer = std::move(response);
+		return;
+	}
 
 	if (!filePath.empty())
 	{

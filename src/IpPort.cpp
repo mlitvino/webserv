@@ -177,11 +177,11 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "POST")
 	{
-		//handlePostRequest(requestedPath);
+		handlePostRequest(client, requestedPath);
 	}
 	else if (client->_httpMethod == "DELETE")
 	{
-		//handleDeleteRequest(requestedPath);
+		handleDeleteRequest(client, requestedPath);
 	}
 }
 

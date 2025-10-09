@@ -42,7 +42,7 @@ public:
 
 	bool		isMethodAllowed(ClientPtr &client, std::string& path);
 	bool		isBodySizeValid(ClientPtr &client);
-	std::string	findIndexFile(ClientPtr &client, const std::string& path);
+	std::string	findFile(ClientPtr &client, const std::string& path);
 
 	void	setHost(std::string host);
 	void	setPort(std::string port);

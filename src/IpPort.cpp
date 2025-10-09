@@ -50,11 +50,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				std::cout << "Accepting data from existing client..." << std::endl;
 				if (!readRequest(client, eventFd))
 					return closeConnection(eventFd);
-				if (client->_buffer.find("\r\n\r\n") != std::string::npos)
-				{
-					std::cout << "Full request recieved" << std::endl;
-					parseRequest(ev, epollFd, eventFd);
-				}
+				parseRequest(ev, epollFd, eventFd);
 				std::cout << "Accepting data is done" << std::endl;
 			}
 		}
@@ -94,7 +90,8 @@ void	IpPort::sendResponse(ClientPtr &client, int clientFd)
 		&& client->_fileOffset >= client->_fileSize)
 	{
 		client->_responseBuffer.clear();
-		client->_buffer.clear();
+		size_t	endRequest = client->_buffer.find("\r\n\r\n") + 4;
+		client->_buffer.erase(0, endRequest);
 		if (client->_fileFd != -1) {
 			close(client->_fileFd);
 			client->_fileFd = -1;
@@ -138,6 +135,10 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 {
 	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 
+	if (client->_buffer.find("\r\n\r\n") == std::string::npos)
+		return ;
+
+	std::cout << "Full request recieved" << std::endl;
 	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
 
 	size_t		firstLine = client->_buffer.find("\r\n");
@@ -183,20 +184,15 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 {
 	std::cout << "DEBUG: handleGetRequest() called with path: " << path << std::endl;
 
-	std::string filePath = path;
+	std::string fullPath = client->_ownerServer->findFile(client, path);
+	std::cout << "DEBUG: findFile returned: " << fullPath << std::endl;
 
-	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/'))
+	if (fullPath.empty())
 	{
-		std::string indexFile = client->_ownerServer->findIndexFile(client, path);
-		filePath += indexFile;
-		std::cout << "DEBUG: Added " << indexFile << ", filePath now: " << filePath << std::endl;
+		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
+		generateResponse(client, "", 404);
+		return;
 	}
-
-	if (!filePath.empty() && filePath[0] == '/')
-		filePath = filePath.substr(1);
-
-	std::string fullPath = "web/www/" + filePath;
-	std::cout << "DEBUG: Full file path: " << fullPath << std::endl;
 
 	std::ifstream file(fullPath);
 	if (file.good())
@@ -207,7 +203,7 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 	}
 	else
 	{
-		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
+		std::cout << "DEBUG: File not found after stat, generating 404 response" << std::endl;
 		generateResponse(client, "", 404);
 	}
 
@@ -402,7 +398,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 	epoll_event			newEv;
 	int					clientFd;
 	sockaddr_storage	clientAddr;
-	socklen_t			clientAddrLen;
+	socklen_t			clientAddrLen = sizeof(clientAddr);
 
 	try
 	{

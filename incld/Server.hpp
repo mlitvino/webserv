@@ -43,6 +43,7 @@ public:
 	bool		isMethodAllowed(ClientPtr &client, std::string& path);
 	bool		isBodySizeValid(ClientPtr &client);
 	std::string	findFile(ClientPtr &client, const std::string& path);
+	std::string	getCustomErrorPage(int statusCode);
 
 	void	setHost(std::string host);
 	void	setPort(std::string port);

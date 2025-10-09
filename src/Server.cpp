@@ -1,55 +1,116 @@
 #include "Server.hpp"
 #include <sstream>
+#include <sys/stat.h>
+#include <fstream>
 
-std::string Server::findIndexFile(ClientPtr &client, const std::string& path)
+std::string	Server::findFile(ClientPtr &client, const std::string& path)
 {
-	// Get server configuration
-	const std::vector<Location>& locations = client->_ownerServer->getLocations();
+	const std::vector<Location>& locations = getLocations();
+	const Location* matched = nullptr;
+	size_t bestLen = 0;
 
-	// Find matching location
-	const Location* matchedLocation = nullptr;
-	size_t longestMatch = 0;
-
-	for (const auto& location : locations) {
-		if (path.find(location.path) == 0 && location.path.length() > longestMatch) {
-			matchedLocation = &location;
-			longestMatch = location.path.length();
+	for (auto it = locations.begin(); it != locations.end(); ++it)
+	{
+		const std::string &locPath = it->path;
+		if (path.size() >= locPath.size() &&
+			path.compare(0, locPath.size(), locPath) == 0)
+		{
+			bool validBoundary = (locPath == "/") ||
+				(path.size() == locPath.size()) ||
+				(path.size() > locPath.size() && (path[locPath.size()] == '/'));
+			if (validBoundary && locPath.length() > bestLen)
+			{
+				matched = &(*it);
+				bestLen = it->path.length();
+			}
 		}
 	}
 
-	std::string indexFile = locations.front().root + "/" + "index.html";
-	if (matchedLocation && !matchedLocation->index.empty()) {
-		// Parse the first index file from the space-separated list
-		std::string indexFiles = matchedLocation->index;
+	if (!matched)
+		return "";
 
-		// Find first space or use entire string
-		size_t spacePos = indexFiles.find(' ');
-		if (spacePos != std::string::npos) {
-			indexFile = indexFiles.substr(0, spacePos);
-		} else {
-			indexFile = indexFiles;
+	std::vector<std::string> indexFiles;
+	if (!matched->index.empty())
+	{
+		std::istringstream iss(matched->index);
+		std::string token;
+		while (iss >> token)
+		{
+			if (!token.empty() && token.back() == ';') token.pop_back();
+			indexFiles.push_back(token);
 		}
+	}
+	else
+		indexFiles.push_back("index.html");
 
-		// Trim any remaining whitespace
-		while (!indexFile.empty() && (indexFile.front() == ' ' || indexFile.front() == '\t')) {
-			indexFile.erase(0, 1);
+	std::string	docRoot = matched->root;
+	if (docRoot.empty())
+		docRoot = "web/www";
+	while (!docRoot.empty() && (docRoot.back() == '/' || docRoot.back() == '\\'))
+		docRoot.pop_back();
+
+	std::cout << "FindFile: path " << path << std::endl;
+	std::cout << "FindFile: matched path " << matched->path << std::endl;
+
+	std::string suffix = path.substr(matched->path.size());
+	while (!suffix.empty() && (suffix.front() == '/' || suffix.front() == '\\'))
+		suffix.erase(0, 1);
+
+	std::string fsPath = docRoot;
+	if (!suffix.empty())
+		fsPath += "/" + suffix;
+
+	std::cout << "FindFile: fsPath " << fsPath << std::endl;
+
+	if (!suffix.empty() && path.back() != '/')
+	{
+		struct stat st;
+		if (stat(fsPath.c_str(), &st) == 0)
+		{
+			if (S_ISREG(st.st_mode))
+			{
+				return fsPath;
+			}
+			else if (!S_ISDIR(st.st_mode))
+			{
+				THROW("not regular file or directory");
+				return "";
+			}
 		}
-		while (!indexFile.empty() && (indexFile.back() == ' ' || indexFile.back() == '\t')) {
-			indexFile.pop_back();
+		else if (errno == ENOENT && client->_httpMethod == "POST")
+		{
+			return fsPath;
+		}
+		else
+		{
+			THROW_ERRNO("stat");
+			return "";
 		}
 	}
 
-	return indexFile;
+	std::string fsDir = fsPath.empty() ? docRoot : fsPath;
+	if (fsDir.empty() || fsDir.back() != '/')
+		fsDir += '/';
+
+	for (auto it = indexFiles.begin(); it != indexFiles.end(); ++it)
+	{
+		std::string candidate = fsDir + *it;
+		struct stat st;
+		if (stat(candidate.c_str(), &st) == 0 && S_ISREG(st.st_mode))
+			return candidate;
+	}
+
+	return "";
 }
 
 bool	Server::isBodySizeValid(ClientPtr &client)
 {
 	size_t headerStart = client->_buffer.find("Content-Length: ");
 	if (headerStart == std::string::npos) {
-		return false; // No Content-Length header, assume valid
+		return false;
 	}
 
-	headerStart += 16; // Move past "Content-Length: "
+	headerStart += 16;
 	size_t headerEnd = client->_buffer.find("\r\n", headerStart);
 
 	std::string contentLengthStr = client->_buffer.substr(headerStart, headerEnd - headerStart);
@@ -78,11 +139,18 @@ bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
 	for (const auto& location : locations)
 	{
 		std::cout << "DEBUG: Checking location: " << location.path << " against path: " << path << std::endl;
-		if (path.find(location.path) == 0 && location.path.length() > longestMatch) {
-			matchedLocation = &location;
-			longestMatch = location.path.length();
-			std::cout << "DEBUG: Matched location: " << location.path << std::endl;
-			break;
+		const std::string &locPath = location.path;
+		if (path.size() >= locPath.size() &&
+			path.compare(0, locPath.size(), locPath) == 0)
+		{
+			bool validBoundary = (locPath == "/") ||
+				(path.size() == locPath.size()) ||
+				(path.size() > locPath.size() && (path[locPath.size()] == '/'));
+			if (validBoundary && locPath.length() > longestMatch) {
+				matchedLocation = &location;
+				longestMatch = location.path.length();
+				std::cout << "DEBUG: Matched location: " << location.path << std::endl;
+			}
 		}
 	}
 

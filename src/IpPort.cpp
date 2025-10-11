@@ -48,7 +48,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			if (client->_state == ClientState::READING_REQUEST)
 			{
 				std::cout << "Accepting data from existing client..." << std::endl;
-				if (!readRequest(client, eventFd))
+				if (!client->readRequest())
 					return closeConnection(eventFd);
 				parseRequest(ev, epollFd, eventFd);
 				std::cout << "Accepting data is done" << std::endl;
@@ -355,37 +355,37 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 	}
 }
 
-bool IpPort::readRequest(ClientPtr &client, int clientFd)
-{
-	char	buffer[IO_BUFFER_SIZE];
-	int		bytesRead = read(clientFd, buffer, sizeof(buffer) - 1);
+// bool IpPort::readRequest(ClientPtr &client, int clientFd)
+// {
+// 	char	buffer[IO_BUFFER_SIZE];
+// 	int		bytesRead = read(clientFd, buffer, sizeof(buffer) - 1);
 
-	try
-	{
-		if (bytesRead > 0)
-		{
-			buffer[bytesRead] = '\0';
-			client->_buffer.append(buffer, bytesRead);
-			return true;
-		}
-		else if (bytesRead == 0)
-		{
-			std::cout << "DEBUG: Client disconnected" << std::endl;
-			return false;
-		}
-		else if (bytesRead == -1)
-		{
-			THROW_ERRNO("read");
-		}
-	}
-	catch (std::exception& e)
-	{
-		std::cout << "Exception: " << e.what() << std::endl;
-		return false;
-	}
+// 	try
+// 	{
+// 		if (bytesRead > 0)
+// 		{
+// 			buffer[bytesRead] = '\0';
+// 			client->_buffer.append(buffer, bytesRead);
+// 			return true;
+// 		}
+// 		else if (bytesRead == 0)
+// 		{
+// 			std::cout << "DEBUG: Client disconnected" << std::endl;
+// 			return false;
+// 		}
+// 		else if (bytesRead == -1)
+// 		{
+// 			THROW_ERRNO("read");
+// 		}
+// 	}
+// 	catch (std::exception& e)
+// 	{
+// 		std::cout << "Exception: " << e.what() << std::endl;
+// 		return false;
+// 	}
 
-	return true;
-}
+// 	return true;
+// }
 
 std::string	IpPort::getMimeType(const std::string& filePath)
 {

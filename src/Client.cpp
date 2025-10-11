@@ -1,5 +1,37 @@
 #include "Client.hpp"
 
+bool	Client::readRequest()
+{
+	char	buffer[IO_BUFFER_SIZE];
+	int		bytesRead = read(_clientFd, buffer, sizeof(buffer) - 1);
+
+	try
+	{
+		if (bytesRead > 0)
+		{
+			buffer[bytesRead] = '\0';
+			_buffer.append(buffer, bytesRead);
+			return true;
+		}
+		else if (bytesRead == 0)
+		{
+			std::cout << "DEBUG: Client disconnected" << std::endl;
+			return false;
+		}
+		else if (bytesRead == -1)
+		{
+			THROW_ERRNO("read");
+		}
+	}
+	catch (std::exception& e)
+	{
+		std::cout << "Exception: " << e.what() << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
 void	Client::sendResponse()
 {
 	std::cout << "Sending response..." << std::endl;

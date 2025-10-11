@@ -54,15 +54,6 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				std::cout << "Accepting data is done" << std::endl;
 			}
 		}
-		// else if (ev.events & EPOLLOUT)
-		// {
-		// 	if (client->_state == ClientState::SENDING_RESPONSE)
-		// 	{
-		// 		std::cout << "Sending response..." << std::endl;
-		// 		//sendResponse(client, eventFd);
-		// 		std::cout << "Sending response is done" << std::endl;
-		// 	}
-		// }
 	}
 }
 
@@ -166,18 +157,9 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 		generateResponse(client, "", 404);
 		return;
 	}
-
-	std::ifstream file(fullPath);
-	if (file.good())
-	{
-		std::cout << "DEBUG: File exists, generating 200 response" << std::endl;
-		file.close();
-		generateResponse(client, fullPath, 200);
-	}
 	else
 	{
-		std::cout << "DEBUG: File not found after stat, generating 404 response" << std::endl;
-		generateResponse(client, "", 404);
+		generateResponse(client, fullPath, 200);
 	}
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;

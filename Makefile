@@ -10,7 +10,8 @@ SRC_FILES =	main.cpp \
 			Program.cpp \
 			IpPort.cpp \
 			Client.cpp \
-			ConfigParser.cpp
+			ConfigParser.cpp \
+			Cgi.cpp
 
 
 SRCS = $(foreach file,$(SRC_FILES),$(shell find $(SRC_DIR) -name "$(file)" -type f))

@@ -13,6 +13,7 @@ enum class ClientState {
 	SENDING_RESPONSE,
 	SENDING_FILE,
 	GETTING_FILE,
+	CGI_READING_OUTPUT,
 };
 
 class Client : public IEpollFdOwner
@@ -35,7 +36,10 @@ class Client : public IEpollFdOwner
 		std::string			_httpMethod;
 		std::string			_httpPath;
 		std::string			_httpVersion;
-
+		size_t				_contentLen;
+		bool				_chunked;
+		bool				_keepAlive;
+		std::string			_hostHeader;
 
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;
@@ -47,6 +51,12 @@ class Client : public IEpollFdOwner
 		int					_fileSize;
 		int					_fileOffset;
 
+		int					_cgiInFd;
+		int					_cgiOutFd;
+		pid_t				_cgiPid;
+		std::string			_cgiBuffer;
+		bool				_cgiHeadersParsed;
+
 
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);
 		~Client();
@@ -54,11 +64,8 @@ class Client : public IEpollFdOwner
 		int		getFd();
 		void	handleEpollEvent(epoll_event &ev, int epollFd, int eventFd);
 
-		void	sendResponse(epoll_event &ev, int epollFd, int eventFd);
-		void	sendFile(epoll_event &ev, int epollFd, int eventFd);
+		void	sendResponse();
 
 		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
-		void	readFile(epoll_event &ev, int epollFd, int eventFd);
-		void	openFile(epoll_event &ev, int epollFd, int eventFd);
 		void	openFile(std::string &filePath);
 };

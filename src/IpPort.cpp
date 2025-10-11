@@ -1,4 +1,5 @@
 #include "IpPort.hpp"
+#include "Cgi.hpp"
 
 void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 {
@@ -9,7 +10,7 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	std::string	port = _addrPort.substr(delim + 1, _addrPort.size() - delim);
 
 	err = getaddrinfo(host.c_str(), port.c_str(), &hints, &_servInfo);
-	if (err)
+	if (err == -1)
 		THROW(gai_strerror(err));
 
 	_sockFd = socket(_servInfo->ai_family, _servInfo->ai_socktype, _servInfo->ai_protocol);
@@ -19,15 +20,15 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	int opt = 1;
 
 	err = setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	if (err)
+	if (err == -1)
 		THROW_ERRNO("setsockopt(SO_REUSEADDR)");
 
 	err = bind(_sockFd, _servInfo->ai_addr, _servInfo->ai_addrlen);
-	if (err)
+	if (err == -1)
 		THROW_ERRNO("bind");
 
 	err = listen(_sockFd, QUEUE_SIZE);
-	if (err)
+	if (err == -1)
 		THROW_ERRNO("listen");
 }
 
@@ -49,139 +50,106 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				std::cout << "Accepting data from existing client..." << std::endl;
 				if (!readRequest(client, eventFd))
 					return closeConnection(eventFd);
-				if (client->_buffer.find("\r\n\r\n") != std::string::npos)
-				{
-					std::cout << "Full request recieved" << std::endl;
-					parseRequest(ev, epollFd, eventFd);
-				}
-				// else if (client->_buffer.size() > CLIENT_HEADER_LIMIT)
-				// {
-				// 	std::cout << "Client's header is too large" << std::endl;
-				// 	closeConnection(ev, epollFd, eventFd);
-				// }
+				parseRequest(ev, epollFd, eventFd);
 				std::cout << "Accepting data is done" << std::endl;
 			}
 		}
-		else if (ev.events & EPOLLOUT)
-		{
-			if (client->_state == ClientState::SENDING_RESPONSE)
-			{
-				std::cout << "Sending response..." << std::endl;
-				sendResponse(client, eventFd);
-				std::cout << "Sending response is done" << std::endl;
-			}
-		}
+		// else if (ev.events & EPOLLOUT)
+		// {
+		// 	if (client->_state == ClientState::SENDING_RESPONSE)
+		// 	{
+		// 		std::cout << "Sending response..." << std::endl;
+		// 		//sendResponse(client, eventFd);
+		// 		std::cout << "Sending response is done" << std::endl;
+		// 	}
+		// }
 	}
-}
-
-void	IpPort::sendResponse(ClientPtr &client, int clientFd)
-{
-	int	bytesSent;
-	size_t	resOffset = client->_responseOffset;
-
-	if (resOffset < client->_responseBuffer.size())
-	{
-		bytesSent = send(clientFd, &client->_responseBuffer.c_str()[resOffset], client->_responseBuffer.size() - resOffset, 0);
-
-		if (bytesSent > 0)
-			client->_responseOffset += bytesSent;
-	}
-	else if (client->_fileOffset < client->_fileSize)
-	{
-		off_t	offset = client->_fileOffset;
-
-		bytesSent = sendfile(clientFd, client->_fileFd, &offset, client->_fileSize - offset);
-
-		if (bytesSent > 0)
-			client->_fileOffset += bytesSent;
-	}
-
-	if (resOffset >= client->_responseBuffer.size()
-		&& client->_fileOffset >= client->_fileSize)
-	{
-		client->_responseBuffer.clear();
-		client->_buffer.clear();
-		close(client->_fileFd);
-		client->_state = ClientState::READING_REQUEST;
-	}
-
-	if (bytesSent == 0)
-	{
-		std::cout << "Connection was closed in resndResponse" << std::endl;
-		closeConnection(clientFd);
-	}
-	else if (bytesSent == -1)
-	{
-		THROW_ERRNO("send");
-	}
-}
-
-std::string	IpPort::parseRequestLine(ClientPtr &client, std::string& line)
-{
-	size_t firstSpace = line.find(' ');
-	size_t secondSpace = line.find(' ', firstSpace + 1);
-
-	if (firstSpace == std::string::npos || secondSpace == std::string::npos)
-		return "";
-
-	client->_httpMethod = line.substr(0, firstSpace);
-	client->_httpPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
-	client->_httpVersion = line.substr(secondSpace + 1);
-
-	// Remove \r\n from version
-	size_t crPos = client->_httpVersion.find('\r');
-	if (crPos != std::string::npos)
-		client->_httpVersion = client->_httpVersion.substr(0, crPos);
-
-	return client->_httpPath;
 }
 
 void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 {
 	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 
+	if (client->_buffer.find("\r\n\r\n") == std::string::npos)
+		return ;
+
 	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
-
-	size_t		firstLine = client->_buffer.find("\r\n");
-	std::string	requestLine = client->_buffer.substr(0, firstLine);
-	std::cout << "DEBUG: Request line: " << requestLine << std::endl;
-
-	std::string	requestedPath = parseRequestLine(client, requestLine);
-
+	parseHeaders(client);
 	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
-
 	assignServerToClient(client);
 
-	if (!client->_ownerServer->isMethodAllowed(client, requestedPath))
-	{
-		std::cout << "Invalid Method" << std::endl;
-		closeConnection(eventFd);
-		//_responseBuffer = generateHttpResponse("", 405);
-		return;
-	}
-
-	if (client->_httpMethod == "POST")
-	{
-		if (!client->_ownerServer->isBodySizeValid(client))
-		{
-			std::cout << "Invalid Content-Length" << std::endl;
-			closeConnection(eventFd);
-			//_responseBuffer = generateHttpResponse("", 413);
-			return;
-		}
-	}
+	bool valid = client->_ownerServer->areHeadersValid(client);
+	if (!valid)
+		return ;
 
 	if (client->_httpMethod == "GET")
 	{
-		handleGetRequest(client, requestedPath);
+		handleGetRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "POST")
 	{
-		handlePostRequest(client, requestedPath);
+		//handlePostRequest(client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")
 	{
-		handleDeleteRequest(client, requestedPath);
+		//handleDeleteRequest(client->_httpPath);
+	}
+}
+
+void	IpPort::parseHeaders(ClientPtr &client)
+{
+	size_t headersEnd = client->_buffer.find("\r\n\r\n");
+	if (headersEnd == std::string::npos)
+		return;
+
+	std::string			headers = client->_buffer.substr(0, headersEnd);
+	std::istringstream	iss(headers);
+	std::string			line;
+
+	client->_contentLen = 0;
+	client->_chunked = false;
+	client->_keepAlive = false;
+
+	std::getline(iss, line);
+	size_t firstSpace = line.find(' ');
+	size_t secondSpace = line.find(' ', firstSpace + 1);
+	client->_httpMethod = line.substr(0, firstSpace);
+	client->_httpPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+	client->_httpVersion = line.substr(secondSpace + 1);
+
+	while (std::getline(iss, line))
+	{
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+		std::string name = line.substr(0, colon);
+		std::string value = line.substr(colon + 1);
+
+		while (!value.empty() && isspace(value.front()))
+			value.erase(0, 1);
+		while (!value.empty() && isspace(value.back()))
+			value.pop_back();
+
+		if (name == "Host")
+		{
+			client->_hostHeader = value;
+		}
+		else if (name == "Content-Length")
+		{
+			client->_contentLen = std::stoul(value);
+		}
+		else if (name == "Transfer-Encoding")
+		{
+			if (value.find("chunked") != std::string::npos)
+				client->_chunked = true;
+		}
+		else if (name == "Connection")
+		{
+			if (value.find("keep-alive") != std::string::npos)
+				client->_keepAlive = true;
+		}
 	}
 }
 
@@ -207,20 +175,15 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 		documentRoot = matchedLocation->root;
 	}
 
-	std::string filePath = path;
+	std::string fullPath = client->_ownerServer->findFile(client, path);
+	std::cout << "DEBUG: findFile returned: " << fullPath << std::endl;
 
-	if (filePath == "/" || (!filePath.empty() && filePath.back() == '/'))
+	if (fullPath.empty())
 	{
-		std::string indexFile = client->_ownerServer->findIndexFile(client, path);
-		filePath += indexFile;
-		std::cout << "DEBUG: Added " << indexFile << ", filePath now: " << filePath << std::endl;
+		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
+		generateResponse(client, "", 404);
+		return;
 	}
-
-	if (!filePath.empty() && filePath[0] == '/')
-		filePath = filePath.substr(1);
-
-	std::string fullPath = documentRoot + "/" + filePath;
-	std::cout << "DEBUG: Document root: " << documentRoot << ", Full file path: " << fullPath << std::endl;
 
 	std::ifstream file(fullPath);
 	if (file.good())
@@ -231,8 +194,8 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 	}
 	else
 	{
-		std::cout << "DEBUG: File not found, generating 404 response" << std::endl;
-		//client->_responseBuffer = generateHttpResponse("web/www/errors/404.html", 404);
+		std::cout << "DEBUG: File not found after stat, generating 404 response" << std::endl;
+		generateResponse(client, "", 404);
 	}
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
@@ -246,7 +209,7 @@ void IpPort::handlePostRequest(ClientPtr &client, const std::string& path)
 	size_t headersEnd = client->_buffer.find("\r\n\r\n");
 	std::string headers = client->_buffer.substr(0, headersEnd);
 	size_t contentLengthPos = headers.find("Content-Length:");
-	
+
 	int contentLength = 0;
 	if (contentLengthPos != std::string::npos)
 	{
@@ -317,7 +280,7 @@ void IpPort::handleDeleteRequest(ClientPtr &client, const std::string& path)
 	if (file.good())
 	{
 		file.close();
-		
+
 		// Attempt to delete the file
 		if (std::remove(fullPath.c_str()) == 0)
 		{
@@ -342,7 +305,111 @@ void IpPort::handleDeleteRequest(ClientPtr &client, const std::string& path)
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
 }
 
-void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int statusCode)
+void IpPort::handlePostRequest(ClientPtr &client, const std::string& path)
+{
+	std::cout << "DEBUG: handlePostRequest() called with path: " << path << std::endl;
+
+	// Extract Content-Length from headers
+	size_t headersEnd = client->_buffer.find("\r\n\r\n");
+	std::string headers = client->_buffer.substr(0, headersEnd);
+	size_t contentLengthPos = headers.find("Content-Length:");
+
+	int contentLength = 0;
+	if (contentLengthPos != std::string::npos)
+	{
+		size_t valueStart = headers.find(':', contentLengthPos) + 1;
+		while (valueStart < headers.size() && isspace(headers[valueStart]))
+			++valueStart;
+		size_t lineEnd = headers.find('\r', valueStart);
+		std::string lengthStr = headers.substr(valueStart, lineEnd - valueStart);
+		contentLength = std::stoi(lengthStr);
+	}
+
+	std::cout << "DEBUG: Content-Length: " << contentLength << std::endl;
+
+	// Get the request body
+	std::string requestBody;
+	if (headersEnd != std::string::npos && headersEnd + 4 < client->_buffer.size())
+	{
+		requestBody = client->_buffer.substr(headersEnd + 4);
+	}
+
+	std::cout << "DEBUG: Request body: " << requestBody << std::endl;
+
+	// Process the POST request (e.g., save uploaded file, process form data)
+	std::string filePath = path;
+	if (!filePath.empty() && filePath[0] == '/')
+		filePath = filePath.substr(1);
+
+	std::string uploadPath = "web/www/uploads/" + filePath;
+	std::cout << "DEBUG: Upload path: " << uploadPath << std::endl;
+
+	// Create uploads directory if it doesn't exist
+	system("mkdir -p web/www/uploads");
+
+	// Write the body content to file
+	std::ofstream outFile(uploadPath, std::ios::binary);
+	if (outFile.good())
+	{
+		outFile.write(requestBody.c_str(), requestBody.size());
+		outFile.close();
+		std::cout << "DEBUG: File uploaded successfully, generating 201 response" << std::endl;
+		generateResponse(client, uploadPath, 201);
+	}
+	else
+	{
+		std::cout << "DEBUG: Failed to create file, generating 500 response" << std::endl;
+		std::string emptyPath = "";
+		generateResponse(client, emptyPath, 500);
+	}
+
+	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+}
+
+void IpPort::handleDeleteRequest(ClientPtr &client, const std::string& path)
+{
+	std::cout << "DEBUG: handleDeleteRequest() called with path: " << path << std::endl;
+
+	std::string filePath = path;
+
+	// Remove leading slash if present
+	if (!filePath.empty() && filePath[0] == '/')
+		filePath = filePath.substr(1);
+
+	std::string fullPath = "web/www/" + filePath;
+	std::cout << "DEBUG: Full file path for deletion: " << fullPath << std::endl;
+
+	// Check if file exists before attempting to delete
+	std::ifstream file(fullPath);
+	if (file.good())
+	{
+		file.close();
+
+		// Attempt to delete the file
+		if (std::remove(fullPath.c_str()) == 0)
+		{
+			std::cout << "DEBUG: File deleted successfully, generating 204 response" << std::endl;
+			std::string emptyPath = "";
+			generateResponse(client, emptyPath, 204);
+		}
+		else
+		{
+			std::cout << "DEBUG: Failed to delete file, generating 500 response" << std::endl;
+			std::string emptyPath = "";
+			generateResponse(client, emptyPath, 500);
+		}
+	}
+	else
+	{
+		std::cout << "DEBUG: File not found for deletion, generating 404 response" << std::endl;
+		std::string emptyPath = "";
+		generateResponse(client, emptyPath, 404);
+	}
+
+	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+}
+
+void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statusCode)
 {
 	std::string	statusText;
 	std::string	response;
@@ -360,7 +427,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 	}
 
 	if (statusCode != 200 && statusCode != 201)
-		filePath = getCustomErrorPage(client->_ownerServer, statusCode);
+		filePath = client->_ownerServer->getCustomErrorPage(statusCode);
 
 	// For 204 No Content, we don't send a body
 	if (statusCode == 204)
@@ -369,7 +436,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 		response += "Server: webserv/1.0\r\n";
 		response += "Connection: close\r\n";
 		response += "\r\n";
-		
+
 		client->_state = ClientState::SENDING_RESPONSE;
 		client->_responseBuffer = std::move(response);
 		return;
@@ -377,12 +444,19 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 
 	if (!filePath.empty())
 	{
+		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
 		client->openFile(filePath);
 		if (client->_fileFd < 0)
 		{
+			THROW_ERRNO("open");
+			std::cout << "DEBUG: Coudln't open filePath" << std::endl;
 			statusCode = 500;
 			statusText = "Internal Server Error";
 		}
+	}
+	else
+	{
+		std::cout << "DEBUG: filePath is empty" << std::endl;
 	}
 
 	// add MIME TYPE
@@ -395,6 +469,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string &filePath, int stat
 	response += "\r\n";
 
 	client->_state = ClientState::SENDING_RESPONSE;
+	utils::changeEpollHandler(_handlersMap, client->_clientFd, client.get());
 	client->_responseBuffer = std::move(response);
 }
 
@@ -402,31 +477,13 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 {
 	client->_ownerServer = _servers.front();
 
-	size_t		headersEnd = client->_buffer.find("\r\n\r\n");
-	std::string	headersSlice = client->_buffer.substr(0, headersEnd);
-	size_t		hostPos = headersSlice.find("Host:");
-
-	std::string hostValue;
-	if (hostPos != std::string::npos)
-	{
-		size_t	lineEnd = headersSlice.find('\r', hostPos);
-		size_t	valueStart = headersSlice.find(':', hostPos);
-		if (valueStart != std::string::npos)
-		{
-			valueStart += 1;
-			while (valueStart < headersSlice.size() && isspace(headersSlice[valueStart]))
-				++valueStart;
-			size_t	valueLen = lineEnd - valueStart;
-			hostValue = headersSlice.substr(valueStart, valueLen);
-
-			size_t colon = hostValue.find(':');
-			if (colon != std::string::npos)
-				hostValue = hostValue.substr(0, colon);
-		}
-	}
-
+	std::string hostValue = client->_hostHeader;
 	if (!hostValue.empty())
 	{
+		size_t colon = hostValue.find(':');
+		if (colon != std::string::npos)
+			hostValue = hostValue.substr(0, colon);
+
 		for (auto &server : _servers)
 		{
 			if (server->getServerName() == hostValue)
@@ -506,14 +563,20 @@ std::string	IpPort::getMimeType(const std::string& filePath)
 		return "application/octet-stream";
 }
 
-std::string	IpPort::getCustomErrorPage(ServerPtr& server, int statusCode)
+void	IpPort::processCgi(ClientPtr &client)
 {
-	const std::map<int, std::string>& errorPages = server->getErrorPages();
-	auto it = errorPages.find(statusCode);
-	if (it != errorPages.end()) {
-		return it->second;
+	try {
+		Cgi cgi(*client);
+		if (!cgi.start()) {
+			generateResponse(client, "", 500);
+			return;
+		}
+		client->_state = ClientState::CGI_READING_OUTPUT;
 	}
-	return "";
+	catch (const std::exception &e) {
+		std::cerr << "CGI start exception: " << e.what() << std::endl;
+		generateResponse(client, "", 500);
+	}
 }
 
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
@@ -522,7 +585,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 	epoll_event			newEv;
 	int					clientFd;
 	sockaddr_storage	clientAddr;
-	socklen_t			clientAddrLen;
+	socklen_t			clientAddrLen = sizeof(clientAddr);
 
 	try
 	{
@@ -537,12 +600,21 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 		newEv.data.fd = clientFd;
 		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &newEv);
 		if (err)
+		{
+			_handlersMap.erase(clientFd);
+			_clientsMap.erase(clientFd);
+			close(clientFd);
 			THROW_ERRNO("epoll_ctl");
+		}
 	}
 	catch (const std::exception& e)
 	{
 		if (clientFd != -1)
+		{
+			_handlersMap.erase(clientFd);
+			_clientsMap.erase(clientFd);
 			close(clientFd);
+		}
 		std::cerr << "Exception:" << e.what() << std::endl;
 	}
 }

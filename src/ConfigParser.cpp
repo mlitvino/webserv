@@ -43,26 +43,39 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 	std::string directive;
 	iss >> directive;
 
+	std::string rest;
+	std::getline(iss, rest);
+	rest = trim(rest);
+	if (!rest.empty() && rest.back() == ';') rest.pop_back();
+
+	auto take_first = [&](const std::string &s) -> std::string {
+		if (s.empty()) return "";
+		size_t p = s.find(' ');
+		if (p == std::string::npos) return s;
+		return s.substr(0, p);
+	};
+
 	if (directive == "root") {
-		iss >> location.root;
+		location.root = take_first(rest);
 	} else if (directive == "index") {
-		iss >> location.index;
+		location.index = take_first(rest);
 	} else if (directive == "allow_methods") {
-		std::string methods;
-		std::getline(iss, methods);
-		location.allowedMethods = parseHttpMethods(trim(methods));
+		location.allowedMethods = parseHttpMethods(trim(rest));
 	} else if (directive == "autoindex") {
-		std::string value;
-		iss >> value;
-		location.autoindex = (value == "on");
+		std::string token = take_first(rest);
+		location.autoindex = (token == "on");
 	} else if (directive == "return") {
-		std::string code, url;
-		iss >> code >> url;
+		std::string code = take_first(rest);
+		std::string url;
+		if (!code.empty()) {
+			size_t pos = rest.find(' ');
+			if (pos != std::string::npos) url = trim(rest.substr(pos + 1));
+		}
 		location.redirect = code + " " + url;
 	} else if (directive == "cgi_extension") {
-		iss >> location.cgiExtension;
+		location.cgiExtension = take_first(rest);
 	} else if (directive == "cgi_path") {
-		iss >> location.cgiPath;
+		location.cgiPath = take_first(rest);
 	}
 }
 
@@ -90,9 +103,7 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 	if (directive == "listen") {
 		std::string listenValue;
 		iss >> listenValue;
-		
 		ListenConfig listen;
-		
 		// Parse address:port or just port
 		size_t colonPos = listenValue.find(':');
 		if (colonPos != std::string::npos) {
@@ -104,7 +115,6 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 			listen.host = "localhost"; // default
 			listen.port = std::stoi(listenValue);
 		}
-		
 		config.listens.push_back(listen);
 	} else if (directive == "server_name") {
 		iss >> config.serverName;
@@ -142,9 +152,20 @@ void ConfigParser::parseServerBlock(std::ifstream& file, ServerConfig& config) {
 			std::string directive;
 			iss >> directive >> location.path;
 
-			// Skip the opening brace line
-			std::string braceLine;
-			std::getline(file, braceLine);
+			std::string restOfLine;
+			std::getline(iss, restOfLine);
+			restOfLine = trim(restOfLine);
+			if (restOfLine.find('{') == std::string::npos) {
+				std::string braceLine;
+				while (std::getline(file, braceLine)) {
+					braceLine = trim(braceLine);
+					if (braceLine.empty() || braceLine[0] == '#')
+						continue;
+					if (braceLine.find('{') != std::string::npos)
+						break;
+					break;
+				}
+			}
 
 			parseLocationBlock(file, location);
 			config.locations.push_back(location);
@@ -197,11 +218,11 @@ const std::vector<ServerConfig>& ConfigParser::getServerConfigs() const {
 void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 	// Map to store IpPort objects by address:port string
 	std::map<std::string, IpPortPtr> ipPortMap;
-	
+
 	// Create servers and organize them by their listen addresses
 	for (const auto& config : _serverConfigs) {
 		auto server = std::make_shared<Server>(config);
-		
+
 		// If no listen directive was specified, add default
 		std::vector<ListenConfig> listens = config.listens;
 		if (listens.empty()) {
@@ -210,11 +231,11 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 			defaultListen.port = 8080;
 			listens.push_back(defaultListen);
 		}
-		
+
 		// Add this server to all its listen addresses
 		for (const auto& listen : listens) {
 			std::string addrPort = listen.getAddressPort();
-			
+
 			// Create IpPort if it doesn't exist
 			if (ipPortMap.find(addrPort) == ipPortMap.end()) {
 				auto ipPort = std::make_shared<IpPort>(program);
@@ -222,15 +243,15 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 				ipPortMap[addrPort] = ipPort;
 				program._addrPortVec.push_back(ipPort);
 			}
-			
+
 			// Add server to this IpPort
 			ipPortMap[addrPort]->_servers.push_back(server);
 		}
-		
+
 		// Add server to program's servers list
 		program._servers.push_back(server);
 	}
-	
+
 	// Set up handler mappings for each IpPort
 	for (auto &ipPort : program._addrPortVec) {
 		for (auto &server : ipPort->_servers) {
@@ -241,7 +262,7 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 }
 
 void ConfigParser::validatePortConflicts() {
-	// Note: Multiple servers can listen on the same address:port 
+	// Note: Multiple servers can listen on the same address:port
 	// as long as they have different server_names (virtual hosting)
 	// This is a common HTTP server feature, so we don't need to validate conflicts
 	// The server selection will be done based on the Host header during request processing

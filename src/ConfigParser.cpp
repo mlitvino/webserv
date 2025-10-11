@@ -118,6 +118,8 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 		int code;
 		std::string path;
 		iss >> code >> path;
+		if (path.back() == ';')
+			path.erase(path.end() - 1);
 		config.errorPages[code] = path;
 	}
 }

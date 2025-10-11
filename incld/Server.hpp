@@ -34,18 +34,17 @@ public:
 	FdClientMap					*_clientsMap;
 	FdEpollOwnerMap				*_handlersMap;
 
-
-	//Server() = default;
 	Server(const ServerConfig& config);
 	~Server();
 
-	// Delete copy constructor and assignment to prevent accidental copying
 	Server(const Server&) = delete;
 	Server& operator=(const Server&) = delete;
 
+	bool		areHeadersValid(ClientPtr &client);
 	bool		isMethodAllowed(ClientPtr &client, std::string& path);
 	bool		isBodySizeValid(ClientPtr &client);
-	std::string	findIndexFile(ClientPtr &client, const std::string& path);
+	std::string	findFile(ClientPtr &client, const std::string& path);
+	std::string	getCustomErrorPage(int statusCode);
 
 	void	setHost(std::string host);
 	void	setPort(std::string port);

@@ -23,17 +23,16 @@ class IpPort : public IEpollFdOwner
 
 		bool			readRequest(ClientPtr &client, int clientFd);
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
-		std::string		parseRequestLine(ClientPtr &client, std::string& line);
+		void			parseHeaders(ClientPtr &client);
 		void			assignServerToClient(ClientPtr &client);
 
 		void			handleGetRequest(ClientPtr &client, const std::string& path);
 		void			handlePostRequest(ClientPtr &client, const std::string& path);
 		void			handleDeleteRequest(ClientPtr &client, const std::string& path);
-		void			generateResponse(ClientPtr &client, std::string &path, int statusCode);
+		void			generateResponse(ClientPtr &client, std::string path, int statusCode);
 		std::string		getMimeType(const std::string& filePath);
-		std::string		getCustomErrorPage(ServerPtr& server, int statusCode);
 
-		void			sendResponse(ClientPtr &client, int clientFd);
+		void			processCgi(ClientPtr &client);
 
 		void			setAddrPort(std::string addrPort);
 		int				getSockFd();

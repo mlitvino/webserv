@@ -108,10 +108,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 				return "";
 			}
 		}
-		else if (errno == ENOENT && client->_httpMethod == "POST")
-		{
-			return fsPath;
-		}
 		else
 		{
 			THROW_ERRNO("stat");

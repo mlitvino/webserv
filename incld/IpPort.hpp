@@ -21,7 +21,6 @@ class IpPort : public IEpollFdOwner
 		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
 		void			closeConnection(int clientFd);
 
-		bool			readRequest(ClientPtr &client, int clientFd);
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
 		void			parseHeaders(ClientPtr &client);
 		void			assignServerToClient(ClientPtr &client);

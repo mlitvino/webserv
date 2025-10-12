@@ -53,6 +53,13 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				parseRequest(ev, epollFd, eventFd);
 				std::cout << "Accepting data is done" << std::endl;
 			}
+			else if (client->_state == ClientState::GETTING_BODY)
+			{
+				std::cout << "Continuing to read POST body..." << std::endl;
+				if (!client->readRequest())
+					return closeConnection(eventFd);
+				handlePostRequest(client, client->_httpPath);
+			}
 		}
 	}
 }
@@ -73,13 +80,19 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	if (!valid)
 		return ;
 
+	client->resetBodyTracking();
+
+	size_t headersEnd = client->_buffer.find("\r\n\r\n");
+	if (headersEnd != std::string::npos)
+		client->_buffer.erase(0, headersEnd + 4);
+
 	if (client->_httpMethod == "GET")
 	{
 		handleGetRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "POST")
 	{
-		//handlePostRequest(client->_httpPath);
+		handlePostRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")
 	{
@@ -100,6 +113,8 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	client->_contentLen = 0;
 	client->_chunked = false;
 	client->_keepAlive = false;
+	client->_contentType.clear();
+	client->_multipartBoundary.clear();
 
 	std::getline(iss, line);
 	size_t firstSpace = line.find(' ');
@@ -130,6 +145,21 @@ void	IpPort::parseHeaders(ClientPtr &client)
 		else if (name == "Content-Length")
 		{
 			client->_contentLen = std::stoul(value);
+		}
+		else if (name == "Content-Type")
+		{
+			client->_contentType = value;
+			if (value.find("multipart/form-data") != std::string::npos)
+			{
+				size_t	bpos = value.find("boundary=");
+				if (bpos != std::string::npos)
+				{
+					size_t	valpos = bpos + strlen("boundary=");
+					client->_multipartBoundary = value.substr(valpos);
+
+					std::cout << "DEBUG: _miltipartBoundary " << client->_multipartBoundary << std::endl;
+				}
+			}
 		}
 		else if (name == "Transfer-Encoding")
 		{
@@ -165,105 +195,469 @@ void IpPort::handleGetRequest(ClientPtr &client, const std::string& path)
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
 }
 
-void IpPort::handlePostRequest(ClientPtr &client, const std::string& path)
+BodyReadStatus IpPort::getContentLengthBody(Client &client, int &errorStatus)
+{
+	if (client._bodyBytesExpected > kMaxRequestBodySize)
+	{
+		errorStatus = 413;
+		return BodyReadStatus::ERROR;
+	}
+
+	if (client._bodyBytesExpected == 0)
+		return BodyReadStatus::COMPLETE;
+
+	while (!client._buffer.empty() && client._bodyBytesReceived < client._bodyBytesExpected)
+	{
+		size_t remaining = client._bodyBytesExpected - client._bodyBytesReceived;
+		size_t toCopy = std::min(remaining, client._buffer.size());
+		if (client._bodyBytesReceived + toCopy > kMaxRequestBodySize)
+		{
+			errorStatus = 413;
+			return BodyReadStatus::ERROR;
+		}
+		client._bodyBuffer.append(client._buffer, 0, toCopy);
+		client._buffer.erase(0, toCopy);
+		client._bodyBytesReceived += toCopy;
+	}
+
+	if (client._bodyBytesReceived < client._bodyBytesExpected)
+		return BodyReadStatus::NEED_MORE;
+
+	return BodyReadStatus::COMPLETE;
+}
+
+BodyReadStatus IpPort::getChunkedBody(Client &client, int &errorStatus)
+{
+	while (true)
+	{
+		if (client._parsingChunkTrailers)
+		{
+			if (client._buffer.size() >= 2 && client._buffer.substr(0, 2) == "\r\n")
+			{
+				client._buffer.erase(0, 2);
+				client._chunkedFinished = true;
+				client._parsingChunkTrailers = false;
+				return BodyReadStatus::COMPLETE;
+			}
+			size_t trailerEnd = client._buffer.find("\r\n\r\n");
+			if (trailerEnd == std::string::npos)
+			{
+				if (client._buffer.size() > kMaxTrailersSize)
+				{
+					errorStatus = 400;
+					return BodyReadStatus::ERROR;
+				}
+				return BodyReadStatus::NEED_MORE;
+			}
+			client._buffer.erase(0, trailerEnd + 4);
+			client._chunkedFinished = true;
+			client._parsingChunkTrailers = false;
+			return BodyReadStatus::COMPLETE;
+		}
+
+		if (client._readingChunkSize)
+		{
+			size_t lineEnd = client._buffer.find("\r\n");
+			if (lineEnd == std::string::npos)
+			{
+				if (client._buffer.size() > kMaxChunkHeaderSize)
+				{
+					errorStatus = 400;
+					return BodyReadStatus::ERROR;
+				}
+				return BodyReadStatus::NEED_MORE;
+			}
+			std::string sizeLine = client._buffer.substr(0, lineEnd);
+			client._buffer.erase(0, lineEnd + 2);
+			size_t semicolon = sizeLine.find(';');
+			if (semicolon != std::string::npos)
+				sizeLine = sizeLine.substr(0, semicolon);
+			if (sizeLine.empty())
+			{
+				errorStatus = 400;
+				return BodyReadStatus::ERROR;
+			}
+			unsigned long chunkSize = 0;
+			std::istringstream iss(sizeLine);
+			iss >> std::hex >> chunkSize;
+			if (iss.fail())
+			{
+				errorStatus = 400;
+				return BodyReadStatus::ERROR;
+			}
+			if (chunkSize > kMaxChunkDataSize || client._bodyBytesReceived + chunkSize > kMaxRequestBodySize)
+			{
+				errorStatus = 413;
+				return BodyReadStatus::ERROR;
+			}
+			client._currentChunkSize = static_cast<size_t>(chunkSize);
+			client._currentChunkRead = 0;
+			client._readingChunkSize = false;
+			if (client._currentChunkSize == 0)
+				client._parsingChunkTrailers = true;
+			continue;
+		}
+
+		if (client._currentChunkSize > 0)
+		{
+			if (client._buffer.empty())
+				return BodyReadStatus::NEED_MORE;
+			size_t remaining = client._currentChunkSize - client._currentChunkRead;
+			size_t toCopy = std::min(remaining, client._buffer.size());
+			client._bodyBuffer.append(client._buffer, 0, toCopy);
+			client._buffer.erase(0, toCopy);
+			client._currentChunkRead += toCopy;
+			client._bodyBytesReceived += toCopy;
+			if (client._currentChunkRead < client._currentChunkSize)
+				return BodyReadStatus::NEED_MORE;
+		}
+
+		if (client._buffer.size() < 2)
+			return BodyReadStatus::NEED_MORE;
+		if (client._buffer[0] != '\r' || client._buffer[1] != '\n')
+		{
+			errorStatus = 400;
+			return BodyReadStatus::ERROR;
+		}
+		client._buffer.erase(0, 2);
+
+		if (client._parsingChunkTrailers)
+			continue;
+
+		client._readingChunkSize = true;
+		client._currentChunkSize = 0;
+		client._currentChunkRead = 0;
+	}
+
+	return BodyReadStatus::NEED_MORE;
+}
+
+bool IpPort::drainMultipartFirstPartToFile(Client &client,
+											 const std::string &boundary,
+											 const std::string &uploadDir,
+											 bool &finished,
+											 int &errorStatus)
+{
+	finished = false;
+	if (boundary.empty())
+	{
+		errorStatus = 400;
+		return false;
+	}
+
+	const std::string dashBoundary = "--" + boundary;
+	const std::string boundaryMarker = "\r\n" + dashBoundary;
+
+	if (client._uploadFilename.empty())
+	{
+		size_t bpos = client._bodyBuffer.find(dashBoundary);
+		if (bpos == std::string::npos)
+		{
+			size_t keep = dashBoundary.size();
+			if (client._bodyBuffer.size() > keep)
+				client._bodyBuffer.erase(0, client._bodyBuffer.size() - keep);
+			return true;
+		}
+		client._bodyBuffer.erase(0, bpos + dashBoundary.size());
+		if (client._bodyBuffer.compare(0, 2, "\r\n") == 0)
+			client._bodyBuffer.erase(0, 2);
+
+		size_t headersEnd = client._bodyBuffer.find("\r\n\r\n");
+		if (headersEnd == std::string::npos)
+		{
+			if (client._bodyBuffer.size() > kMaxChunkHeaderSize)
+			{
+				errorStatus = 400;
+				return false;
+			}
+			return true;
+		}
+
+		std::string headers = client._bodyBuffer.substr(0, headersEnd);
+		std::istringstream iss(headers);
+		std::string line;
+		while (std::getline(iss, line))
+		{
+			if (!line.empty() && line.back() == '\r') line.pop_back();
+			size_t colon = line.find(':');
+			if (colon == std::string::npos) continue;
+			std::string name = line.substr(0, colon);
+			std::string value = line.substr(colon + 1);
+			while (!value.empty() && isspace(value.front())) value.erase(0, 1);
+			if (name == "Content-Disposition")
+			{
+				size_t fnPos = value.find("filename=");
+				if (fnPos != std::string::npos)
+				{
+					size_t q1 = value.find('"', fnPos);
+					size_t q2 = (q1 == std::string::npos) ? std::string::npos : value.find('"', q1 + 1);
+					if (q1 != std::string::npos && q2 != std::string::npos && q2 > q1)
+						client._uploadFilename = value.substr(q1 + 1, q2 - q1 - 1);
+				}
+			}
+		}
+
+		if (client._uploadFilename.empty())
+		{
+			errorStatus = 400;
+			return false;
+		}
+
+		client._bodyBuffer.erase(0, headersEnd + 4);
+	}
+
+	if (client._uploadFilename.empty())
+		return true;
+
+	std::string cleanUploadDir = uploadDir;
+	if (!cleanUploadDir.empty() && cleanUploadDir.back() != '/')
+		cleanUploadDir += '/';
+	if (!ensureDirExists("web/www/uploads") || !ensureDirExists(cleanUploadDir))
+	{
+		errorStatus = 500;
+		return false;
+	}
+	std::string uploadPath = cleanUploadDir + client._uploadFilename;
+
+	// Look for boundary marker in buffer
+	size_t markerPos = client._bodyBuffer.find(boundaryMarker);
+	if (markerPos == std::string::npos)
+	{
+		// Write everything except a tail large enough to match marker next time
+		size_t tail = boundaryMarker.size();
+		if (client._bodyBuffer.size() > tail)
+		{
+			size_t toWrite = client._bodyBuffer.size() - tail;
+			std::ofstream out(uploadPath.c_str(), std::ios::binary | std::ios::app);
+			if (!out.good()) { errorStatus = 500; return false; }
+			out.write(client._bodyBuffer.data(), static_cast<std::streamsize>(toWrite));
+			out.close();
+			client._bodyBuffer.erase(0, toWrite);
+		}
+		return true; // need more data to find boundary
+	}
+
+	// Write data up to boundary start (markerPos points to CRLF before --boundary)
+	if (markerPos > 0)
+	{
+		std::ofstream out(uploadPath.c_str(), std::ios::binary | std::ios::app);
+		if (!out.good()) { errorStatus = 500; return false; }
+		out.write(client._bodyBuffer.data(), static_cast<std::streamsize>(markerPos));
+		out.close();
+	}
+	client._bodyBuffer.erase(0, markerPos);
+
+	// Remove boundary marker itself
+	if (client._bodyBuffer.compare(0, boundaryMarker.size(), boundaryMarker) != 0)
+	{
+		errorStatus = 400;
+		return false;
+	}
+	client._bodyBuffer.erase(0, boundaryMarker.size());
+
+	// Check for final boundary suffix "--" or move past CRLF
+	if (client._bodyBuffer.compare(0, 2, "--") == 0)
+	{
+		client._bodyBuffer.erase(0, 2);
+		finished = true; // final boundary -> done
+	}
+	if (client._bodyBuffer.compare(0, 2, "\r\n") == 0)
+		client._bodyBuffer.erase(0, 2);
+
+	// For single-part handling, encountering any boundary means we finished first part
+	finished = true;
+	return true;
+}
+
+bool IpPort::parseMultipartFirstPart(const std::string &body, const std::string &boundary, std::string &outFilename, std::string &outData)
+{
+	std::string dashBoundary = "--" + boundary;
+	std::string endBoundary = dashBoundary + "--";
+	size_t start = body.find(dashBoundary);
+	if (start == std::string::npos) return false;
+	start += dashBoundary.size();
+	if (body.substr(start, 2) == "\r\n") start += 2;
+	size_t partHeadersEnd = body.find("\r\n\r\n", start);
+	if (partHeadersEnd == std::string::npos) return false;
+	std::string partHeaders = body.substr(start, partHeadersEnd - start);
+
+	// extract filename from Content-Disposition if present
+	outFilename.clear();
+	std::istringstream phs(partHeaders);
+	std::string hline;
+	while (std::getline(phs, hline))
+	{
+		if (!hline.empty() && hline.back() == '\r') hline.pop_back();
+		size_t colon = hline.find(':');
+		if (colon == std::string::npos) continue;
+		std::string hname = hline.substr(0, colon);
+		std::string hval = hline.substr(colon + 1);
+		while (!hval.empty() && isspace(hval.front())) hval.erase(0, 1);
+		if (hname == "Content-Disposition")
+		{
+			size_t fnPos = hval.find("filename=");
+			if (fnPos != std::string::npos)
+			{
+				size_t quoteStart = hval.find('"', fnPos);
+				size_t quoteEnd = std::string::npos;
+				if (quoteStart != std::string::npos)
+					quoteEnd = hval.find('"', quoteStart + 1);
+				if (quoteStart != std::string::npos && quoteEnd != std::string::npos)
+					outFilename = hval.substr(quoteStart + 1, quoteEnd - (quoteStart + 1));
+			}
+		}
+	}
+
+	size_t dataStart = partHeadersEnd + 4;
+	size_t dataEnd = body.find("\r\n" + dashBoundary, dataStart);
+	if (dataEnd == std::string::npos)
+	{
+		size_t endMarker = body.find(endBoundary, dataStart);
+		if (endMarker != std::string::npos)
+			dataEnd = (endMarker >= 2 ? endMarker - 2 : endMarker);
+	}
+	if (dataEnd == std::string::npos) dataEnd = body.size();
+	outData = body.substr(dataStart, dataEnd - dataStart);
+	return true;
+}
+
+bool IpPort::ensureDirExists(const std::string &dir)
+{
+	if (dir.empty())
+		return false;
+	std::string path = dir;
+
+	while (path.size() > 1 && path.back() == '/') path.pop_back();
+
+	struct stat st;
+	if (stat(path.c_str(), &st) == 0)
+		return S_ISDIR(st.st_mode);
+
+	size_t pos = path.find_last_of('/');
+	if (pos != std::string::npos)
+	{
+		std::string parent = path.substr(0, pos);
+		if (!parent.empty() && parent != path)
+		{
+			if (!ensureDirExists(parent)) return false;
+		}
+	}
+
+	if (mkdir(path.c_str(), 0755) != 0)
+	{
+		if (errno == EEXIST)
+			return true;
+		return false;
+	}
+	return true;
+}
+
+void	IpPort::handlePostRequest(ClientPtr &client, const std::string& path)
 {
 	std::cout << "DEBUG: handlePostRequest() called with path: " << path << std::endl;
 
-	// Extract Content-Length from headers
-	size_t headersEnd = client->_buffer.find("\r\n\r\n");
-	std::string headers = client->_buffer.substr(0, headersEnd);
-	size_t contentLengthPos = headers.find("Content-Length:");
-
-	int contentLength = 0;
-	if (contentLengthPos != std::string::npos)
+	if (client->_contentType.find("multipart/form-data") == std::string::npos)
 	{
-		size_t valueStart = headers.find(':', contentLengthPos) + 1;
-		while (valueStart < headers.size() && isspace(headers[valueStart]))
-			++valueStart;
-		size_t lineEnd = headers.find('\r', valueStart);
-		std::string lengthStr = headers.substr(valueStart, lineEnd - valueStart);
-		contentLength = std::stoi(lengthStr);
+		std::cout << "DEBUG: Unsupported Content-Type for POST: " << client->_contentType << std::endl;
+		generateResponse(client, "", 405);
+		return;
 	}
 
-	std::cout << "DEBUG: Content-Length: " << contentLength << std::endl;
-
-	// Get the request body
-	std::string requestBody;
-	if (headersEnd != std::string::npos && headersEnd + 4 < client->_buffer.size())
+	if (client->_multipartBoundary.empty())
 	{
-		requestBody = client->_buffer.substr(headersEnd + 4);
+		std::cout << "DEBUG: Missing multipart boundary" << std::endl;
+		generateResponse(client, "", 400);
+		return;
 	}
 
-	std::cout << "DEBUG: Request body: " << requestBody << std::endl;
-
-	// Process the POST request (e.g., save uploaded file, process form data)
-	std::string filePath = path;
-	if (!filePath.empty() && filePath[0] == '/')
-		filePath = filePath.substr(1);
-
-	std::string uploadPath = "web/www/uploads/" + filePath;
-	std::cout << "DEBUG: Upload path: " << uploadPath << std::endl;
-
-	// Create uploads directory if it doesn't exist
-	system("mkdir -p web/www/uploads");
-
-	// Write the body content to file
-	std::ofstream outFile(uploadPath, std::ios::binary);
-	if (outFile.good())
+	if (!client->_bodyProcessingInitialized)
 	{
-		outFile.write(requestBody.c_str(), requestBody.size());
-		outFile.close();
-		std::cout << "DEBUG: File uploaded successfully, generating 201 response" << std::endl;
-		generateResponse(client, uploadPath, 201);
-	}
-	else
-	{
-		std::cout << "DEBUG: Failed to create file, generating 500 response" << std::endl;
-		std::string emptyPath = "";
-		generateResponse(client, emptyPath, 500);
-	}
-
-	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
-}
-
-void IpPort::handleDeleteRequest(ClientPtr &client, const std::string& path)
-{
-	std::cout << "DEBUG: handleDeleteRequest() called with path: " << path << std::endl;
-
-	std::string filePath = path;
-
-	// Remove leading slash if present
-	if (!filePath.empty() && filePath[0] == '/')
-		filePath = filePath.substr(1);
-
-	std::string fullPath = "web/www/" + filePath;
-	std::cout << "DEBUG: Full file path for deletion: " << fullPath << std::endl;
-
-	// Check if file exists before attempting to delete
-	std::ifstream file(fullPath);
-	if (file.good())
-	{
-		file.close();
-
-		// Attempt to delete the file
-		if (std::remove(fullPath.c_str()) == 0)
+		client->_bodyProcessingInitialized = true;
+		client->_bodyBytesReceived = 0;
+		client->_bodyBuffer.clear();
+		client->_state = ClientState::GETTING_BODY;
+		if (client->_chunked)
 		{
-			std::cout << "DEBUG: File deleted successfully, generating 204 response" << std::endl;
-			std::string emptyPath = "";
-			generateResponse(client, emptyPath, 204);
+			client->_readingChunkSize = true;
+			client->_currentChunkSize = 0;
+			client->_currentChunkRead = 0;
+			client->_parsingChunkTrailers = false;
+			client->_chunkedFinished = false;
 		}
 		else
 		{
-			std::cout << "DEBUG: Failed to delete file, generating 500 response" << std::endl;
-			std::string emptyPath = "";
-			generateResponse(client, emptyPath, 500);
+			client->_bodyBytesExpected = client->_contentLen;
 		}
+	}
+
+	int errorStatus = 400;
+	BodyReadStatus status = client->_chunked
+		? getChunkedBody(*client, errorStatus)
+		: getContentLengthBody(*client, errorStatus);
+
+	if (status == BodyReadStatus::ERROR)
+	{
+		std::cout << "DEBUG: Error while reading request body, status " << errorStatus << std::endl;
+		client->resetBodyTracking();
+		generateResponse(client, "", errorStatus);
+		return;
+	}
+
+	std::string cleanPath = path;
+	if (!cleanPath.empty() && cleanPath[0] == '/')
+		cleanPath = cleanPath.substr(1);
+	std::string	uploadDir = std::string("web/www/uploads/") + cleanPath;
+	bool partFinished = false;
+	if (!drainMultipartFirstPartToFile(*client, client->_multipartBoundary, uploadDir, partFinished, errorStatus))
+	{
+		std::cout << "DEBUG: drainMultipartFirstPartToFile error status " << errorStatus << std::endl;
+		client->resetBodyTracking();
+		generateResponse(client, "", errorStatus);
+		return;
+	}
+
+	if (status == BodyReadStatus::NEED_MORE || !partFinished)
+		return;
+
+	if (status == BodyReadStatus::COMPLETE && !partFinished)
+	{
+		client->resetBodyTracking();
+		generateResponse(client, "", 400);
+		return;
+	}
+
+	std::string finalPath = uploadDir;
+	if (!finalPath.empty() && finalPath.back() != '/') finalPath += '/';
+	finalPath += client->_uploadFilename;
+	client->resetBodyTracking();
+	std::cout << "DEBUG: File uploaded successfully to: " << finalPath << std::endl;
+	generateResponse(client, "", 201);
+	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+}
+
+void	IpPort::handleDeleteRequest(ClientPtr &client, const std::string& path)
+{
+	std::cout << "DEBUG: handleDeleteRequest() called with path: " << path << std::endl;
+
+	std::string fullPath = client->_ownerServer->findFile(client, path);
+	std::cout << "DEBUG: findFile returned for deletion: " << fullPath << std::endl;
+
+	if (fullPath.empty())
+	{
+		std::cout << "DEBUG: File not found for deletion, generating 404 response" << std::endl;
+		generateResponse(client, "", 404);
+		return;
+	}
+
+	if (std::remove(fullPath.c_str()) == 0)
+	{
+		std::cout << "DEBUG: File deleted successfully, generating 204 response" << std::endl;
+		generateResponse(client, "", 204);
 	}
 	else
 	{
-		std::cout << "DEBUG: File not found for deletion, generating 404 response" << std::endl;
-		std::string emptyPath = "";
-		generateResponse(client, emptyPath, 404);
+		std::cout << "DEBUG: Failed to delete file, generating 500 response" << std::endl;
+		generateResponse(client, "", 500);
 	}
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
@@ -355,89 +749,57 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 	}
 }
 
-// bool IpPort::readRequest(ClientPtr &client, int clientFd)
+// std::string	IpPort::getMimeType(const std::string& filePath)
 // {
-// 	char	buffer[IO_BUFFER_SIZE];
-// 	int		bytesRead = read(clientFd, buffer, sizeof(buffer) - 1);
+// 	if (filePath.empty())
+// 		return "text/html";
 
-// 	try
-// 	{
-// 		if (bytesRead > 0)
-// 		{
-// 			buffer[bytesRead] = '\0';
-// 			client->_buffer.append(buffer, bytesRead);
-// 			return true;
-// 		}
-// 		else if (bytesRead == 0)
-// 		{
-// 			std::cout << "DEBUG: Client disconnected" << std::endl;
-// 			return false;
-// 		}
-// 		else if (bytesRead == -1)
-// 		{
-// 			THROW_ERRNO("read");
-// 		}
-// 	}
-// 	catch (std::exception& e)
-// 	{
-// 		std::cout << "Exception: " << e.what() << std::endl;
-// 		return false;
-// 	}
+// 	size_t dotPos = filePath.find_last_of('.');
+// 	if (dotPos == std::string::npos)
+// 		return "text/plain";
 
-// 	return true;
+// 	std::string extension = filePath.substr(dotPos + 1);
+
+// 	// Convert to lowercase
+// 	std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+// 	if (extension == "html" || extension == "htm")
+// 		return "text/html";
+// 	else if (extension == "css")
+// 		return "text/css";
+// 	else if (extension == "js")
+// 		return "application/javascript";
+// 	else if (extension == "json")
+// 		return "application/json";
+// 	else if (extension == "txt")
+// 		return "text/plain";
+// 	else if (extension == "png")
+// 		return "image/png";
+// 	else if (extension == "jpg" || extension == "jpeg")
+// 		return "image/jpeg";
+// 	else if (extension == "gif")
+// 		return "image/gif";
+// 	else if (extension == "ico")
+// 		return "image/x-icon";
+// 	else
+// 		return "application/octet-stream";
 // }
 
-std::string	IpPort::getMimeType(const std::string& filePath)
-{
-	if (filePath.empty())
-		return "text/html";
-
-	size_t dotPos = filePath.find_last_of('.');
-	if (dotPos == std::string::npos)
-		return "text/plain";
-
-	std::string extension = filePath.substr(dotPos + 1);
-
-	// Convert to lowercase
-	std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-
-	if (extension == "html" || extension == "htm")
-		return "text/html";
-	else if (extension == "css")
-		return "text/css";
-	else if (extension == "js")
-		return "application/javascript";
-	else if (extension == "json")
-		return "application/json";
-	else if (extension == "txt")
-		return "text/plain";
-	else if (extension == "png")
-		return "image/png";
-	else if (extension == "jpg" || extension == "jpeg")
-		return "image/jpeg";
-	else if (extension == "gif")
-		return "image/gif";
-	else if (extension == "ico")
-		return "image/x-icon";
-	else
-		return "application/octet-stream";
-}
-
-void	IpPort::processCgi(ClientPtr &client)
-{
-	try {
-		Cgi cgi(*client);
-		if (!cgi.start()) {
-			generateResponse(client, "", 500);
-			return;
-		}
-		client->_state = ClientState::CGI_READING_OUTPUT;
-	}
-	catch (const std::exception &e) {
-		std::cerr << "CGI start exception: " << e.what() << std::endl;
-		generateResponse(client, "", 500);
-	}
-}
+// void	IpPort::processCgi(ClientPtr &client)
+// {
+// 	try {
+// 		Cgi cgi(*client);
+// 		if (!cgi.start()) {
+// 			generateResponse(client, "", 500);
+// 			return;
+// 		}
+// 		client->_state = ClientState::CGI_READING_OUTPUT;
+// 	}
+// 	catch (const std::exception &e) {
+// 		std::cerr << "CGI start exception: " << e.what() << std::endl;
+// 		generateResponse(client, "", 500);
+// 	}
+// }
 
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 {

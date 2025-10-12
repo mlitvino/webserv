@@ -2,6 +2,12 @@
 
 #include "webserv.hpp"
 
+enum class BodyReadStatus {
+	NEED_MORE,
+	COMPLETE,
+	ERROR
+};
+
 class IpPort : public IEpollFdOwner
 {
 	public:
@@ -30,6 +36,19 @@ class IpPort : public IEpollFdOwner
 		void			handleDeleteRequest(ClientPtr &client, const std::string& path);
 		void			generateResponse(ClientPtr &client, std::string path, int statusCode);
 		std::string		getMimeType(const std::string& filePath);
+
+		BodyReadStatus	getContentLengthBody(Client &client, int &errorStatus);
+		BodyReadStatus	getChunkedBody(Client &client, int &errorStatus);
+		bool			drainMultipartFirstPartToFile(Client &client,
+											const std::string &boundary,
+											const std::string &uploadDir,
+											bool &finished,
+											int &errorStatus);
+		bool			parseMultipartFirstPart(const std::string &body,
+										const std::string &boundary,
+										std::string &outFilename,
+										std::string &outData);
+		static bool		ensureDirExists(const std::string &dir);
 
 		void			processCgi(ClientPtr &client);
 

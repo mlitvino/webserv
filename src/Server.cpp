@@ -28,6 +28,13 @@ bool	Server::areHeadersValid(ClientPtr &client)
 		return false;
 	}
 
+	if (client->_contentType.find("multipart/form-data") != std::string::npos && client->_multipartBoundary.empty())
+	{
+		std::cout << "DEBUG: Multipart boundary missing" << std::endl;
+		//generateResponse(client, "", 400);
+		return false;
+	}
+
 	// isPathAllowed
 
 	std::cout << "Validating headers is done" << std::endl;

@@ -57,8 +57,7 @@ void	Client::sendResponse()
 		&& _fileOffset >= _fileSize)
 	{
 		_responseBuffer.clear();
-		size_t	endRequest = _buffer.find("\r\n\r\n") + 4;
-		_buffer.erase(0, endRequest);
+		resetBodyTracking();
 		if (_fileFd != -1)
 		{
 			close(_fileFd);
@@ -146,6 +145,16 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _chunked(false)
 	, _keepAlive(false)
 	, _hostHeader()
+	, _uploadFilename()
+	, _bodyBuffer()
+	, _bodyBytesExpected{0}
+	, _bodyBytesReceived{0}
+	, _bodyProcessingInitialized(false)
+	, _currentChunkSize{0}
+	, _currentChunkRead{0}
+	, _readingChunkSize(true)
+	, _parsingChunkTrailers(false)
+	, _chunkedFinished(false)
 	, _clientAddr{clientAddr}
 	, _clientAddrLen{clientAddrLen}
 	, _clientFd{clientFd}
@@ -153,7 +162,22 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _fileBuffer()
 	, _fileSize{0}
 	, _fileOffset{0}
-{}
+{
+	resetBodyTracking();
+}
+
+void	Client::resetBodyTracking()
+{
+	_bodyBuffer.clear();
+	_bodyBytesExpected = 0;
+	_bodyBytesReceived = 0;
+	_bodyProcessingInitialized = false;
+	_currentChunkSize = 0;
+	_currentChunkRead = 0;
+	_readingChunkSize = true;
+	_parsingChunkTrailers = false;
+	_chunkedFinished = false;
+}
 
 Client::~Client()
 {

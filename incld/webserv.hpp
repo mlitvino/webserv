@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 #include <sys/sendfile.h>
 #include <sys/wait.h>
-
+#include <errno.h>
 #include <string.h>
 
 #define QUEUE_SIZE 20
@@ -29,6 +29,12 @@
 #define MAX_EVENTS 10
 #define DEFAULT_EPOLL_SIZE 10
 #define CLIENT_HEADER_LIMIT 1024
+#define MAX_CHUNK_SIZE 20000
+
+const size_t kMaxRequestBodySize = 50 * 1024 * 1024;
+const size_t kMaxChunkDataSize = 10 * 1024 * 1024;
+const size_t kMaxChunkHeaderSize = 8 * 1024;
+const size_t kMaxTrailersSize = 8 * 1024;
 
 #define DEFAULT_CONF "conf/default.conf"
 

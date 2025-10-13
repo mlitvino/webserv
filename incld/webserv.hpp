@@ -58,6 +58,7 @@ using FdClientMap = std::unordered_map<int, ClientPtr>;
 using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
 
 #include "CustomException.hpp"
+#include "HttpException.hpp"
 #include "utils.hpp"
 #include "IEpollFdOwner.hpp"
 #include "Server.hpp"

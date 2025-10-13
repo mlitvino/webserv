@@ -5,28 +5,19 @@ bool	Client::readRequest()
 	char	buffer[IO_BUFFER_SIZE];
 	int		bytesRead = read(_clientFd, buffer, sizeof(buffer) - 1);
 
-	try
+	if (bytesRead > 0)
 	{
-		if (bytesRead > 0)
-		{
-			buffer[bytesRead] = '\0';
-			_buffer.append(buffer, bytesRead);
-			return true;
-		}
-		else if (bytesRead == 0)
-		{
-			std::cout << "DEBUG: Client disconnected" << std::endl;
-			return false;
-		}
-		else if (bytesRead == -1)
-		{
-			THROW_ERRNO("read");
-		}
+		buffer[bytesRead] = '\0';
+		_buffer.append(buffer, bytesRead);
+		return true;
 	}
-	catch (std::exception& e)
+	else if (bytesRead == 0)
 	{
-		std::cout << "Exception: " << e.what() << std::endl;
-		return false;
+		THROW("client disconnected");
+	}
+	else if (bytesRead == -1)
+	{
+		THROW_ERRNO("read");
 	}
 
 	return true;
@@ -100,9 +91,10 @@ void	Client::openFile(std::string &filePath)
 		return ;
 
 	err = fstat(_fileFd, &fileInfo);
-	if (err)
+	if (err == -1)
 	{
-		THROW_ERRNO("fstat");
+		close(_fileFd);
+		_fileFd = -1;
 	}
 	_fileSize = fileInfo.st_size;
 	_fileOffset = 0;

@@ -31,24 +31,16 @@ class IpPort : public IEpollFdOwner
 		void			parseHeaders(ClientPtr &client);
 		void			assignServerToClient(ClientPtr &client);
 
-		void			handleGetRequest(ClientPtr &client, const std::string& path);
+		void			handleGetRequest(ClientPtr &client);
 		void			handlePostRequest(ClientPtr &client, const std::string& path);
-		void			handleDeleteRequest(ClientPtr &client, const std::string& path);
+		void			handleDeleteRequest(ClientPtr &client);
 		void			generateResponse(ClientPtr &client, std::string path, int statusCode);
-		std::string		getMimeType(const std::string& filePath);
 
-		BodyReadStatus	getContentLengthBody(Client &client, int &errorStatus);
-		BodyReadStatus	getChunkedBody(Client &client, int &errorStatus);
-		bool			drainMultipartFirstPartToFile(Client &client,
-											const std::string &boundary,
-											const std::string &uploadDir,
+		BodyReadStatus	getContentLengthBody(ClientPtr &client);
+		BodyReadStatus	getChunkedBody(ClientPtr &client);
+		bool			getMultiPart(ClientPtr &client,
 											bool &finished,
 											int &errorStatus);
-		bool			parseMultipartFirstPart(const std::string &body,
-										const std::string &boundary,
-										std::string &outFilename,
-										std::string &outData);
-		static bool		ensureDirExists(const std::string &dir);
 
 		void			processCgi(ClientPtr &client);
 
@@ -57,4 +49,15 @@ class IpPort : public IEpollFdOwner
 
 		~IpPort();
 		IpPort(Program &program);
+		private:
+			// Helpers for multipart upload handling
+			bool		extractFilename(ClientPtr &client, const std::string &dashBoundary);
+			std::string	composeUploadPath(ClientPtr &client);
+			bool		writeBodyPart(ClientPtr &client,
+											const std::string &uploadPath,
+											size_t tailSize);
+			bool		consumeBoundaryAndSetFinished(ClientPtr &client,
+												const std::string &boundaryMarker,
+												bool &finished,
+												int &errorStatus);
 };

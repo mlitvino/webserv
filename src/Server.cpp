@@ -8,34 +8,25 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::cout << "Validating headers..." << std::endl;
 
 	if (client->_contentLen != 0 && client->_chunked)
-	{
-		std::cout << "Chunked body and content's length are presented at the same time" << std::endl;
-		//generateResponse(client, "", 405);
-		return false;
-	}
+		THROW_HTTP(400, "Chunked body and content-length are presented");
 
 	if (!isMethodAllowed(client, client->_httpPath))
-	{
-		std::cout << "Invalid Method" << std::endl;
-		//generateResponse(client, "", 405);
-		return false;
-	}
+		THROW_HTTP(405, "Method not allowed");
 
 	if (!isBodySizeValid(client))
-	{
-		std::cout << "Invalid Content-Length" << std::endl;
-		//generateResponse(client, "", 413);
-		return false;
-	}
+		THROW_HTTP(413, "Content too large");
 
-	if (client->_contentType.find("multipart/form-data") != std::string::npos && client->_multipartBoundary.empty())
-	{
-		std::cout << "DEBUG: Multipart boundary missing" << std::endl;
-		//generateResponse(client, "", 400);
-		return false;
-	}
+	if (client->_httpMethod == "POST" && client->_multipartBoundary.empty())
+		THROW_HTTP(400, "Multipart boundary missing");
 
-	// isPathAllowed
+	if (client->_httpMethod == "POST" && client->_contentType.find("multipart/form-data") == std::string::npos)
+		THROW_HTTP(415, "Unsupported media type");
+
+	std::string	resolved = findFile(client, client->_httpPath);
+	if (resolved.empty())
+		THROW_HTTP(404, "Not Found");
+
+	client->_resolvedPath = resolved;
 
 	std::cout << "Validating headers is done" << std::endl;
 	return true;
@@ -67,20 +58,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 	if (!matched)
 		return "";
 
-	std::vector<std::string> indexFiles;
-	if (!matched->index.empty())
-	{
-		std::istringstream iss(matched->index);
-		std::string token;
-		while (iss >> token)
-		{
-			if (!token.empty() && token.back() == ';') token.pop_back();
-			indexFiles.push_back(token);
-		}
-	}
-	else
-		indexFiles.push_back("index.html");
-
 	std::string	docRoot = matched->root;
 	if (docRoot.empty())
 		docRoot = "web/www";
@@ -99,6 +76,15 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 		fsPath += "/" + suffix;
 
 	std::cout << "FindFile: fsPath " << fsPath << std::endl;
+
+	if (client->_httpMethod == "POST")
+	{
+		std::string fsDir = fsPath.empty() ? docRoot : fsPath;
+		struct stat st{};
+		if (stat(fsDir.c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+			return fsDir;
+		return "";
+	}
 
 	if (!suffix.empty() && path.back() != '/')
 	{
@@ -120,6 +106,23 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 			THROW_ERRNO("stat");
 			return "";
 		}
+	}
+
+	std::vector<std::string> indexFiles;
+	if (!matched->index.empty())
+	{
+		std::istringstream iss(matched->index);
+		std::string token;
+		while (iss >> token)
+		{
+			if (!token.empty() && token.back() == ';')
+				token.pop_back();
+			indexFiles.push_back(token);
+		}
+	}
+	else
+	{
+		indexFiles.push_back("index.html");
 	}
 
 	std::string fsDir = fsPath.empty() ? docRoot : fsPath;

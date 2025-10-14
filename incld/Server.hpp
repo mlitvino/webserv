@@ -30,6 +30,8 @@ private:
 
 	int _sockfd;
 
+	const Location* findLocationForPath(const std::string& path) const;
+
 public:
 	FdClientMap					*_clientsMap;
 	FdEpollOwnerMap				*_handlersMap;

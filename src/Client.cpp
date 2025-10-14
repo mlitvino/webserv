@@ -62,7 +62,7 @@ void	Client::sendResponse()
 	if (bytesSent == 0)
 	{
 		std::cout << "Connection was closed in resndResponse" << std::endl;
-		_ipPort.closeConnection(_clientFd);
+		_ipPort.closeConnection(-1);
 	}
 	else if (bytesSent == -1)
 	{

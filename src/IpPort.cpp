@@ -70,6 +70,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			catch (std::bad_alloc &e)
 			{
 				std::cout << "ERROR: Infficient memory space" << std::endl;
+				closeConnection(eventFd);
 			}
 			catch (HttpException &e)
 			{
@@ -79,8 +80,8 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			}
 			catch (std::exception &e)
 			{
-				closeConnection(eventFd);
 				std::cout << "Exception: " << e.what() << std::endl;
+				closeConnection(eventFd);
 			}
 		}
 	}
@@ -170,10 +171,10 @@ void	IpPort::parseHeaders(ClientPtr &client)
 			client->_contentType = value;
 			if (value.find("multipart/form-data") != std::string::npos)
 			{
-				size_t	bpos = value.find("boundary=");
+				size_t bpos = value.find("boundary=");
 				if (bpos != std::string::npos)
 				{
-					size_t	valpos = bpos + strlen("boundary=");
+					size_t valpos = bpos + strlen("boundary=");
 					client->_multipartBoundary = value.substr(valpos);
 				}
 			}
@@ -257,12 +258,12 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		}
 		else
 		{
-		client->openFile(filePath);
-		if (client->_fileFd < 0)
-		{
-			std::cout << "DEBUG: Coudln't open filePath" << std::endl;
-			statusCode = 500;
-			statusText = "Internal Server Error";
+			client->openFile(filePath);
+			if (client->_fileFd < 0)
+			{
+				std::cout << "DEBUG: Coudln't open filePath" << std::endl;
+				statusCode = 500;
+				statusText = "Internal Server Error";
 			}
 			contentLentgh = client->_fileSize;
 		}
@@ -424,12 +425,12 @@ void	IpPort::closeConnection(int clientFd)
 	_handlersMap.erase(clientFd);
 	_clientsMap.erase(clientFd);
 
-if (clientFd != -1)
+	if (clientFd != -1)
 	{
-	int err = epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
-	if (err == -1)
-		THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
-}
+		int err = epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
+		if (err == -1)
+			THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
+	}
 
 	std::cout << "Closing connection is done" << std::endl;
 }

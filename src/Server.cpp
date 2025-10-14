@@ -145,6 +145,12 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 			return candidate;
 	}
 
+	if (matched->autoindex)
+	{
+		client->_isTargetDir = true;
+		return fsDir;
+	}
+
 	return "";
 }
 

@@ -41,6 +41,8 @@ class Client : public IEpollFdOwner
 
 		std::string			_resolvedPath;
 
+		bool				_isTargetDir;
+
 		std::string			_uploadFilename;
 		// Request body tracking
 		std::string			_bodyBuffer;

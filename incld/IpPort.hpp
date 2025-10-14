@@ -2,11 +2,7 @@
 
 #include "webserv.hpp"
 
-enum class BodyReadStatus {
-	NEED_MORE,
-	COMPLETE,
-	ERROR
-};
+class PostRequestHandler;
 
 class IpPort : public IEpollFdOwner
 {
@@ -32,18 +28,9 @@ class IpPort : public IEpollFdOwner
 		void			assignServerToClient(ClientPtr &client);
 
 		void			handleGetRequest(ClientPtr &client);
-		void			handlePostRequest(ClientPtr &client, const std::string& path);
 		void			handleDeleteRequest(ClientPtr &client);
 		void			generateResponse(ClientPtr &client, std::string path, int statusCode);
-
-		BodyReadStatus	getContentLengthBody(ClientPtr &client);
-		BodyReadStatus	getChunkedBody(ClientPtr &client);
-		bool			getMultiPart(ClientPtr &client);
-	
-		bool			extractFilename(ClientPtr &client, std::string &dashBoundary);
-		std::string		composeUploadPath(ClientPtr &client);
-		void			writeBodyPart(ClientPtr &client, std::string &uploadPath, size_t tailSize);
-		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
+		void			listDirectory(ClientPtr &client, std::string &listingBuffer);
 
 		void			processCgi(ClientPtr &client);
 
@@ -53,5 +40,7 @@ class IpPort : public IEpollFdOwner
 		~IpPort();
 		IpPort(Program &program);
 
+	private:
+		std::unique_ptr<PostRequestHandler>	_postHandler;
 
 };

@@ -1,6 +1,9 @@
 #include "IpPort.hpp"
 #include "Cgi.hpp"
 #include "PostRequestHandler.hpp"
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sstream>
 
 void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 {
@@ -242,15 +245,26 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		return;
 	}
 
+	std::string	listingBuffer;
+	size_t		contentLentgh;
 	if (!filePath.empty())
 	{
 		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
+		if (client->_isTargetDir)
+		{
+			listDirectory(client, listingBuffer);
+			contentLentgh = listingBuffer.size();
+		}
+		else
+		{
 		client->openFile(filePath);
 		if (client->_fileFd < 0)
 		{
 			std::cout << "DEBUG: Coudln't open filePath" << std::endl;
 			statusCode = 500;
 			statusText = "Internal Server Error";
+			}
+			contentLentgh = client->_fileSize;
 		}
 	}
 	else
@@ -261,11 +275,14 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	// add MIME TYPE
 	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
 	response += "Content-Type: text/html\r\n";
-	response += "Content-Length: " + std::to_string(client->_fileSize) + "\r\n";
+	response += "Content-Length: " + std::to_string(contentLentgh) + "\r\n";
 	response += "Server: webserv/1.0\r\n";
 	response += "Connection: close\r\n";
 	response += "Cache-Control: no-cache\r\n";
 	response += "\r\n";
+
+	if (!listingBuffer.empty())
+		response += listingBuffer;
 
 	client->_state = ClientState::SENDING_RESPONSE;
 	utils::changeEpollHandler(_handlersMap, client->_clientFd, client.get());
@@ -294,6 +311,54 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 			}
 		}
 	}
+}
+
+void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
+{
+	std::string dirPath = client->_resolvedPath;
+	DIR *dir = opendir(dirPath.c_str());
+	if (!dir)
+		THROW_HTTP(500, "Failed to open directory");
+
+	std::vector<std::string> entries;
+	struct dirent *ent;
+	while ((ent = readdir(dir)) != NULL)
+	{
+		std::string name = ent->d_name;
+		if (name == "." || name == "..")
+			continue;
+		entries.push_back(name);
+	}
+	closedir(dir);
+
+	std::sort(entries.begin(), entries.end());
+
+	std::ostringstream oss;
+	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->_httpPath << "</title></head>";
+	oss << "<body><h1>Index of " << client->_httpPath << "</h1><ul>";
+	for (std::vector<std::string>::iterator it = entries.begin(); it != entries.end(); ++it)
+	{
+		std::string &name = *it;
+		std::string href = client->_httpPath;
+		if (href.empty() || href.back() != '/')
+			href += '/';
+		href += name;
+
+		// Determine if entry is a directory
+		std::string fullPath = dirPath;
+		if (fullPath.empty() || fullPath.back() != '/')
+			fullPath += '/';
+		fullPath += name;
+		struct stat st;
+		bool isDir = false;
+		if (stat(fullPath.c_str(), &st) == 0)
+			isDir = S_ISDIR(st.st_mode);
+
+		oss << "<li><a href=\"" << href << "\">" << name << (isDir ? "/" : "") << "</a></li>";
+	}
+	oss << "</ul><hr><address>webserv/1.0</address></body></html>";
+
+	listingBuffer = oss.str();
 }
 
 // void	IpPort::processCgi(ClientPtr &client)

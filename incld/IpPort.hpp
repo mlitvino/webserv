@@ -38,9 +38,12 @@ class IpPort : public IEpollFdOwner
 
 		BodyReadStatus	getContentLengthBody(ClientPtr &client);
 		BodyReadStatus	getChunkedBody(ClientPtr &client);
-		bool			getMultiPart(ClientPtr &client,
-											bool &finished,
-											int &errorStatus);
+		bool			getMultiPart(ClientPtr &client);
+	
+		bool			extractFilename(ClientPtr &client, std::string &dashBoundary);
+		std::string		composeUploadPath(ClientPtr &client);
+		void			writeBodyPart(ClientPtr &client, std::string &uploadPath, size_t tailSize);
+		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
 
 		void			processCgi(ClientPtr &client);
 
@@ -49,15 +52,6 @@ class IpPort : public IEpollFdOwner
 
 		~IpPort();
 		IpPort(Program &program);
-		private:
-			// Helpers for multipart upload handling
-			bool		extractFilename(ClientPtr &client, const std::string &dashBoundary);
-			std::string	composeUploadPath(ClientPtr &client);
-			bool		writeBodyPart(ClientPtr &client,
-											const std::string &uploadPath,
-											size_t tailSize);
-			bool		consumeBoundaryAndSetFinished(ClientPtr &client,
-												const std::string &boundaryMarker,
-												bool &finished,
-												int &errorStatus);
+
+
 };

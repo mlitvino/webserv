@@ -300,7 +300,7 @@ BodyReadStatus IpPort::getChunkedBody(ClientPtr &client)
 	return BodyReadStatus::NEED_MORE;
 }
 
-bool IpPort::extractFilename(ClientPtr &client, const std::string &dashBoundary)
+bool IpPort::extractFilename(ClientPtr &client, std::string &dashBoundary)
 {
 	size_t bpos = client->_bodyBuffer.find(dashBoundary);
 	if (bpos == std::string::npos)
@@ -360,7 +360,7 @@ std::string IpPort::composeUploadPath(ClientPtr &client)
 	return client->_resolvedPath + client->_uploadFilename;
 }
 
-bool IpPort::writeBodyPart(ClientPtr &client, const std::string &uploadPath, size_t tailSize)
+void IpPort::writeBodyPart(ClientPtr &client, std::string &uploadPath, size_t tailSize)
 {
 	if (client->_bodyBuffer.size() > tailSize)
 	{
@@ -372,42 +372,28 @@ bool IpPort::writeBodyPart(ClientPtr &client, const std::string &uploadPath, siz
 		out.close();
 		client->_bodyBuffer.erase(0, toWrite);
 	}
-	return true;
 }
 
-// Helper: consume boundary marker and set finished flag accordingly
-bool IpPort::consumeBoundaryAndSetFinished(ClientPtr &client,
-										   const std::string &boundaryMarker,
-										   bool &finished,
-										   int &errorStatus)
+void	IpPort::getLastBoundary(ClientPtr &client, std::string &boundaryMarker)
 {
 	if (client->_bodyBuffer.compare(0, boundaryMarker.size(), boundaryMarker) != 0)
-	{
-		errorStatus = 400;
-		return false;
-	}
+		THROW_HTTP(400, "Body boundary missing");
 	client->_bodyBuffer.erase(0, boundaryMarker.size());
 	if (client->_bodyBuffer.compare(0, 2, "--") == 0)
-	{
 		client->_bodyBuffer.erase(0, 2);
-		finished = true; // final boundary
-	}
 	if (client->_bodyBuffer.compare(0, 2, "\r\n") == 0)
 		client->_bodyBuffer.erase(0, 2);
-	return true;
 }
 
-bool	IpPort::getMultiPart(ClientPtr &client, bool &finished, int &errorStatus)
+bool	IpPort::getMultiPart(ClientPtr &client)
 {
-	finished = false;
-
-	const std::string dashBoundary = "--" + client->_multipartBoundary;
-	const std::string boundaryMarker = "\r\n" + dashBoundary;
+	std::string dashBoundary = "--" + client->_multipartBoundary;
+	std::string boundaryMarker = "\r\n" + dashBoundary;
 	if (client->_uploadFilename.empty())
 	{
 		extractFilename(client, dashBoundary);
 		if (client->_uploadFilename.empty())
-			return true;
+			return false;
 	}
 	std::string uploadPath = composeUploadPath(client);
 
@@ -415,22 +401,19 @@ bool	IpPort::getMultiPart(ClientPtr &client, bool &finished, int &errorStatus)
 	if (markerPos == std::string::npos)
 	{
 		size_t tail = boundaryMarker.size();
-		return writeBodyPart(client, uploadPath, tail);
+		writeBodyPart(client, uploadPath, tail);
+		return false;
 	}
 	if (markerPos > 0)
 	{
 		std::ofstream out(uploadPath.c_str(), std::ios::binary | std::ios::app);
-		if (!out.good()) { errorStatus = 500; return false; }
+		if (!out.good())
+			THROW_HTTP(500, "Failed to open file");
 		out.write(client->_bodyBuffer.data(), static_cast<std::streamsize>(markerPos));
 		out.close();
 	}
 	client->_bodyBuffer.erase(0, markerPos);
-
-	if (!consumeBoundaryAndSetFinished(client, boundaryMarker, finished, errorStatus))
-		return false;
-
-	// For single-part handling, encountering any boundary means we finished first part
-	finished = true;
+	getLastBoundary(client, boundaryMarker);
 	return true;
 }
 
@@ -458,26 +441,16 @@ void	IpPort::handlePostRequest(ClientPtr &client, const std::string& path)
 		}
 	}
 
-	int errorStatus = 400;
-
 	/*
 		isBodyTooBig
 	*/
 
 	BodyReadStatus status = client->_chunked ? getChunkedBody(client) : getContentLengthBody(client);
+	bool isBodyFinished = getMultiPart(client);
 
-	bool partFinished = false;
-	if (!getMultiPart(client, partFinished, errorStatus))
-	{
-		std::cout << "DEBUG: getMultiPart error status " << errorStatus << std::endl;
-		generateResponse(client, "", errorStatus);
+	if (status == BodyReadStatus::NEED_MORE || !isBodyFinished)
 		return;
-	}
-
-	if (status == BodyReadStatus::NEED_MORE || !partFinished)
-		return;
-
-	if (status == BodyReadStatus::COMPLETE && !partFinished)
+	if (status == BodyReadStatus::COMPLETE && !isBodyFinished)
 		THROW_HTTP(400, "No more content and part not finished");
 
 	client->resetBodyTracking();

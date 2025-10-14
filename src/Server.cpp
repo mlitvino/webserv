@@ -32,13 +32,13 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	return true;
 }
 
-std::string	Server::findFile(ClientPtr &client, const std::string& path)
+const Location* Server::findLocationForPath(const std::string& path) const
 {
-	const std::vector<Location>& locations = getLocations();
-	const Location* matched = nullptr;
-	size_t bestLen = 0;
+	const std::vector<Location>&	locations = getLocations();
+	const Location*					matched = nullptr;
+	size_t							bestLen = 0;
 
-	for (auto it = locations.begin(); it != locations.end(); ++it)
+	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
 	{
 		const std::string &locPath = it->path;
 		if (path.size() >= locPath.size() &&
@@ -54,6 +54,14 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path)
 			}
 		}
 	}
+
+	return matched;
+}
+
+std::string	Server::findFile(ClientPtr &client, const std::string& path)
+{
+	client->_isTargetDir = false;
+	const Location* matched = findLocationForPath(path);
 
 	if (!matched)
 		return "";
@@ -149,27 +157,7 @@ bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
 {
 	const std::vector<Location>& locations = getLocations();
 	std::cout << "DEBUG: Found " << locations.size() << " locations" << std::endl;
-
-	const Location* matchedLocation = nullptr;
-	size_t longestMatch = 0;
-
-	for (const auto& location : locations)
-	{
-		std::cout << "DEBUG: Checking location: " << location.path << " against path: " << path << std::endl;
-		const std::string &locPath = location.path;
-		if (path.size() >= locPath.size() &&
-			path.compare(0, locPath.size(), locPath) == 0)
-		{
-			bool validBoundary = (locPath == "/") ||
-				(path.size() == locPath.size()) ||
-				(path.size() > locPath.size() && (path[locPath.size()] == '/'));
-			if (validBoundary && locPath.length() > longestMatch) {
-				matchedLocation = &location;
-				longestMatch = location.path.length();
-				std::cout << "DEBUG: Matched location: " << location.path << std::endl;
-			}
-		}
-	}
+	const Location* matchedLocation = findLocationForPath(path);
 
 	if (!matchedLocation)
 	{

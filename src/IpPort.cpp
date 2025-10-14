@@ -424,9 +424,12 @@ void	IpPort::closeConnection(int clientFd)
 	_handlersMap.erase(clientFd);
 	_clientsMap.erase(clientFd);
 
+if (clientFd != -1)
+	{
 	int err = epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
-	if (err)
-		THROW("epoll_ctl(EPOLL_CTL_DEL)");
+	if (err == -1)
+		THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
+}
 
 	std::cout << "Closing connection is done" << std::endl;
 }

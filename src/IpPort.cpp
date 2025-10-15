@@ -362,12 +362,12 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 
 void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 {
-	std::string dirPath = client->_resolvedPath;
+	std::string	dirPath = client->_resolvedPath;
 	DIR *dir = opendir(dirPath.c_str());
 	if (!dir)
 		THROW_HTTP(500, "Failed to open directory");
 
-	std::vector<std::string> entries;
+	std::vector<std::string>	entries;
 	struct dirent *ent;
 	while ((ent = readdir(dir)) != NULL)
 	{
@@ -380,11 +380,11 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 
 	std::sort(entries.begin(), entries.end());
 
-	std::ostringstream oss;
+	std::ostringstream	oss;
 	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->_httpPath << "</title></head>";
 	oss << "<body><h1>Index of " << client->_httpPath << "</h1><ul>";
-	// Add javascript helper to send DELETE requests
-	oss << "<script>function del(path){fetch(path,{method:'DELETE'}).then(r=>{if(r.ok)location.reload();else alert('Delete failed');}).catch(e=>alert('Delete failed'));}</script>";
+
+	// Use POST form with _method=DELETE to support browsers without JS
 	for (std::vector<std::string>::iterator it = entries.begin(); it != entries.end(); ++it)
 	{
 		std::string &name = *it;
@@ -394,7 +394,7 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 		href += name;
 
 		// Determine if entry is a directory
-		std::string fullPath = dirPath;
+		std::string	fullPath = dirPath;
 		if (fullPath.empty() || fullPath.back() != '/')
 			fullPath += '/';
 		fullPath += name;
@@ -405,11 +405,15 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 
 		oss << "<li><a href=\"" << href << "\">" << name << (isDir ? "/" : "") << "</a>";
 		if (!isDir)
-			oss << " <button onclick=\"del('" << href << "')\">Delete</button>";
+		{
+			oss << " <form method=\"POST\" action=\"" <<
+			href << "\" style=\"display:inline\" onsubmit=\"return confirm('Delete file?');\">";
+			oss << "<input type=\"hidden\" name=\"_method\" value=\"DELETE\">";
+			oss << "<button type=\"submit\">Delete</button></form>";
+		}
 		oss << "</li>";
 	}
 	oss << "</ul><hr><address>webserv/1.0</address></body></html>";
-
 	listingBuffer = oss.str();
 }
 

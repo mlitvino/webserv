@@ -4,6 +4,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sstream>
+#include <algorithm>
+#include <cctype>
 
 void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 {
@@ -230,7 +232,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		default: statusText = "Unknown"; break;
 	}
 
-	if (statusCode != 200 && statusCode != 201)
+	if (statusCode >= 400)
 		filePath = client->_ownerServer->getCustomErrorPage(statusCode);
 
 	// For 204 No Content, we don't send a body
@@ -247,7 +249,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	}
 
 	std::string	listingBuffer;
-	size_t		contentLentgh;
+	size_t		contentLentgh = 0;
 	if (!filePath.empty())
 	{
 		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
@@ -273,14 +275,8 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		std::cout << "DEBUG: filePath is empty" << std::endl;
 	}
 
-	// add MIME TYPE
 	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
-	response += "Content-Type: text/html\r\n";
-	response += "Content-Length: " + std::to_string(contentLentgh) + "\r\n";
-	response += "Server: webserv/1.0\r\n";
-	response += "Connection: close\r\n";
-	response += "Cache-Control: no-cache\r\n";
-	response += "\r\n";
+	response += formHeaders(client, filePath, contentLentgh);
 
 	if (!listingBuffer.empty())
 		response += listingBuffer;
@@ -290,6 +286,56 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	client->_responseBuffer = std::move(response);
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+}
+
+
+std::string IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
+{
+	std::string contentType = "application/octet-stream";
+	std::string contentDisposition;
+
+	if (client->_isTargetDir)
+	{
+		contentType = "text/html";
+	}
+	else if (!filePath.empty())
+	{
+		size_t		lastSlash = filePath.find_last_of("/\\");
+		std::string	fileName = (lastSlash == std::string::npos) ? filePath : filePath.substr(lastSlash + 1);
+		size_t dot = fileName.find_last_of('.');
+		std::string ext;
+		if (dot != std::string::npos && dot + 1 < fileName.size())
+			ext = fileName.substr(dot + 1);
+
+		if (ext == "html" || ext == "htm")
+			contentType = "text/html";
+		else if (ext == "css")
+			contentType = "text/css";
+		else if (ext == "png")
+			contentType = "image/png";
+		else if (ext == "gif")
+			contentType = "image/gif";
+		else if (ext == "pdf")
+			contentType = "application/pdf";
+		else if (ext == "txt")
+			contentType = "text/plain";
+		else
+			contentType = "application/octet-stream";
+
+		if (ext != "html" && ext != "htm" && ext != "cgi")
+			contentDisposition = "Content-Disposition: attachment; filename=\"" + fileName + "\"";
+	}
+
+	std::string hdrs;
+	hdrs += "Content-Type: " + contentType + "\r\n";
+	if (!contentDisposition.empty())
+		hdrs += contentDisposition + "\r\n";
+	hdrs += "Content-Length: " + std::to_string(contentLength) + "\r\n";
+	hdrs += "Server: webserv/1.0\r\n";
+	hdrs += "Connection: close\r\n";
+	hdrs += "Cache-Control: no-cache\r\n";
+	hdrs += "\r\n";
+	return hdrs;
 }
 
 void	IpPort::assignServerToClient(ClientPtr &client)

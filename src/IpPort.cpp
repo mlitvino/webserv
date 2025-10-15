@@ -383,6 +383,8 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	std::ostringstream oss;
 	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->_httpPath << "</title></head>";
 	oss << "<body><h1>Index of " << client->_httpPath << "</h1><ul>";
+// Add javascript helper to send DELETE requests
+	oss << "<script>function del(path){fetch(path,{method:'DELETE'}).then(r=>{if(r.ok)location.reload();else alert('Delete failed');}).catch(e=>alert('Delete failed'));}</script>";
 	for (std::vector<std::string>::iterator it = entries.begin(); it != entries.end(); ++it)
 	{
 		std::string &name = *it;
@@ -401,7 +403,10 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 		if (stat(fullPath.c_str(), &st) == 0)
 			isDir = S_ISDIR(st.st_mode);
 
-		oss << "<li><a href=\"" << href << "\">" << name << (isDir ? "/" : "") << "</a></li>";
+		oss << "<li><a href=\"" << href << "\">" << name << (isDir ? "/" : "") << "</a>";
+		if (!isDir)
+			oss << " <button onclick=\"del('" << href << "')\">Delete</button>";
+		oss << "</li>";
 	}
 	oss << "</ul><hr><address>webserv/1.0</address></body></html>";
 

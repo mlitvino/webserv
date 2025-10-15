@@ -31,6 +31,7 @@ class IpPort : public IEpollFdOwner
 		void			handleDeleteRequest(ClientPtr &client);
 		void			generateResponse(ClientPtr &client, std::string path, int statusCode);
 		void			listDirectory(ClientPtr &client, std::string &listingBuffer);
+		std::string		formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength);
 
 		void			processCgi(ClientPtr &client);
 

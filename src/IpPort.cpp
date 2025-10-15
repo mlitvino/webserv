@@ -118,7 +118,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "DELETE")
 	{
-		//handleDeleteRequest(client->_httpPath);
+		handleDeleteRequest(client);
 	}
 }
 
@@ -136,7 +136,6 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	client->_chunked = false;
 	client->_keepAlive = false;
 	client->_contentType.clear();
-			_postHandler->handlePostRequest(client, client->_httpPath);
 
 	std::getline(iss, line);
 	size_t firstSpace = line.find(' ');
@@ -151,9 +150,9 @@ void	IpPort::parseHeaders(ClientPtr &client)
 			line.pop_back();
 		size_t colon = line.find(':');
 		if (colon == std::string::npos)
-			continue;
-		std::string name = line.substr(0, colon);
-		std::string value = line.substr(colon + 1);
+			continue ;
+		std::string	name = line.substr(0, colon);
+		std::string	value = line.substr(colon + 1);
 
 		while (!value.empty() && isspace(value.front()))
 			value.erase(0, 1);
@@ -196,7 +195,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 
 void IpPort::handleGetRequest(ClientPtr &client)
 {
-	std::cout << "DEBUG: _resolvedPath returned: " <<  client->_resolvedPath << std::endl;
+	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
 	generateResponse(client, client->_resolvedPath, 200);
 }
 
@@ -289,10 +288,11 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 }
 
 
-std::string IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
+std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
 {
-	std::string contentType = "application/octet-stream";
-	std::string contentDisposition;
+	std::string	contentType = "application/octet-stream";
+	std::string	contentDisposition;
+	std::string	hdrs;
 
 	if (client->_isTargetDir)
 	{
@@ -322,12 +322,12 @@ std::string IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 		else
 			contentType = "application/octet-stream";
 
-		if (ext != "html" && ext != "htm" && ext != "cgi")
+		if (ext != "html" && ext != "htm" && ext != "cgi" && client->_httpMethod == "GET")
 			contentDisposition = "Content-Disposition: attachment; filename=\"" + fileName + "\"";
 	}
 
-	std::string hdrs;
-	hdrs += "Content-Type: " + contentType + "\r\n";
+	if (client->_httpMethod != "POST")
+		hdrs += "Content-Type: " + contentType + "\r\n";
 	if (!contentDisposition.empty())
 		hdrs += contentDisposition + "\r\n";
 	hdrs += "Content-Length: " + std::to_string(contentLength) + "\r\n";
@@ -383,7 +383,7 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	std::ostringstream oss;
 	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->_httpPath << "</title></head>";
 	oss << "<body><h1>Index of " << client->_httpPath << "</h1><ul>";
-// Add javascript helper to send DELETE requests
+	// Add javascript helper to send DELETE requests
 	oss << "<script>function del(path){fetch(path,{method:'DELETE'}).then(r=>{if(r.ok)location.reload();else alert('Delete failed');}).catch(e=>alert('Delete failed'));}</script>";
 	for (std::vector<std::string>::iterator it = entries.begin(); it != entries.end(); ++it)
 	{

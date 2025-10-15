@@ -47,6 +47,7 @@ void	Client::sendResponse()
 	if (_responseOffset >= _responseBuffer.size()
 		&& _fileOffset >= _fileSize)
 	{
+		std::cout << "Sending response is done" << std::endl;
 		_responseBuffer.clear();
 		resetBodyTracking();
 		if (_fileFd != -1)

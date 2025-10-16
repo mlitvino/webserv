@@ -65,13 +65,24 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		std::string token = take_first(rest);
 		location.autoindex = (token == "on");
 	} else if (directive == "return") {
-		std::string code = take_first(rest);
+		std::string codeStr = take_first(rest);
 		std::string url;
-		if (!code.empty()) {
+		if (!codeStr.empty()) {
 			size_t pos = rest.find(' ');
 			if (pos != std::string::npos) url = trim(rest.substr(pos + 1));
 		}
-		location.redirect = code + " " + url;
+		location.redirectCode = 0;
+		location.redirectUrl.clear();
+		if (!codeStr.empty() && !url.empty()) {
+			try {
+				int code = std::stoi(codeStr);
+				if (code >= 300 && code < 400) {
+					location.redirectCode = code;
+					location.redirectUrl = url;
+				}
+			} catch (...) {
+			}
+		}
 	} else if (directive == "cgi_extension") {
 		location.cgiExtension = take_first(rest);
 	} else if (directive == "cgi_path") {

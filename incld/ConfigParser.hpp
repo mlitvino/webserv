@@ -14,7 +14,8 @@ struct Location {
 	std::string index;
 	int allowedMethods = static_cast<int>(HttpMethod::GET);
 	bool autoindex = false;
-	std::string redirect;
+	int redirectCode = 0;
+	std::string redirectUrl;
 	std::string cgiExtension;
 	std::string cgiPath;
 };
@@ -32,7 +33,6 @@ struct ServerConfig {
 	std::map<int, std::string> errorPages;
 	std::vector<Location> locations;
 	
-	// Backward compatibility - get first listen config's host and port
 	std::string getHost() const { return listens.empty() ? "localhost" : listens[0].host; }
 	int getPort() const { return listens.empty() ? 8080 : listens[0].port; }
 };

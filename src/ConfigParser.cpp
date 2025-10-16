@@ -123,7 +123,7 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 			listen.port = std::stoi(listenValue.substr(colonPos + 1));
 		} else {
 			// Format: port only
-			listen.host = "localhost"; // default
+			listen.host = "0.0.0.0"; // default
 			listen.port = std::stoi(listenValue);
 		}
 		config.listens.push_back(listen);
@@ -238,7 +238,7 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 		std::vector<ListenConfig> listens = config.listens;
 		if (listens.empty()) {
 			ListenConfig defaultListen;
-			defaultListen.host = "localhost";
+			defaultListen.host = "0.0.0.0";
 			defaultListen.port = 8080;
 			listens.push_back(defaultListen);
 		}

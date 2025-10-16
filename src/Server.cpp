@@ -146,7 +146,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 			}
 			else if (!S_ISDIR(st.st_mode))
 			{
-				THROW("not regular file or directory");
+				THROW_HTTP(400, "Not regular file or directory");
 				return "";
 			}
 		}

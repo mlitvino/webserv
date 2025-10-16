@@ -152,7 +152,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 		}
 		else
 		{
-			THROW_ERRNO("stat");
+			THROW_HTTP(404, "Not Found");
 			return "";
 		}
 	}

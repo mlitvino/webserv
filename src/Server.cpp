@@ -107,9 +107,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 {
 	client->_isTargetDir = false;
 
-	if (!matched)
-		return "";
-
 	std::string	docRoot = matched->root;
 	if (docRoot.empty())
 		docRoot = "web/www";
@@ -205,12 +202,6 @@ bool	Server::isBodySizeValid(ClientPtr &client)
 
 bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 {
-	if (!matchedLocation)
-	{
-		std::cout << "DEBUG: No specific location found, allowing GET by default" << std::endl;
-		return client->_httpMethod == "GET";
-	}
-
 	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
 
 	int methodFlag = 0;

@@ -6,13 +6,17 @@
 bool	Server::areHeadersValid(ClientPtr &client)
 {
 	std::cout << "Validating headers..." << std::endl;
+	const Location	*matchedLocation = findLocationForPath(client->_httpPath);
 
 	// check HTTP version
+
+	if (client->_httpPath.find("%") != std::string::npos)
+		THROW_HTTP(400, "Unsupported encoded request");
 
 	if (client->_contentLen != 0 && client->_chunked)
 		THROW_HTTP(400, "Chunked body and content-length are presented");
 
-	if (!isMethodAllowed(client, client->_httpPath))
+	if (!isMethodAllowed(client, matchedLocation))
 		THROW_HTTP(405, "Method not allowed");
 
 	if (!isBodySizeValid(client))
@@ -31,7 +35,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 		THROW_HTTP(415, "Unsupported media type");
 	}
 
-	client->_resolvedPath = findFile(client, client->_httpPath);
+	client->_resolvedPath = findFile(client, client->_httpPath, matchedLocation);
 	if (client->_resolvedPath.empty())
 		THROW_HTTP(404, "Not Found");
 
@@ -45,30 +49,27 @@ const Location* Server::findLocationForPath(const std::string& path) const
 	const Location*					matched = nullptr;
 	size_t							bestLen = 0;
 
-	for (std::vector<Location>::const_iterator it = locations.begin(); it != locations.end(); ++it)
+	for (auto &location : locations)
 	{
-		const std::string &locPath = it->path;
+		const std::string &locPath = location.path;
 		if (path.size() >= locPath.size() &&
 			path.compare(0, locPath.size(), locPath) == 0)
 		{
-			bool validBoundary = (locPath == "/") ||
-				(path.size() == locPath.size()) ||
-				(path.size() > locPath.size() && (path[locPath.size()] == '/'));
+			bool validBoundary = (locPath == "/") || (path.size() == locPath.size())
+								|| (path.size() > locPath.size() && (path[locPath.size()] == '/'));
 			if (validBoundary && locPath.length() > bestLen)
 			{
-				matched = &(*it);
-				bestLen = it->path.length();
+				matched = &location;
+				bestLen = location.path.length();
 			}
 		}
 	}
-
 	return matched;
 }
 
-std::string	Server::findFile(ClientPtr &client, const std::string& path)
+std::string	Server::findFile(ClientPtr &client, const std::string& path, const Location* matched)
 {
 	client->_isTargetDir = false;
-	const Location* matched = findLocationForPath(path);
 
 	if (!matched)
 		return "";
@@ -166,12 +167,8 @@ bool	Server::isBodySizeValid(ClientPtr &client)
 	return client->_contentLen <= getClientBodySize();
 }
 
-bool	Server::isMethodAllowed(ClientPtr &client, std::string& path)
+bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 {
-	const std::vector<Location>& locations = getLocations();
-	std::cout << "DEBUG: Found " << locations.size() << " locations" << std::endl;
-	const Location* matchedLocation = findLocationForPath(path);
-
 	if (!matchedLocation)
 	{
 		std::cout << "DEBUG: No specific location found, allowing GET by default" << std::endl;

@@ -43,9 +43,9 @@ public:
 	Server& operator=(const Server&) = delete;
 
 	bool		areHeadersValid(ClientPtr &client);
-	bool		isMethodAllowed(ClientPtr &client, std::string& path);
+	bool		isMethodAllowed(ClientPtr &client, const Location* matchedLocation);
 	bool		isBodySizeValid(ClientPtr &client);
-	std::string	findFile(ClientPtr &client, const std::string& path);
+	std::string	findFile(ClientPtr &client, const std::string& path, const Location* matchedLocation);
 	std::string	getCustomErrorPage(int statusCode);
 
 	void	setHost(std::string host);

@@ -7,6 +7,8 @@ bool	Server::areHeadersValid(ClientPtr &client)
 {
 	std::cout << "Validating headers..." << std::endl;
 
+	// check HTTP version
+
 	if (client->_contentLen != 0 && client->_chunked)
 		THROW_HTTP(400, "Chunked body and content-length are presented");
 
@@ -16,17 +18,22 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (!isBodySizeValid(client))
 		THROW_HTTP(413, "Content too large");
 
-	if (client->_httpMethod == "POST" && client->_multipartBoundary.empty())
+	if (client->_contentType.find(CONTENT_TYPE_MULTIPART) != std::string::npos
+		&& client->_multipartBoundary.empty())
+	{
 		THROW_HTTP(400, "Multipart boundary missing");
+	}
 
-	if (client->_httpMethod == "POST" && client->_contentType.find("multipart/form-data") == std::string::npos)
+	if (client->_httpMethod == "POST"
+		&& client->_contentType.find(CONTENT_TYPE_MULTIPART) == std::string::npos
+		&& client->_contentType.find(CONTENT_TYPE_APP_FORM) == std::string::npos)
+	{
 		THROW_HTTP(415, "Unsupported media type");
+	}
 
-	std::string	resolved = findFile(client, client->_httpPath);
-	if (resolved.empty())
+	client->_resolvedPath = findFile(client, client->_httpPath);
+	if (client->_resolvedPath.empty())
 		THROW_HTTP(404, "Not Found");
-
-	client->_resolvedPath = resolved;
 
 	std::cout << "Validating headers is done" << std::endl;
 	return true;

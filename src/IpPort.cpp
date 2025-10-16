@@ -96,6 +96,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	if (client->_buffer.find("\r\n\r\n") == std::string::npos)
 		return ;
 
+	std::cout << "---------" << std::endl;
 	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
 	parseHeaders(client);
 	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
@@ -333,17 +334,16 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 			contentType = "application/pdf";
 		else if (ext == "txt")
 			contentType = "text/plain";
-		else
-			contentType = "application/octet-stream";
 
-		hdrs += "Content-Type: " + contentType + "\r\n";
+		if (!contentType.empty())
+			hdrs += "Content-Type: " + contentType + "\r\n";
 
-		if (ext != "html" && ext != "htm" && ext != "cgi")
+		if (ext != "html" && ext != "htm" && ext != "cgi" && ext != "ico")
 			hdrs = "Content-Disposition: attachment; filename=\"" + fileName + "\"" + "\r\n";
 	}
 	hdrs += "Content-Length: " + std::to_string(contentLength) + "\r\n";
 	hdrs += "Server: webserv/1.0\r\n";
-	hdrs += "Connection: close\r\n";
+	hdrs += "Connection: " + std::string((client->_keepAlive ? "keep-alive" : "close")) + "\r\n";
 	hdrs += "Cache-Control: no-cache\r\n";
 	hdrs += "\r\n";
 	return hdrs;

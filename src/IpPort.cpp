@@ -141,7 +141,20 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	size_t firstSpace = line.find(' ');
 	size_t secondSpace = line.find(' ', firstSpace + 1);
 	client->_httpMethod = line.substr(0, firstSpace);
-	client->_httpPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+
+	std::string	pathAndQuery = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+	client->_httpPath = pathAndQuery;
+	std::string	queryString;
+	if (pathAndQuery.find("%") != std::string::npos)
+	{
+		THROW_HTTP(400, "Unsupported encoded request");
+	}
+	size_t		qpos = pathAndQuery.find("?_method=DELETE");
+	if (qpos != std::string::npos)
+	{
+		client->_httpPath = pathAndQuery.substr(0, qpos);
+		client->_httpMethod = "DELETE";
+	}
 	client->_httpVersion = line.substr(secondSpace + 1);
 
 	while (std::getline(iss, line))
@@ -170,7 +183,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 		else if (name == "Content-Type")
 		{
 			client->_contentType = value;
-			if (value.find("multipart/form-data") != std::string::npos)
+			if (value.find(CONTENT_TYPE_MULTIPART) != std::string::npos)
 			{
 				size_t bpos = value.find("boundary=");
 				if (bpos != std::string::npos)
@@ -298,7 +311,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 	{
 		contentType = "text/html";
 	}
-	else if (!filePath.empty())
+	else if (!filePath.empty() && client->_httpMethod == "GET")
 	{
 		size_t		lastSlash = filePath.find_last_of("/\\");
 		std::string	fileName = (lastSlash == std::string::npos) ? filePath : filePath.substr(lastSlash + 1);
@@ -322,14 +335,11 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 		else
 			contentType = "application/octet-stream";
 
-		if (ext != "html" && ext != "htm" && ext != "cgi" && client->_httpMethod == "GET")
-			contentDisposition = "Content-Disposition: attachment; filename=\"" + fileName + "\"";
-	}
-
-	if (client->_httpMethod != "POST")
 		hdrs += "Content-Type: " + contentType + "\r\n";
-	if (!contentDisposition.empty())
-		hdrs += contentDisposition + "\r\n";
+
+		if (ext != "html" && ext != "htm" && ext != "cgi")
+			hdrs = "Content-Disposition: attachment; filename=\"" + fileName + "\"" + "\r\n";
+	}
 	hdrs += "Content-Length: " + std::to_string(contentLength) + "\r\n";
 	hdrs += "Server: webserv/1.0\r\n";
 	hdrs += "Connection: close\r\n";
@@ -377,40 +387,19 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 		entries.push_back(name);
 	}
 	closedir(dir);
-
 	std::sort(entries.begin(), entries.end());
-
 	std::ostringstream	oss;
 	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->_httpPath << "</title></head>";
 	oss << "<body><h1>Index of " << client->_httpPath << "</h1><ul>";
-
-	// Use POST form with _method=DELETE to support browsers without JS
-	for (std::vector<std::string>::iterator it = entries.begin(); it != entries.end(); ++it)
+	for (auto &name : entries)
 	{
-		std::string &name = *it;
 		std::string href = client->_httpPath;
 		if (href.empty() || href.back() != '/')
 			href += '/';
 		href += name;
-
-		// Determine if entry is a directory
-		std::string	fullPath = dirPath;
-		if (fullPath.empty() || fullPath.back() != '/')
-			fullPath += '/';
-		fullPath += name;
-		struct stat st;
-		bool isDir = false;
-		if (stat(fullPath.c_str(), &st) == 0)
-			isDir = S_ISDIR(st.st_mode);
-
-		oss << "<li><a href=\"" << href << "\">" << name << (isDir ? "/" : "") << "</a>";
-		if (!isDir)
-		{
-			oss << " <form method=\"POST\" action=\"" <<
-			href << "\" style=\"display:inline\" onsubmit=\"return confirm('Delete file?');\">";
-			oss << "<input type=\"hidden\" name=\"_method\" value=\"DELETE\">";
-			oss << "<button type=\"submit\">Delete</button></form>";
-		}
+		oss << "<li><a href=\"" << href << "\">" << name << "</a>";
+		oss << " <a href=\"" << href << "?_method=DELETE\" title=\"Delete\" onclick=\"return confirm('Delete file?');\"";
+		oss << "style=\"color:red;margin-left:8px;text-decoration:none\">&#10005;</a>";
 		oss << "</li>";
 	}
 	oss << "</ul><hr><address>webserv/1.0</address></body></html>";

@@ -108,6 +108,12 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	if (headersEnd != std::string::npos)
 		client->_buffer.erase(0, headersEnd + 4);
 
+	if (client->_state == ClientState::SENDING_RESPONSE)
+	{
+		std::cout << "Redirecting..." << std::endl;
+		return;
+	}
+
 	if (client->_httpMethod == "GET")
 	{
 		handleGetRequest(client);
@@ -144,11 +150,6 @@ void	IpPort::parseHeaders(ClientPtr &client)
 
 	std::string	pathAndQuery = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
 	client->_httpPath = pathAndQuery;
-	std::string	queryString;
-	if (pathAndQuery.find("%") != std::string::npos)
-	{
-		THROW_HTTP(400, "Unsupported encoded request");
-	}
 	size_t		qpos = pathAndQuery.find("?_method=DELETE");
 	if (qpos != std::string::npos)
 	{
@@ -303,7 +304,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 
 std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
 {
-	std::string	contentType = "application/octet-stream";
+	std::string	contentType;
 	std::string	contentDisposition;
 	std::string	hdrs;
 

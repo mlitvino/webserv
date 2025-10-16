@@ -20,6 +20,8 @@ class PostRequestHandler
 		BodyReadStatus	getContentLengthBody(ClientPtr &client);
 		BodyReadStatus	getChunkedBody(ClientPtr &client);
 		bool			getMultiPart(ClientPtr &client);
+		bool			getFormPart(ClientPtr &client);
+		std::string		getParam(std::string body, std::string key);
 
 		bool			extractFilename(ClientPtr &client, std::string &dashBoundary);
 		std::string		composeUploadPath(ClientPtr &client);

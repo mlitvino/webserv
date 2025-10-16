@@ -36,7 +36,14 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	}
 
 	BodyReadStatus status = client->_chunked ? getChunkedBody(client) : getContentLengthBody(client);
-	bool isBodyFinished = getMultiPart(client);
+
+	bool	isBodyFinished;
+	if (client->_contentType.find(CONTENT_TYPE_MULTIPART) != std::string::npos)
+		isBodyFinished = getMultiPart(client);
+	else if (client->_contentType.find(CONTENT_TYPE_APP_FORM) != std::string::npos)
+		isBodyFinished = getFormPart(client);
+	else
+		isBodyFinished = (status == BodyReadStatus::COMPLETE);
 
 	if (status == BodyReadStatus::NEED_MORE || !isBodyFinished)
 		return;
@@ -269,5 +276,38 @@ bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 	}
 	client->_bodyBuffer.erase(0, markerPos);
 	getLastBoundary(client, boundaryMarker);
+	return true;
+}
+
+std::string	PostRequestHandler::getParam(std::string body, std::string key)
+{
+	std::string	needle = key + "=";
+	size_t	pos = body.find(needle);
+	if (pos == std::string::npos)
+		return std::string();
+	pos += needle.size();
+	size_t amp = body.find('&', pos);
+	if (amp == std::string::npos)
+		return body.substr(pos);
+	return body.substr(pos, amp - pos);
+}
+
+bool	PostRequestHandler::getFormPart(ClientPtr &client)
+{
+	bool bodyComplete = (!client->_chunked
+						&& client->_bodyBytesReceived >= client->_bodyBytesExpected)
+						|| (client->_chunked && client->_chunkedFinished);
+	if (!bodyComplete)
+		return false;
+
+	std::string	&body = client->_bodyBuffer;
+	std::string	login = getParam(body, "login");
+	std::string	pass = getParam(body, "password");
+	if (!login.empty() || !pass.empty())
+	{
+		std::cout << "DEBUG: Received credentials login='" << login << "' password length=" << pass.size() << std::endl;
+		return true;
+	}
+
 	return true;
 }

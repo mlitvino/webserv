@@ -30,6 +30,8 @@
 #define DEFAULT_EPOLL_SIZE 10
 #define CLIENT_HEADER_LIMIT 1024
 #define MAX_CHUNK_SIZE 20000
+#define CONTENT_TYPE_MULTIPART "multipart/form-data"
+#define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
 
 const size_t kMaxRequestBodySize = 50 * 1024 * 1024;
 const size_t kMaxChunkDataSize = 10 * 1024 * 1024;

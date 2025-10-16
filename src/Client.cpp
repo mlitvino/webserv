@@ -13,7 +13,8 @@ bool	Client::readRequest()
 	}
 	else if (bytesRead == 0)
 	{
-		THROW("client disconnected");
+		std::cout << "client disconnected" << std::endl;
+		return false;
 	}
 	else if (bytesRead == -1)
 	{
@@ -57,6 +58,7 @@ void	Client::sendResponse()
 		}
 		_state = ClientState::READING_REQUEST;
 		utils::changeEpollHandler(_handlersMap, _clientFd, &_ipPort);
+		_ipPort.closeConnection(-1);
 		return ;
 	}
 
@@ -67,10 +69,11 @@ void	Client::sendResponse()
 	}
 	else if (bytesSent == -1)
 	{
+		_ipPort.closeConnection(-1);
 		THROW_ERRNO("send");
 	}
 
-	std::cout << "Sending response is done" << std::endl;
+	std::cout << "Sending part of response is done" << std::endl;
 }
 
 void	Client::closeFile(epoll_event &ev, int epollFd, int eventFd)

@@ -8,6 +8,12 @@
 #include <string>
 #include <memory>
 
+enum class HttpMethod {
+	GET = 1,
+	POST = 2,
+	DELETE = 4,
+};
+
 struct Location {
 	std::string path;
 	std::string root;
@@ -21,7 +27,7 @@ struct Location {
 };
 
 struct ListenConfig {
-	std::string host = "localhost";
+	std::string host = "0.0.0.0";
 	int port = 8080;
 	std::string getAddressPort() const { return host + ":" + std::to_string(port); }
 };
@@ -32,8 +38,8 @@ struct ServerConfig {
 	size_t clientMaxBodySize = 1000000;
 	std::map<int, std::string> errorPages;
 	std::vector<Location> locations;
-	
-	std::string getHost() const { return listens.empty() ? "localhost" : listens[0].host; }
+
+	std::string getHost() const { return listens.empty() ? "0.0.0.0" : listens[0].host; }
 	int getPort() const { return listens.empty() ? 8080 : listens[0].port; }
 };
 

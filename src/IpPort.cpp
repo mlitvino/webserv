@@ -55,18 +55,18 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			{
 				if (client->_state == ClientState::READING_REQUEST)
 				{
-					std::cout << "Accepting data from existing client->.." << std::endl;
+					//std::cout << "Accepting data from existing client->.." << std::endl;
 					if (!client->readRequest())
 						return closeConnection(eventFd);
 					parseRequest(ev, epollFd, eventFd);
-					std::cout << "Accepting data is done" << std::endl;
+					//std::cout << "Accepting data is done" << std::endl;
 				}
 				else if (client->_state == ClientState::GETTING_BODY)
 				{
 					std::cout << "Continuing to read POST body..." << std::endl;
 					if (!client->readRequest())
 						return closeConnection(eventFd);
-					_postHandler->handlePostRequest(client, client->_httpPath);
+					client->_postHandler.handlePostRequest(client, client->_httpPath);
 				}
 			}
 			catch (std::bad_alloc &e)
@@ -76,7 +76,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			}
 			catch (HttpException &e)
 			{
-				client->resetBodyTracking();
+				client->_postHandler.resetBodyState();
 				std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
 				generateResponse(client, "", e.getStatusCode());
 			}
@@ -93,9 +93,6 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 {
 	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 
-	if (client->_buffer.find("\r\n\r\n") == std::string::npos)
-		return ;
-
 	std::cout << "---------" << std::endl;
 	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
 	parseHeaders(client);
@@ -103,7 +100,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	assignServerToClient(client);
 
 	client->_ownerServer->areHeadersValid(client);
-	client->resetBodyTracking();
+	client->_postHandler.resetBodyState();
 
 	size_t headersEnd = client->_buffer.find("\r\n\r\n");
 	if (headersEnd != std::string::npos)
@@ -121,7 +118,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "POST")
 	{
-		_postHandler->handlePostRequest(client, client->_httpPath);
+		client->_postHandler.handlePostRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")
 	{
@@ -131,7 +128,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 
 void	IpPort::parseHeaders(ClientPtr &client)
 {
-	size_t headersEnd = client->_buffer.find("\r\n\r\n");
+	size_t	headersEnd = client->_buffer.find("\r\n\r\n");
 	if (headersEnd == std::string::npos)
 		return;
 
@@ -306,7 +303,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
 {
 	std::string	contentType;
-	std::string	contentDisposition;
 	std::string	hdrs;
 
 	if (client->_isTargetDir)
@@ -476,6 +472,7 @@ void	IpPort::closeConnection(int clientFd)
 		if (err == -1)
 			THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
 	}
+	exit(1);
 
 	std::cout << "Closing connection is done" << std::endl;
 }
@@ -506,5 +503,4 @@ IpPort::IpPort(Program &program)
 	, _sockFd{-1}
 	, _epollFd{program._epollFd}
 {
-	_postHandler = std::make_unique<PostRequestHandler>(*this);
 }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "webserv.hpp"
+#include "IEpollFdOwner.hpp"
+#include "utils.hpp"
 
 enum class ClientState {
 	READING_REQUEST,
@@ -16,6 +18,7 @@ class Client : public IEpollFdOwner
 	private:
 
 	public:
+
 		std::string			_buffer;
 
 		std::string			_responseBuffer;
@@ -26,6 +29,7 @@ class Client : public IEpollFdOwner
 		FdEpollOwnerMap		&_handlersMap;
 		IpPort				&_ipPort;
 		ServerPtr			_ownerServer;
+
 
 		// HTTP request data
 		std::string			_httpMethod;
@@ -43,18 +47,6 @@ class Client : public IEpollFdOwner
 
 		bool				_isTargetDir;
 
-		std::string			_uploadFilename;
-		// Request body tracking
-		std::string			_bodyBuffer;
-		size_t				_bodyBytesExpected;
-		size_t				_bodyBytesReceived;
-		bool				_bodyProcessingInitialized;
-		size_t				_currentChunkSize;
-		size_t				_currentChunkRead;
-		bool				_readingChunkSize;
-		bool				_parsingChunkTrailers;
-		bool				_chunkedFinished;
-
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;
 		int					_clientFd;
@@ -71,6 +63,8 @@ class Client : public IEpollFdOwner
 		std::string			_cgiBuffer;
 		bool				_cgiHeadersParsed;
 
+		PostRequestHandler	_postHandler;
+
 
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);
 		~Client();
@@ -83,5 +77,4 @@ class Client : public IEpollFdOwner
 
 		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
 		void	openFile(std::string &filePath);
-		void	resetBodyTracking();
 };

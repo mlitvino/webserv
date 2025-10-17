@@ -1,8 +1,8 @@
 #pragma once
 
 #include "webserv.hpp"
-
-class PostRequestHandler;
+#include "IEpollFdOwner.hpp"
+#include "utils.hpp"
 
 class IpPort : public IEpollFdOwner
 {
@@ -40,8 +40,5 @@ class IpPort : public IEpollFdOwner
 
 		~IpPort();
 		IpPort(Program &program);
-
-	private:
-		std::unique_ptr<PostRequestHandler>	_postHandler;
 
 };

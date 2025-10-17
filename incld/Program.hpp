@@ -1,6 +1,8 @@
 #pragma once
 
 #include "webserv.hpp"
+#include "ConfigParser.hpp"
+#include "CustomException.hpp"
 
 class Program
 {

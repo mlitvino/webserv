@@ -6,12 +6,17 @@
 #include <memory>
 
 #include "webserv.hpp"
+#include "CustomException.hpp"
 #include "IEpollFdOwner.hpp"
+#include "utils.hpp"
 
 enum class ErrorPage {
 	ERR_404,
 	MAX_ERRS
 };
+
+using ServerPtr  = std::shared_ptr<Server>;
+using ServerDeq = std::deque<ServerPtr>;
 
 struct ServerConfig;
 struct Location;
@@ -44,6 +49,7 @@ public:
 
 	bool		areHeadersValid(ClientPtr &client);
 	bool		isMethodAllowed(ClientPtr &client, const Location* matchedLocation);
+	bool		isRedirected(ClientPtr &client, const Location* matchedLocation);
 	bool		isBodySizeValid(ClientPtr &client);
 	std::string	findFile(ClientPtr &client, const std::string& path, const Location* matchedLocation);
 	std::string	getCustomErrorPage(int statusCode);

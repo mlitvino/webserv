@@ -32,15 +32,10 @@
 #define MAX_CHUNK_SIZE 20000
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
-
-const size_t kMaxRequestBodySize = 50 * 1024 * 1024;
-const size_t kMaxChunkDataSize = 10 * 1024 * 1024;
-const size_t kMaxChunkHeaderSize = 8 * 1024;
-const size_t kMaxTrailersSize = 8 * 1024;
-
 #define DEFAULT_CONF "conf/default.conf"
 
 class		Program;
+class		PostRequestHandler;
 class		Server;
 struct		IEpollFdOwner;
 class		IpPort;
@@ -59,20 +54,11 @@ using ClientDeq = std::deque<ClientPtr>;
 using FdClientMap = std::unordered_map<int, ClientPtr>;
 using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
 
-#include "CustomException.hpp"
+
 #include "HttpException.hpp"
-#include "utils.hpp"
-#include "IEpollFdOwner.hpp"
+#include "PostRequestHandler.hpp"
 #include "Server.hpp"
 #include "IpPort.hpp"
 #include "Program.hpp"
 #include "Client.hpp"
 
-
-enum class HttpMethod {
-	GET = 1,
-	POST = 2,
-	DELETE = 4,
-};
-
-#include "ConfigParser.hpp"

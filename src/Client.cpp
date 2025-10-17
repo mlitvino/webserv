@@ -1,4 +1,5 @@
 #include "Client.hpp"
+#include "PostRequestHandler.hpp"
 
 bool	Client::readRequest()
 {
@@ -45,15 +46,21 @@ void	Client::sendResponse()
 			_fileOffset += static_cast<size_t>(bytesSent);
 	}
 
+	std::cout << "bytes was send: " << bytesSent << std::endl;
+
 	if (_responseOffset >= _responseBuffer.size()
 		&& _fileOffset >= _fileSize)
 	{
+		std::cout << "responseSize: " << _responseBuffer.size() << std::endl;
+		std::cout << "fileSize: " << _fileSize << std::endl;
+		std::cout << "IF BUFFER EMPTY: " << (_buffer.empty() ? "YES" : "NO") << std::endl;
 		std::cout << "Sending response is done" << std::endl;
 		_fileOffset = 0;
 		_fileSize = 0;
 		_responseOffset = 0;
 		_responseBuffer.clear();
-		resetBodyTracking();
+
+		_postHandler.resetBodyState();
 		if (_fileFd != -1)
 		{
 			close(_fileFd);
@@ -61,7 +68,6 @@ void	Client::sendResponse()
 		}
 		_state = ClientState::READING_REQUEST;
 		utils::changeEpollHandler(_handlersMap, _clientFd, &_ipPort);
-		_ipPort.closeConnection(-1);
 		return ;
 	}
 
@@ -144,16 +150,6 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _chunked(false)
 	, _keepAlive(false)
 	, _hostHeader()
-	, _uploadFilename()
-	, _bodyBuffer()
-	, _bodyBytesExpected{0}
-	, _bodyBytesReceived{0}
-	, _bodyProcessingInitialized(false)
-	, _currentChunkSize{0}
-	, _currentChunkRead{0}
-	, _readingChunkSize(true)
-	, _parsingChunkTrailers(false)
-	, _chunkedFinished(false)
 	, _clientAddr{clientAddr}
 	, _clientAddrLen{clientAddrLen}
 	, _clientFd{clientFd}
@@ -161,21 +157,9 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _fileBuffer()
 	, _fileSize{0}
 	, _fileOffset{0}
+	, _postHandler{_ipPort}
 {
-	resetBodyTracking();
-}
 
-void	Client::resetBodyTracking()
-{
-	_bodyBuffer.clear();
-	_bodyBytesExpected = 0;
-	_bodyBytesReceived = 0;
-	_bodyProcessingInitialized = false;
-	_currentChunkSize = 0;
-	_currentChunkRead = 0;
-	_readingChunkSize = true;
-	_parsingChunkTrailers = false;
-	_chunkedFinished = false;
 }
 
 Client::~Client()

@@ -100,11 +100,6 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	assignServerToClient(client);
 
 	client->_ownerServer->areHeadersValid(client);
-	client->_postHandler.resetBodyState();
-
-	size_t headersEnd = client->_buffer.find("\r\n\r\n");
-	if (headersEnd != std::string::npos)
-		client->_buffer.erase(0, headersEnd + 4);
 
 	if (client->_state == ClientState::SENDING_RESPONSE)
 	{
@@ -118,6 +113,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "POST")
 	{
+		client->_postHandler.resetBodyState();
 		client->_postHandler.handlePostRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")
@@ -140,6 +136,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	client->_chunked = false;
 	client->_keepAlive = false;
 	client->_contentType.clear();
+	client->_redirectedUrl.clear();
 
 	std::getline(iss, line);
 	size_t firstSpace = line.find(' ');
@@ -203,12 +200,14 @@ void	IpPort::parseHeaders(ClientPtr &client)
 				client->_keepAlive = true;
 		}
 	}
+
+	client->_buffer.erase(0, headersEnd + 4);
 }
 
 void IpPort::handleGetRequest(ClientPtr &client)
 {
 	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
-	generateResponse(client, client->_resolvedPath, 200);
+	generateResponse(client, client->_resolvedPath, 303);
 }
 
 void	IpPort::handleDeleteRequest(ClientPtr &client)
@@ -217,8 +216,10 @@ void	IpPort::handleDeleteRequest(ClientPtr &client)
 
 	if (std::remove(client->_resolvedPath.c_str()) == 0)
 	{
-		std::cout << "DEBUG: File deleted successfully, generating 204 response" << std::endl;
-		generateResponse(client, "", 204);
+		std::cout << "DEBUG: File deleted successfully, generating 303 response" << std::endl;
+		std::string dirPath = client->_httpPath.substr(0, client->_httpPath.find_last_of("/"));
+		client->_redirectedUrl = "http://172.29.29.124:8080" + dirPath + ".html";
+		generateResponse(client, "", 303);
 	}
 	else
 	{
@@ -234,30 +235,23 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	switch (statusCode)
 	{
 		case 200: statusText = "OK"; break;
-		case 201: statusText = "Created"; break;
-		case 204: statusText = "No Content"; break;
+
+		case 301: statusText = "Moved Permanently"; break;
+		case 302: statusText = "Found"; break;
+		case 303: statusText = "See Other"; break;
+		case 307: statusText = "Temporary Redirect"; break;
+		case 308: statusText = "Permanent Redirect"; break;
+
 		case 404: statusText = "Not Found"; break;
 		case 405: statusText = "Method Not Allowed"; break;
 		case 413: statusText = "Payload Too Large"; break;
+
 		case 500: statusText = "Internal Server Error"; break;
 		default: statusText = "Unknown"; break;
 	}
 
 	if (statusCode >= 400)
 		filePath = client->_ownerServer->getCustomErrorPage(statusCode);
-
-	// For 204 No Content, we don't send a body
-	if (statusCode == 204)
-	{
-		response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
-		response += "Server: webserv/1.0\r\n";
-		response += "Connection: close\r\n";
-		response += "\r\n";
-
-		client->_state = ClientState::SENDING_RESPONSE;
-		client->_responseBuffer = std::move(response);
-		return;
-	}
 
 	std::string	listingBuffer;
 	size_t		contentLentgh = 0;
@@ -287,7 +281,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	}
 
 	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
-	response += formHeaders(client, filePath, contentLentgh);
+	response += formHeaders(client, filePath, contentLentgh, statusCode);
 
 	if (!listingBuffer.empty())
 		response += listingBuffer;
@@ -297,10 +291,11 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	client->_responseBuffer = std::move(response);
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
+	std::cout << "DEBUG: Response buffer: " << client->_responseBuffer << std::endl;
 }
 
 
-std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
+std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode)
 {
 	std::string	contentType;
 	std::string	hdrs;
@@ -337,6 +332,8 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 		if (ext != "html" && ext != "htm" && ext != "cgi" && ext != "ico")
 			hdrs = "Content-Disposition: attachment; filename=\"" + fileName + "\"" + "\r\n";
 	}
+	if (!client->_redirectedUrl.empty())
+		hdrs += "Location: " + client->_redirectedUrl + "\r\n";
 	hdrs += "Content-Length: " + std::to_string(contentLength) + "\r\n";
 	hdrs += "Server: webserv/1.0\r\n";
 	hdrs += "Connection: " + std::string((client->_keepAlive ? "keep-alive" : "close")) + "\r\n";

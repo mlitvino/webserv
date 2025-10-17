@@ -46,6 +46,8 @@ class Client : public IEpollFdOwner
 		std::string			_resolvedPath;
 
 		bool				_isTargetDir;
+		std::string			_redirectedUrl;
+		int					_redirectCode;
 
 		sockaddr_storage	_clientAddr;
 		socklen_t			_clientAddrLen;

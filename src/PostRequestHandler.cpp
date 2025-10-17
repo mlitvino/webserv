@@ -41,7 +41,8 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 
 	resetBodyState();
 	std::cout << "DEBUG: File uploaded successfully to: " << client->_resolvedPath + _uploadFilename << std::endl;
-	_ipPort.generateResponse(client, "", 201);
+	client->_redirectedUrl = "http://172.29.29.124:8080" + client->_httpPath + ".html";
+	_ipPort.generateResponse(client, "", 303);
 }
 
 BodyReadStatus	PostRequestHandler::getContentLengthBody(ClientPtr &client)
@@ -304,7 +305,9 @@ bool	PostRequestHandler::getFormPart(ClientPtr &client)
 void	PostRequestHandler::resetBodyState()
 {
 	_uploadFilename.clear();
+	_bodyBuffer.shrink_to_fit();
 	_bodyBuffer.clear();
+	_bodyBuffer.shrink_to_fit();
 	_bodyBytesExpected = 0;
 	_bodyBytesReceived = 0;
 	_bodyProcessingInitialized = false;

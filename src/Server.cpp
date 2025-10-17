@@ -14,7 +14,10 @@ bool	Server::areHeadersValid(ClientPtr &client)
 		THROW_HTTP(400, "No matched location");
 
 	if (isRedirected(client, matchedLocation))
+	{
+		client->_ipPort.generateResponse(client, "",client->_redirectCode);
 		return true;
+	}
 
 	if (client->_httpPath.find("%") != std::string::npos)
 		THROW_HTTP(400, "Unsupported encoded request");
@@ -53,29 +56,12 @@ bool	Server::isRedirected(ClientPtr &client, const Location* matchedLocation)
 {
 	int					code = matchedLocation->redirectCode;
 	const std::string	&url = matchedLocation->redirectUrl;
+
 	if (code == 0 || url.empty())
 		return false;
 
-	std::string statusText;
-	switch (code)
-	{
-		case 301: statusText = "Moved Permanently"; break;
-		case 302: statusText = "Found"; break;
-		case 303: statusText = "See Other"; break;
-		case 307: statusText = "Temporary Redirect"; break;
-		case 308: statusText = "Permanent Redirect"; break;
-		default: statusText = "Redirect"; break;
-	}
-
-	std::string	response;
-	response = "HTTP/1.1 " + std::to_string(code) + " " + statusText + "\r\n";
-	response += "Location: " + url + "\r\n";
-	response += "Connection: close\r\n";
-	response += "Server: webserv/1.0\r\n\r\n";
-
-	client->_state = ClientState::SENDING_RESPONSE;
-	utils::changeEpollHandler(client->_handlersMap, client->_clientFd, client.get());
-	client->_responseBuffer = std::move(response);
+	client->_redirectedUrl = matchedLocation->redirectUrl;
+	client->_redirectCode = matchedLocation->redirectCode;
 	return true;
 }
 

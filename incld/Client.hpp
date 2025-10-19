@@ -3,6 +3,7 @@
 #include "webserv.hpp"
 #include "IEpollFdOwner.hpp"
 #include "utils.hpp"
+#include "Cgi.hpp"
 
 enum class ClientState
 {
@@ -67,12 +68,7 @@ class Client : public IEpollFdOwner
 		int					_fileSize;
 		int					_fileOffset;
 
-		int					_cgiInFd;
-		int					_cgiOutFd;
-		pid_t				_cgiPid;
-		std::string			_cgiBuffer;
-		bool				_cgiHeadersParsed;
-
+		Cgi					_cgi;
 		PostRequestHandler	_postHandler;
 
 

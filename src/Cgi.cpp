@@ -3,7 +3,7 @@
 #include <cstring>
 #include <cerrno>
 
-std::string Cgi::buildScriptPath(std::string &interpreter)
+void Cgi::prepareScript()
 {
 	std::string reqPath = _client._httpPath;
 	const std::vector<Location> &locs = _client._ownerServer->getLocations();
@@ -28,7 +28,7 @@ std::string Cgi::buildScriptPath(std::string &interpreter)
 			} else {
 				scriptPath = reqPath;
 			}
-			interpreter = loc.cgiPath;
+			_interpreter = loc.cgiPath;
 			break;
 		}
 	}
@@ -36,87 +36,32 @@ std::string Cgi::buildScriptPath(std::string &interpreter)
 		scriptPath = reqPath;
 	if (!scriptPath.empty() && scriptPath[0] != '/')
 		scriptPath = "web/" + scriptPath;
-	return scriptPath;
+	_script = scriptPath;
 }
 
-std::vector<char*> Cgi::buildArgv(const std::string &interpreter, const std::string &script, std::vector<std::string> &storage)
+void Cgi::buildArgv()
 {
-	if (!interpreter.empty()) {
-		storage.push_back(interpreter);
-		storage.push_back(script);
+	_argvStorage.clear();
+	if (!_interpreter.empty()) {
+		_argvStorage.push_back(_interpreter);
+		_argvStorage.push_back(_script);
 	} else {
-		storage.push_back(script);
+		_argvStorage.push_back(_script);
 	}
-	std::vector<char*> argv;
-	for (size_t i = 0; i < storage.size(); ++i) argv.push_back(const_cast<char*>(storage[i].c_str()));
-	argv.push_back(nullptr);
-	return argv;
+	_argv.clear();
+	for (size_t i = 0; i < _argvStorage.size(); ++i) _argv.push_back(const_cast<char*>(_argvStorage[i].c_str()));
+	_argv.push_back(nullptr);
 }
 
-std::vector<char*> Cgi::buildEnv(std::vector<std::string> &storage, const std::string &body)
+void Cgi::buildEnv()
 {
-	storage.push_back("REQUEST_METHOD=" + _client._httpMethod);
-	storage.push_back("CONTENT_LENGTH=" + std::to_string(body.size()));
-	storage.push_back("SERVER_PROTOCOL=" + _client._httpVersion);
-	std::vector<char*> envp;
-	for (size_t i = 0; i < storage.size(); ++i) envp.push_back(const_cast<char*>(storage[i].c_str()));
-	envp.push_back(nullptr);
-	return envp;
-}
-
-bool Cgi::start()
-{
-	size_t headersEnd = _client._buffer.find("\r\n\r\n");
-	std::string body;
-	if (headersEnd != std::string::npos)
-		body = _client._buffer.substr(headersEnd + 4);
-
-	int inPipe[2];
-	int outPipe[2];
-	if (pipe(inPipe) == -1)
-		return false;
-	if (pipe(outPipe) == -1)
-	{
-		close(inPipe[0]);
-		close(inPipe[1]);
-		return false;
-	}
-
-	std::string interpreter;
-	std::string script = buildScriptPath(interpreter);
-	std::cout << "DEBUG: cgi script " << script << std::endl;
-	std::vector<std::string> argvStorage; std::vector<char*> argv = buildArgv(interpreter, script, argvStorage);
-	std::vector<std::string> envStorage; std::vector<char*> envp = buildEnv(envStorage, body);
-
-	pid_t pid = fork();
-	if (pid == -1) {
-		close(inPipe[0]); close(inPipe[1]);
-		close(outPipe[0]); close(outPipe[1]);
-		return false;
-	}
-	if (pid == 0) {
-		if (dup2(inPipe[0], STDIN_FILENO) == -1) _exit(127);
-		if (dup2(outPipe[1], STDOUT_FILENO) == -1) _exit(127);
-		close(inPipe[0]); close(inPipe[1]);
-		close(outPipe[0]); close(outPipe[1]);
-		if (!interpreter.empty())
-			execve(interpreter.c_str(), argv.data(), envp.data());
-		else
-			execve(script.c_str(), argv.data(), envp.data());
-		_exit(127);
-	}
-	// Parent
-	close(inPipe[0]);
-	close(outPipe[1]);
-	utils::makeFdNonBlocking(inPipe[1]);
-	utils::makeFdNonBlocking(outPipe[0]);
-	_client._cgiInFd = inPipe[1];
-	_client._cgiOutFd = outPipe[0];
-	_client._cgiPid = pid;
-	_client._cgiHeadersParsed = false;
-	_contentType = "text/html";
-	if (!body.empty()) _client._cgiBuffer = body; // pending stdin
-	return true;
+	_envStorage.clear();
+	_envStorage.push_back("REQUEST_METHOD=" + _client._httpMethod);
+	// CONTENT_LENGTH can be filled later when known (stdin until EOF if unknown)
+	_envStorage.push_back("SERVER_PROTOCOL=" + _client._httpVersion);
+	_envp.clear();
+	for (size_t i = 0; i < _envStorage.size(); ++i) _envp.push_back(const_cast<char*>(_envStorage[i].c_str()));
+	_envp.push_back(nullptr);
 }
 
 // Constructors + Destructors
@@ -124,6 +69,122 @@ bool Cgi::start()
 Cgi::Cgi(Client &client)
 	: _client(client)
 	, _contentType("text/html")
+	, _stdinFd(-1)
+	, _stdoutFd(-1)
+	, _pid(-1)
+	, _headersParsed(false)
 {}
 
 Cgi::~Cgi() {}
+
+const std::string& Cgi::defaultContentType() const
+{
+	return _contentType;
+}
+
+bool Cgi::createPipes(int inPipe[2], int outPipe[2])
+{
+	if (pipe(inPipe) == -1)
+		return false;
+	if (pipe(outPipe) == -1)
+	{
+		close(inPipe[STDIN_FILENO]);
+		close(inPipe[STDOUT_FILENO]);
+		return false;
+	}
+	return true;
+}
+
+// forkExec inlined inside init() for clarity
+
+void Cgi::configureParentFds(int stdinWriteFd, int stdoutReadFd, pid_t pid)
+{
+	utils::makeFdNonBlocking(stdinWriteFd);
+	utils::makeFdNonBlocking(stdoutReadFd);
+	_stdinFd = stdinWriteFd;
+	_stdoutFd = stdoutReadFd;
+	_pid = pid;
+	_headersParsed = false;
+	_contentType = "text/html";
+}
+
+void Cgi::cleanupCgiFds()
+{
+	if (_stdoutFd != -1)
+		close(_stdoutFd);
+	if (_stdinFd != -1)
+		close(_stdinFd);
+	_stdoutFd = -1;
+	_stdinFd = -1;
+}
+
+bool Cgi::registerWithEpoll()
+{
+	epoll_event evIn = {0};
+	evIn.events = EPOLLIN | EPOLLET;
+	evIn.data.fd = _stdoutFd;
+	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
+	{
+		cleanupCgiFds();
+		return false;
+	}
+	_client._handlersMap.emplace(_stdoutFd, &_client);
+
+	epoll_event evOut = {0};
+	evOut.events = EPOLLOUT | EPOLLET;
+	evOut.data.fd = _stdinFd;
+	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
+	{
+		epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_DEL, _stdoutFd, 0);
+		_client._handlersMap.erase(_stdoutFd);
+		cleanupCgiFds();
+		return false;
+	}
+	_client._handlersMap.emplace(_stdinFd, &_client);
+	return true;
+}
+
+bool Cgi::init()
+{
+	int inPipe[2] = {-1, -1};
+	int outPipe[2] = {-1, -1};
+	if (!createPipes(inPipe, outPipe))
+		return false;
+
+	prepareScript();
+	buildArgv();
+	buildEnv();
+
+	pid_t pid = fork();
+	if (pid == -1)
+	{
+		close(inPipe[STDIN_FILENO]); close(inPipe[STDOUT_FILENO]);
+		close(outPipe[STDIN_FILENO]); close(outPipe[STDOUT_FILENO]);
+		return false;
+	}
+	if (pid == 0)
+	{
+		if (dup2(inPipe[STDIN_FILENO], STDIN_FILENO) == -1
+			|| dup2(outPipe[STDOUT_FILENO], STDOUT_FILENO) == -1)
+			_exit(127);
+		close(inPipe[STDIN_FILENO]);
+		close(inPipe[STDOUT_FILENO]);
+		close(outPipe[STDIN_FILENO]);
+		close(outPipe[STDOUT_FILENO]);
+		if (!_interpreter.empty())
+			execve(_interpreter.c_str(), _argv.data(), _envp.data());
+		else
+			execve(_script.c_str(), _argv.data(), _envp.data());
+		_exit(127);
+	}
+
+	// Parent
+	close(inPipe[STDIN_FILENO]);
+	close(outPipe[STDOUT_FILENO]);
+	configureParentFds(inPipe[STDOUT_FILENO], outPipe[STDIN_FILENO], pid);
+	if (!registerWithEpoll())
+		return false;
+
+	_client._state = ClientState::CGI_READING_OUTPUT;
+	return true;
+}

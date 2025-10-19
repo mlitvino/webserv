@@ -1,8 +1,5 @@
 #pragma once
 
-#include "webserv.hpp"
-#include "Client.hpp"
-#include "ConfigParser.hpp"
 #include <vector>
 #include <string>
 #include <unistd.h>
@@ -10,19 +7,46 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-class Cgi {
-private:
-	Client &_client;
-	std::string _contentType;
+#include <memory>
 
-	std::string buildScriptPath(std::string &interpreter);
-	std::vector<char*> buildArgv(const std::string &interpreter, const std::string &script, std::vector<std::string> &storage);
-	std::vector<char*> buildEnv(std::vector<std::string> &storage, const std::string &body);
-public:
-	Cgi(Client &client);
-	~Cgi();
+class Client;
+class IpPort;
+using ClientPtr = std::shared_ptr<Client>;
 
-	bool start();
+class Cgi
+{
+	private:
+		Client						&_client;
+		std::string					_contentType;
 
-	const std::string &defaultContentType() const { return _contentType; }
+
+		int							_stdinFd;
+		int							_stdoutFd;
+		pid_t						_pid;
+		bool						_headersParsed;
+
+		std::string					_interpreter;
+		std::string					_script;
+		std::vector<std::string>	_argvStorage;
+		std::vector<char*>			_argv;
+		std::vector<std::string>	_envStorage;
+		std::vector<char*>			_envp;
+
+		void	prepareScript();
+		void	buildArgv();
+		void	buildEnv();
+
+		// Helpers to keep init() small and readable
+		bool	createPipes(int inPipe[2], int outPipe[2]);
+		void	configureParentFds(int stdinWriteFd, int stdoutReadFd, pid_t pid);
+		bool	registerWithEpoll();
+		void	cleanupCgiFds();
+
+	public:
+		Cgi(Client &client);
+		~Cgi();
+
+		bool				init();
+
+		const std::string&	defaultContentType() const;
 };

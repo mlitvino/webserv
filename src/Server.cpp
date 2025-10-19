@@ -91,7 +91,7 @@ const Location* Server::findLocationForPath(const std::string& path) const
 
 std::string	Server::findFile(ClientPtr &client, const std::string& path, const Location* matched)
 {
-	client->_isTargetDir = false;
+	client->_fileType = FileType::REGULAR;
 
 	std::string	docRoot = matched->root;
 	if (docRoot.empty())
@@ -174,7 +174,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 	if (matched->autoindex)
 	{
-		client->_isTargetDir = true;
+		client->_fileType = FileType::DIRECTORY;
 		return fsDir;
 	}
 

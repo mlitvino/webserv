@@ -258,7 +258,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	if (!filePath.empty())
 	{
 		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
-		if (client->_isTargetDir)
+		if (client->_fileType == FileType::DIRECTORY)
 		{
 			listDirectory(client, listingBuffer);
 			contentLentgh = listingBuffer.size();
@@ -300,7 +300,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 	std::string	contentType;
 	std::string	hdrs;
 
-	if (client->_isTargetDir)
+	if (client->_fileType == FileType::DIRECTORY)
 	{
 		contentType = "text/html";
 	}

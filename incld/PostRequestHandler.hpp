@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <fstream>
 
 class Client;
 class IpPort;
@@ -13,7 +15,6 @@ enum class BodyReadStatus
 	ERROR
 };
 
-const size_t kMaxRequestBodySize = 50 * 1024 * 1024;
 const size_t kMaxChunkDataSize = 10 * 1024 * 1024;
 const size_t kMaxChunkHeaderSize = 8 * 1024;
 const size_t kMaxTrailersSize = 8 * 1024;
@@ -25,6 +26,9 @@ class PostRequestHandler
 
 		std::string	_uploadFilename;
 		std::string	_bodyBuffer;
+		std::string	_decodedBuffer;
+		std::ofstream	_uploadStream;
+		std::string	_currentUploadPath;
 		size_t		_bodyBytesExpected = 0;
 		size_t		_bodyBytesReceived = 0;
 		bool		_bodyProcessingInitialized = false;
@@ -44,7 +48,7 @@ class PostRequestHandler
 
 		bool			extractFilename(ClientPtr &client, std::string &dashBoundary);
 		std::string		composeUploadPath(ClientPtr &client);
-		void			writeBodyPart(ClientPtr &client, std::string &uploadPath, size_t tailSize);
+		void			writeBodyPart(ClientPtr &client);
 		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
 	public:
 		explicit		PostRequestHandler(IpPort &owner);

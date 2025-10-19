@@ -157,6 +157,7 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _fileBuffer()
 	, _fileSize{0}
 	, _fileOffset{0}
+	, _cgi{*this}
 	, _postHandler{_ipPort}
 {
 

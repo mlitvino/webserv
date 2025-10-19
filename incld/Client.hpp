@@ -4,13 +4,21 @@
 #include "IEpollFdOwner.hpp"
 #include "utils.hpp"
 
-enum class ClientState {
+enum class ClientState
+{
 	READING_REQUEST,
 	SENDING_RESPONSE,
 	GETTING_BODY,
 
 	GETTING_FILE,
 	CGI_READING_OUTPUT,
+};
+
+enum class FileType
+{
+	REGULAR,
+	DIRECTORY,
+	CGI_SCRIPT,
 };
 
 class Client : public IEpollFdOwner
@@ -45,7 +53,7 @@ class Client : public IEpollFdOwner
 
 		std::string			_resolvedPath;
 
-		bool				_isTargetDir;
+		FileType			_fileType;
 		std::string			_redirectedUrl;
 		int					_redirectCode;
 

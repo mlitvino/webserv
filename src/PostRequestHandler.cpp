@@ -9,6 +9,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 		_bodyProcessingInitialized = true;
 		_bodyBytesReceived = 0;
 		_bodyBuffer.clear();
+		_decodedBuffer.clear();
 		client->_state = ClientState::GETTING_BODY;
 		if (client->_chunked)
 		{
@@ -25,24 +26,43 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	}
 
 	BodyReadStatus status = client->_chunked ? getChunkedBody(client) : getContentLengthBody(client);
-
 	bool	isBodyFinished;
-	if (client->_contentType.find(CONTENT_TYPE_MULTIPART) != std::string::npos)
-		isBodyFinished = getMultiPart(client);
-	else if (client->_contentType.find(CONTENT_TYPE_APP_FORM) != std::string::npos)
-		isBodyFinished = getFormPart(client);
+	if (client->_fileType == FileType::CGI_SCRIPT)
+	{
+
+	}
 	else
-		isBodyFinished = (status == BodyReadStatus::COMPLETE);
+	{
+		if (client->_contentType.find(CONTENT_TYPE_MULTIPART) != std::string::npos)
+		{
+			isBodyFinished = getMultiPart(client);
+			if (isBodyFinished)
+				writeBodyPart(client);
+		}
+		else if (client->_contentType.find(CONTENT_TYPE_APP_FORM) != std::string::npos)
+			isBodyFinished = getFormPart(client);
 
-	if (status == BodyReadStatus::NEED_MORE || !isBodyFinished)
-		return;
-	if (status == BodyReadStatus::COMPLETE && !isBodyFinished)
-		THROW_HTTP(400, "No more content and part not finished");
-
+		if (status == BodyReadStatus::NEED_MORE || !isBodyFinished)
+			return;
+		if (status == BodyReadStatus::COMPLETE && !isBodyFinished)
+			THROW_HTTP(400, "No more content and part not finished");
+	}
 	resetBodyState();
 	std::cout << "DEBUG: File uploaded successfully to: " << client->_resolvedPath + _uploadFilename << std::endl;
 	client->_redirectedUrl = "http://172.29.29.124:8080" + client->_httpPath + ".html";
 	_ipPort.generateResponse(client, "", 303);
+}
+
+void	PostRequestHandler::writeBodyPart(ClientPtr &client)
+{
+	std::string uploadPath = composeUploadPath(client);
+	std::ofstream out(uploadPath.c_str(), std::ios::binary | std::ios::trunc);
+	if (!out.good())
+		THROW_HTTP(500, "Couldn't open upload file for writing");
+	if (!_decodedBuffer.empty())
+		out.write(_decodedBuffer.data(), static_cast<std::streamsize>(_decodedBuffer.size()));
+	out.close();
+	_decodedBuffer.clear();
 }
 
 BodyReadStatus	PostRequestHandler::getContentLengthBody(ClientPtr &client)
@@ -52,9 +72,10 @@ BodyReadStatus	PostRequestHandler::getContentLengthBody(ClientPtr &client)
 
 	while (!client->_buffer.empty() && _bodyBytesReceived < _bodyBytesExpected)
 	{
-		size_t remaining = _bodyBytesExpected - _bodyBytesReceived;
-		size_t toCopy = std::min(remaining, client->_buffer.size());
-		if (_bodyBytesReceived + toCopy > kMaxRequestBodySize)
+		size_t	remaining = _bodyBytesExpected - _bodyBytesReceived;
+		size_t	toCopy = std::min(remaining, client->_buffer.size());
+		size_t	serverMax = client->_ownerServer->getClientBodySize();
+		if (_bodyBytesReceived + toCopy > serverMax)
 			THROW_HTTP(413, "Content too large");
 		_bodyBuffer.append(client->_buffer, 0, toCopy);
 		client->_buffer.erase(0, toCopy);
@@ -86,10 +107,11 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 				THROW_HTTP(400, "Chunk size line is empty");
 			unsigned long chunkSize = 0;
 			std::istringstream iss(sizeLine);
-			iss >> std::hex >> _currentChunkSize;
+			iss >> std::hex >> chunkSize;
 			if (iss.fail())
 				THROW_HTTP(400, "Bad request");
-			if (chunkSize > kMaxChunkDataSize || _bodyBytesReceived + chunkSize > kMaxRequestBodySize)
+			size_t	serverMax = client->_ownerServer->getClientBodySize();
+			if (chunkSize > kMaxChunkDataSize || _bodyBytesReceived + chunkSize > serverMax)
 				THROW_HTTP(413, "Content too large");
 			_currentChunkSize = static_cast<size_t>(chunkSize);
 			_currentChunkRead = 0;
@@ -173,9 +195,9 @@ bool	PostRequestHandler::extractFilename(ClientPtr &client, std::string &dashBou
 			THROW_HTTP(413, "Content too large");
 		return false;
 	}
-	std::string headers = _bodyBuffer.substr(0, headersEnd);
-	std::istringstream iss(headers);
-	std::string line;
+	std::string			headers = _bodyBuffer.substr(0, headersEnd);
+	std::istringstream	iss(headers);
+	std::string			line;
 	while (std::getline(iss, line))
 	{
 		if (!line.empty() && line.back() == '\r')
@@ -212,20 +234,6 @@ std::string	PostRequestHandler::composeUploadPath(ClientPtr &client)
 	return client->_resolvedPath + _uploadFilename;
 }
 
-void	PostRequestHandler::writeBodyPart(ClientPtr &client, std::string &uploadPath, size_t tailSize)
-{
-	if (_bodyBuffer.size() > tailSize)
-	{
-		size_t toWrite = _bodyBuffer.size() - tailSize;
-		std::ofstream out(uploadPath.c_str(), std::ios::binary | std::ios::app);
-		if (!out.good())
-			THROW_HTTP(500, "Coudl't open file");
-		out.write(_bodyBuffer.data(), static_cast<std::streamsize>(toWrite));
-		out.close();
-		_bodyBuffer.erase(0, toWrite);
-	}
-}
-
 void	PostRequestHandler::getLastBoundary(ClientPtr &client, std::string &boundaryMarker)
 {
 	if (_bodyBuffer.compare(0, boundaryMarker.size(), boundaryMarker) != 0)
@@ -247,22 +255,21 @@ bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 		if (_uploadFilename.empty())
 			return false;
 	}
-	std::string uploadPath = composeUploadPath(client);
-
 	size_t markerPos = _bodyBuffer.find(boundaryMarker);
 	if (markerPos == std::string::npos)
 	{
 		size_t tail = boundaryMarker.size();
-		writeBodyPart(client, uploadPath, tail);
+		if (_bodyBuffer.size() > tail)
+		{
+			size_t toAppend = _bodyBuffer.size() - tail;
+			_decodedBuffer.append(_bodyBuffer.data(), toAppend);
+			_bodyBuffer.erase(0, toAppend);
+		}
 		return false;
 	}
 	if (markerPos > 0)
 	{
-		std::ofstream out(uploadPath.c_str(), std::ios::binary | std::ios::app);
-		if (!out.good())
-			THROW_HTTP(500, "Failed to open file");
-		out.write(_bodyBuffer.data(), static_cast<std::streamsize>(markerPos));
-		out.close();
+		_decodedBuffer.append(_bodyBuffer.data(), markerPos);
 	}
 	_bodyBuffer.erase(0, markerPos);
 	getLastBoundary(client, boundaryMarker);
@@ -308,6 +315,8 @@ void	PostRequestHandler::resetBodyState()
 	_bodyBuffer.shrink_to_fit();
 	_bodyBuffer.clear();
 	_bodyBuffer.shrink_to_fit();
+	_decodedBuffer.clear();
+	_decodedBuffer.shrink_to_fit();
 	_bodyBytesExpected = 0;
 	_bodyBytesReceived = 0;
 	_bodyProcessingInitialized = false;

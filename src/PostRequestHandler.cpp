@@ -49,7 +49,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	}
 	resetBodyState();
 	std::cout << "DEBUG: File uploaded successfully to: " << client->_resolvedPath + _uploadFilename << std::endl;
-	client->_redirectedUrl = "http://172.29.29.124:8080" + client->_httpPath + ".html";
+	client->_redirectedUrl = "http://localhost:8080" + client->_httpPath + ".html";
 	_ipPort.generateResponse(client, "", 303);
 }
 

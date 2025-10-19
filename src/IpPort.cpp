@@ -65,7 +65,10 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				{
 					std::cout << "Continuing to read POST body..." << std::endl;
 					if (!client->readRequest())
+					{
+						client->_postHandler.resetBodyState();
 						return closeConnection(eventFd);
+					}
 					client->_postHandler.handlePostRequest(client, client->_httpPath);
 				}
 			}

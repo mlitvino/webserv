@@ -3,6 +3,7 @@
 #include "webserv.hpp"
 #include "ConfigParser.hpp"
 #include "CustomException.hpp"
+#include "ChildFailedException.hpp"
 
 #define DEFAULT_CONF "conf/default.conf"
 #define MAX_EVENTS 10

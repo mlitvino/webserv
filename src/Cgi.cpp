@@ -29,7 +29,6 @@ void Cgi::prepareScript()
 			} else {
 				scriptPath = reqPath;
 			}
-			_interpreter = loc.cgiPath;
 			break;
 		}
 	}
@@ -38,6 +37,20 @@ void Cgi::prepareScript()
 	if (!scriptPath.empty() && scriptPath[0] != '/')
 		scriptPath = "web/" + scriptPath;
 	_script = scriptPath;
+
+	switch (_cgiType)
+	{
+		case CgiType::PYTHON:
+			_interpreter = PYTHON_PATH;
+			break;
+		case CgiType::PHP:
+			_interpreter = PHP_PATH;
+			break;
+		case CgiType::NONE:
+		default:
+			_interpreter.clear();
+			break;
+	}
 }
 
 void Cgi::buildArgv()
@@ -74,6 +87,13 @@ Cgi::Cgi(Client &client)
 	, _stdoutFd(-1)
 	, _pid(-1)
 	, _headersParsed(false)
+	, _interpreter()
+	, _script()
+	, _argvStorage()
+	, _argv()
+	, _envStorage()
+	, _envp()
+	, _cgiType(CgiType::NONE)
 {}
 
 Cgi::~Cgi() {}

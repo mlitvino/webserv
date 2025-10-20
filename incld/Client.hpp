@@ -1,7 +1,10 @@
 #pragma once
 
- #include <sys/stat.h>
- #include <sys/sendfile.h>
+#include <sstream>
+#include <cctype>
+
+#include <sys/stat.h>
+#include <sys/sendfile.h>
 
 #include "webserv.hpp"
 #include "IEpollFdOwner.hpp"
@@ -17,7 +20,8 @@ enum class ClientState
 	GETTING_BODY,
 
 	GETTING_FILE,
-	CGI_READING_OUTPUT,
+	WRITING_CGI_INPUT,
+	READING_CGI_OUTPUT,
 };
 
 enum class FileType
@@ -37,6 +41,8 @@ class Client : public IEpollFdOwner
 
 		std::string			_responseBuffer;
 		size_t				_responseOffset;
+		std::string			_cgiBuffer;
+		size_t				_cgiHeaderEndPos;
 
 		ClientState			_state;
 		FdClientMap			&_clientsMap;
@@ -88,4 +94,8 @@ class Client : public IEpollFdOwner
 
 		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
 		void	openFile(std::string &filePath);
+
+		void	handleCgiStdoutEvent(epoll_event &ev);
+		void	handleCgiStdinEvent(epoll_event &ev);
+		bool	parseCgiHeadersAndPrepareResponse();
 };

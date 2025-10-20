@@ -1,7 +1,8 @@
 #include "Cgi.hpp"
+
+#include "webserv.hpp"
 #include "utils.hpp"
-#include <cstring>
-#include <cerrno>
+#include "ConfigParser.hpp"
 
 void Cgi::prepareScript()
 {

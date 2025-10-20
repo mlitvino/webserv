@@ -1,12 +1,16 @@
 #pragma once
 
-#include "webserv.hpp"
-
+#include <sstream>
 #include <map>
 #include <set>
 #include <vector>
 #include <string>
 #include <memory>
+
+#include "webserv.hpp"
+
+#include "Client.hpp"
+#include "IpPort.hpp"
 
 enum class HttpMethod {
 	GET = 1,

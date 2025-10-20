@@ -1,6 +1,6 @@
 #pragma once
 
-#include "webserv.hpp"
+#include <sys/epoll.h>
 
 struct IEpollFdOwner
 {

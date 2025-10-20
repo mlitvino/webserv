@@ -22,8 +22,11 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (client->_httpPath.find("%") != std::string::npos)
 		THROW_HTTP(400, "Unsupported encoded request");
 
-	if (client->_contentLen != 0 && client->_chunked)
+	if (client->_contentLen > 0 && client->_chunked)
 		THROW_HTTP(400, "Chunked body and content-length are presented");
+
+	if (client->_contentLen < 0)
+		THROW_HTTP(400, "Invalid content-length");
 
 	if (!isMethodAllowed(client, matchedLocation))
 		THROW_HTTP(405, "Method not allowed");

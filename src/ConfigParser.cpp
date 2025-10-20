@@ -1,8 +1,4 @@
-#include "webserv.hpp"
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <iostream>
+#include "ConfigParser.hpp"
 
 std::string ConfigParser::trim(const std::string& str) {
 	size_t first = str.find_first_not_of(" \t\r\n");

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <fcntl.h>
+#include <string.h>
+
 #include "webserv.hpp"
 #include "CustomException.hpp"
 

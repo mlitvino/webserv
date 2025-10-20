@@ -6,21 +6,12 @@
 #include <memory>
 
 #include "webserv.hpp"
+#include "HttpException.hpp"
 #include "CustomException.hpp"
 #include "IEpollFdOwner.hpp"
 #include "utils.hpp"
-
-enum class ErrorPage {
-	ERR_404,
-	MAX_ERRS
-};
-
-using ServerPtr  = std::shared_ptr<Server>;
-using ServerDeq = std::deque<ServerPtr>;
-
-struct ServerConfig;
-struct Location;
-class ClientHandler;
+#include "IpPort.hpp"
+#include "Client.hpp"
 
 class Server {
 private:

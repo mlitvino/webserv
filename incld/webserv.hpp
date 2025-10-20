@@ -1,38 +1,20 @@
 #pragma once
 
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <vector>
 #include <deque>
 #include <memory>
-#include <map>
 #include <unordered_map>
-#include <sstream>
-#include <fstream>
-#include <algorithm>
 
-#include <sys/epoll.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/sendfile.h>
-#include <sys/wait.h>
-#include <errno.h>
-#include <string.h>
-
-#define QUEUE_SIZE 20
 #define IO_BUFFER_SIZE 1024
-#define MAX_EVENTS 10
-#define DEFAULT_EPOLL_SIZE 10
-#define CLIENT_HEADER_LIMIT 1024
 #define MAX_CHUNK_SIZE 20000
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
-#define DEFAULT_CONF "conf/default.conf"
+
+enum class CgiType
+{
+	PYTHON,
+	PHP,
+	NONE,
+};
 
 class		Program;
 class		PostRequestHandler;
@@ -42,23 +24,18 @@ class		IpPort;
 class		Client;
 enum class	HttpMethod;
 enum class	ClientState;
+class		Cgi;
+class		ConfigParser;
+struct		ServerConfig;
+struct		Location;
 
-using ServerPtr  = std::shared_ptr<Server>;
-using ServerDeq = std::deque<ServerPtr>;
+using		IpPortPtr = std::shared_ptr<IpPort>;
 
-using IpPortPtr = std::shared_ptr<IpPort>;
+using		ServerPtr  = std::shared_ptr<Server>;
+using		ServerDeq = std::deque<ServerPtr>;
 
-using ClientPtr = std::shared_ptr<Client>;
-using ClientDeq = std::deque<ClientPtr>;
+using		ClientPtr = std::shared_ptr<Client>;
+using		ClientDeq = std::deque<ClientPtr>;
 
-using FdClientMap = std::unordered_map<int, ClientPtr>;
-using FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;
-
-
-#include "HttpException.hpp"
-#include "PostRequestHandler.hpp"
-#include "Server.hpp"
-#include "IpPort.hpp"
-#include "Program.hpp"
-#include "Client.hpp"
-
+using		FdClientMap = std::unordered_map<int, ClientPtr>;
+using		FdEpollOwnerMap = std::unordered_map<int, IEpollFdOwner*>;

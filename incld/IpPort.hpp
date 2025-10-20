@@ -1,8 +1,17 @@
 #pragma once
 
+#include <iostream>
+
+#include <netdb.h>
+
 #include "webserv.hpp"
+#include "Program.hpp"
+#include "HttpException.hpp"
 #include "IEpollFdOwner.hpp"
 #include "utils.hpp"
+#include "Client.hpp"
+
+#define QUEUE_SIZE 20
 
 class IpPort : public IEpollFdOwner
 {

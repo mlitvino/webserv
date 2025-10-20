@@ -4,6 +4,10 @@
 #include "ConfigParser.hpp"
 #include "CustomException.hpp"
 
+#define DEFAULT_CONF "conf/default.conf"
+#define MAX_EVENTS 10
+#define DEFAULT_EPOLL_SIZE 10
+
 class Program
 {
 	public:

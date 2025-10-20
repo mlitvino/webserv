@@ -1,17 +1,21 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <string>
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 
-#include <memory>
-
 class Client;
 class IpPort;
 using ClientPtr = std::shared_ptr<Client>;
+enum class CgiType;
+
+#define PYTHON_PATH "/usr/bin/python3"
+#define PHP_PATH "/usr/bin/php-cgi"
 
 class Cgi
 {

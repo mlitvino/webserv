@@ -4,6 +4,8 @@
 #include <string>
 #include <fstream>
 
+#include "ChildFailedException.hpp"
+
 class Client;
 class IpPort;
 using ClientPtr = std::shared_ptr<Client>;

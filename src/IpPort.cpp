@@ -83,6 +83,10 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
 				generateResponse(client, "", e.getStatusCode());
 			}
+			catch (ChildFailedException& e)
+			{
+				throw;
+			}
 			catch (std::exception &e)
 			{
 				std::cout << "Exception: " << e.what() << std::endl;

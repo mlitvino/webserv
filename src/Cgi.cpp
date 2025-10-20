@@ -187,16 +187,14 @@ bool Cgi::init()
 	{
 		if (dup2(inPipe[STDIN_FILENO], STDIN_FILENO) == -1
 			|| dup2(outPipe[STDOUT_FILENO], STDOUT_FILENO) == -1)
-			_exit(127);
+		{
+			THROW_CHILD("dup2");
+		}
 		close(inPipe[STDIN_FILENO]);
 		close(inPipe[STDOUT_FILENO]);
 		close(outPipe[STDIN_FILENO]);
 		close(outPipe[STDOUT_FILENO]);
-		if (!_interpreter.empty())
-			execve(_interpreter.c_str(), _argv.data(), _envp.data());
-		else
-			execve(_script.c_str(), _argv.data(), _envp.data());
-		_exit(127);
+		THROW_CHILD("execve");
 	}
 
 	// Parent

@@ -4,40 +4,10 @@
 #include "utils.hpp"
 #include "ConfigParser.hpp"
 
-void Cgi::prepareScript()
+bool	Cgi::prepareScript()
 {
-	std::string reqPath = _client._httpPath;
-	const std::vector<Location> &locs = _client._ownerServer->getLocations();
 
-	if (!reqPath.empty() && reqPath[0] == '/')
-		reqPath = reqPath.substr(1);
-
-	std::string scriptPath;
-	for (size_t i = 0; i < locs.size(); ++i)
-	{
-		const Location &loc = locs[i];
-		if (_client._httpPath.rfind(loc.path, 0) == 0)
-		{
-			std::string root = loc.root;
-			if (!root.empty() && root[0] == '/') root = root.substr(1);
-			std::string rel = _client._httpPath.substr(loc.path.size());
-			if (!rel.empty() && rel[0] == '/') rel = rel.substr(1);
-			if (!root.empty()) {
-				scriptPath = root;
-				if (!scriptPath.empty() && scriptPath.back() != '/' && !rel.empty()) scriptPath += '/';
-				scriptPath += rel;
-			} else {
-				scriptPath = reqPath;
-			}
-			break;
-		}
-	}
-	if (scriptPath.empty())
-		scriptPath = reqPath;
-	if (!scriptPath.empty() && scriptPath[0] != '/')
-		scriptPath = "web/" + scriptPath;
-	_script = scriptPath;
-
+	_script = _client._resolvedPath;
 	switch (_cgiType)
 	{
 		case CgiType::PYTHON:
@@ -48,33 +18,37 @@ void Cgi::prepareScript()
 			break;
 		case CgiType::NONE:
 		default:
-			_interpreter.clear();
-			break;
+			return false;
 	}
+	return true;
 }
 
-void Cgi::buildArgv()
+void	Cgi::buildArgv()
 {
-	_argvStorage.clear();
-	if (!_interpreter.empty()) {
-		_argvStorage.push_back(_interpreter);
-		_argvStorage.push_back(_script);
-	} else {
-		_argvStorage.push_back(_script);
+	if (!_interpreter.empty())
+	{
+		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
+		_argv.push_back(const_cast<char*>(_script.c_str()));
 	}
-	_argv.clear();
-	for (size_t i = 0; i < _argvStorage.size(); ++i) _argv.push_back(const_cast<char*>(_argvStorage[i].c_str()));
+	else
+	{
+		_argv.push_back(const_cast<char*>(_script.c_str()));
+	}
 	_argv.push_back(nullptr);
 }
 
-void Cgi::buildEnv()
+void	Cgi::buildEnv()
 {
 	_envStorage.clear();
 	_envStorage.push_back("REQUEST_METHOD=" + _client._httpMethod);
-	// CONTENT_LENGTH can be filled later when known (stdin until EOF if unknown)
+	_envStorage.push_back(std::string("CONTENT_LENGTH=") + std::to_string(_client._fileSize));
 	_envStorage.push_back("SERVER_PROTOCOL=" + _client._httpVersion);
+	_envStorage.push_back(std::string("SCRIPT_FILENAME=") + _script);
+	_envStorage.push_back(std::string("REQUEST_URI=") + _client._httpPath);
+	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	_envp.clear();
-	for (size_t i = 0; i < _envStorage.size(); ++i) _envp.push_back(const_cast<char*>(_envStorage[i].c_str()));
+	for (auto &envLine : _envStorage)
+		_envp.push_back(const_cast<char*>(envLine.c_str()));
 	_envp.push_back(nullptr);
 }
 
@@ -89,7 +63,6 @@ Cgi::Cgi(Client &client)
 	, _headersParsed(false)
 	, _interpreter()
 	, _script()
-	, _argvStorage()
 	, _argv()
 	, _envStorage()
 	, _envp()
@@ -98,7 +71,7 @@ Cgi::Cgi(Client &client)
 
 Cgi::~Cgi() {}
 
-const std::string& Cgi::defaultContentType() const
+const	std::string& Cgi::defaultContentType() const
 {
 	return _contentType;
 }
@@ -116,9 +89,8 @@ bool Cgi::createPipes(int inPipe[2], int outPipe[2])
 	return true;
 }
 
-// forkExec inlined inside init() for clarity
 
-void Cgi::configureParentFds(int stdinWriteFd, int stdoutReadFd, pid_t pid)
+void	Cgi::configureParentFds(int stdinWriteFd, int stdoutReadFd, pid_t pid)
 {
 	utils::makeFdNonBlocking(stdinWriteFd);
 	utils::makeFdNonBlocking(stdoutReadFd);
@@ -129,7 +101,7 @@ void Cgi::configureParentFds(int stdinWriteFd, int stdoutReadFd, pid_t pid)
 	_contentType = "text/html";
 }
 
-void Cgi::cleanupCgiFds()
+void	Cgi::cleanupCgiFds()
 {
 	if (_stdoutFd != -1)
 		close(_stdoutFd);
@@ -139,10 +111,10 @@ void Cgi::cleanupCgiFds()
 	_stdinFd = -1;
 }
 
-bool Cgi::registerWithEpoll()
+bool	Cgi::registerWithEpoll()
 {
 	epoll_event evIn = {0};
-	evIn.events = EPOLLIN | EPOLLET;
+	evIn.events = EPOLLIN | EPOLLOUT;
 	evIn.data.fd = _stdoutFd;
 	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
 	{
@@ -152,7 +124,7 @@ bool Cgi::registerWithEpoll()
 	_client._handlersMap.emplace(_stdoutFd, &_client);
 
 	epoll_event evOut = {0};
-	evOut.events = EPOLLOUT | EPOLLET;
+	evOut.events = EPOLLIN | EPOLLOUT;
 	evOut.data.fd = _stdinFd;
 	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
 	{
@@ -165,22 +137,25 @@ bool Cgi::registerWithEpoll()
 	return true;
 }
 
-bool Cgi::init()
+bool	Cgi::init()
 {
-	int inPipe[2] = {-1, -1};
-	int outPipe[2] = {-1, -1};
+	int	inPipe[2] = {-1, -1};
+	int	outPipe[2] = {-1, -1};
+
 	if (!createPipes(inPipe, outPipe))
 		return false;
-
-	prepareScript();
+	if (!prepareScript())
+		return false;
 	buildArgv();
 	buildEnv();
 
 	pid_t pid = fork();
 	if (pid == -1)
 	{
-		close(inPipe[STDIN_FILENO]); close(inPipe[STDOUT_FILENO]);
-		close(outPipe[STDIN_FILENO]); close(outPipe[STDOUT_FILENO]);
+		close(inPipe[STDIN_FILENO]);
+		close(inPipe[STDOUT_FILENO]);
+		close(outPipe[STDIN_FILENO]);
+		close(outPipe[STDOUT_FILENO]);
 		return false;
 	}
 	if (pid == 0)
@@ -194,16 +169,17 @@ bool Cgi::init()
 		close(inPipe[STDOUT_FILENO]);
 		close(outPipe[STDIN_FILENO]);
 		close(outPipe[STDOUT_FILENO]);
+		execve(_interpreter.c_str(), _argv.data(), _envp.data());
 		THROW_CHILD("execve");
 	}
 
-	// Parent
 	close(inPipe[STDIN_FILENO]);
 	close(outPipe[STDOUT_FILENO]);
 	configureParentFds(inPipe[STDOUT_FILENO], outPipe[STDIN_FILENO], pid);
 	if (!registerWithEpoll())
 		return false;
 
-	_client._state = ClientState::CGI_READING_OUTPUT;
+	_client._state = ClientState::READING_CGI_OUTPUT;
+
 	return true;
 }

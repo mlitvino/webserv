@@ -31,6 +31,7 @@ class PostRequestHandler
 		std::string	_decodedBuffer;
 		std::ofstream	_uploadStream;
 		std::string	_currentUploadPath;
+		int				_tempFd = -1;
 		size_t		_bodyBytesExpected = 0;
 		size_t		_bodyBytesReceived = 0;
 		bool		_bodyProcessingInitialized = false;
@@ -52,6 +53,7 @@ class PostRequestHandler
 		std::string		composeUploadPath(ClientPtr &client);
 		void			writeBodyPart(ClientPtr &client);
 		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
+		void			processCgi(ClientPtr &client, BodyReadStatus status);
 	public:
 		explicit		PostRequestHandler(IpPort &owner);
 

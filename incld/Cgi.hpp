@@ -23,8 +23,6 @@ class Cgi
 		Client						&_client;
 		std::string					_contentType;
 
-
-
 		int							_stdinFd;
 		int							_stdoutFd;
 		pid_t						_pid;
@@ -32,12 +30,11 @@ class Cgi
 
 		std::string					_interpreter;
 		std::string					_script;
-		std::vector<std::string>	_argvStorage;
 		std::vector<char*>			_argv;
 		std::vector<std::string>	_envStorage;
 		std::vector<char*>			_envp;
 
-		void	prepareScript();
+		bool	prepareScript();
 		void	buildArgv();
 		void	buildEnv();
 
@@ -55,4 +52,7 @@ class Cgi
 		bool				init();
 
 		const std::string&	defaultContentType() const;
+
+		int					getStdinFd() const { return _stdinFd; }
+		int					getStdoutFd() const { return _stdoutFd; }
 };

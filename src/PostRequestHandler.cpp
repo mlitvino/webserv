@@ -29,7 +29,8 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	bool	isBodyFinished;
 	if (client->_fileType == FileType::CGI_SCRIPT)
 	{
-
+		processCgi(client, status);
+		return;
 	}
 	else
 	{
@@ -332,3 +333,33 @@ void	PostRequestHandler::resetBodyState()
 PostRequestHandler::PostRequestHandler(IpPort &owner)
 	: _ipPort(owner)
 {}
+
+void	PostRequestHandler::processCgi(ClientPtr &client, BodyReadStatus status)
+{
+	if (client->_fileFd == -1)
+	{
+		char tmpl[] = "/tmp/webserv_cgi_XXXXXX";
+		client->_fileFd = mkstemp(tmpl);
+		if (client->_fileFd == -1)
+			THROW_HTTP(500, "mkstemp failed for CGI body temp file");
+		unlink(tmpl);
+	}
+
+	if (!_bodyBuffer.empty())
+	{
+		size_t	len = write(client->_fileFd, _bodyBuffer.data(), _bodyBuffer.size());
+		if (len < 0 || len != _bodyBuffer.size())
+			THROW_HTTP(500, "Failed writing to CGI temp body file");
+		client->_fileSize += len;
+		_bodyBuffer.clear();
+	}
+
+	if (status == BodyReadStatus::NEED_MORE)
+		return;
+
+	if (lseek(client->_fileFd, 0, SEEK_SET) == -1)
+		THROW_HTTP(500, "Failed to rewind CGI temp body file");
+
+	if (!client->_cgi.init())
+		THROW_HTTP(500, "Failed to start CGI process");
+}

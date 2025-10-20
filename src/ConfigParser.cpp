@@ -79,10 +79,16 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 			} catch (...) {
 			}
 		}
-	} else if (directive == "cgi_extension") {
-		location.cgiExtension = take_first(rest);
-	} else if (directive == "cgi_path") {
-		location.cgiPath = take_first(rest);
+	} else if (directive == "cgi") {
+		std::string token = take_first(rest);
+		if (!token.empty() && token.back() == ';') token.erase(token.end() - 1);
+		if (token == "python") {
+			location.cgiType = CgiType::PYTHON;
+		} else if (token == "php") {
+			location.cgiType = CgiType::PHP;
+		} else {
+			throw std::runtime_error("such cgi not supported: " + token);
+		}
 	}
 }
 

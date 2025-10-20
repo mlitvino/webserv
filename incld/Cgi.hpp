@@ -24,6 +24,7 @@ class Cgi
 		std::string					_contentType;
 
 
+
 		int							_stdinFd;
 		int							_stdoutFd;
 		pid_t						_pid;
@@ -40,13 +41,14 @@ class Cgi
 		void	buildArgv();
 		void	buildEnv();
 
-		// Helpers to keep init() small and readable
 		bool	createPipes(int inPipe[2], int outPipe[2]);
 		void	configureParentFds(int stdinWriteFd, int stdoutReadFd, pid_t pid);
 		bool	registerWithEpoll();
 		void	cleanupCgiFds();
 
 	public:
+		CgiType						_cgiType;
+
 		Cgi(Client &client);
 		~Cgi();
 

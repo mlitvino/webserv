@@ -128,6 +128,11 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 		{
 			if (S_ISREG(st.st_mode))
 			{
+				if (matched->cgiType != CgiType::NONE)
+				{
+					client->_fileType = FileType::CGI_SCRIPT;
+					client->_cgi._cgiType = matched->cgiType;
+				}
 				return fsPath;
 			}
 			else if (!S_ISDIR(st.st_mode))

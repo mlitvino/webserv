@@ -15,7 +15,9 @@ using ClientPtr = std::shared_ptr<Client>;
 enum class CgiType;
 
 #define PYTHON_PATH "/usr/bin/python3"
+#define PYTHON_EXT ".py"
 #define PHP_PATH "/usr/bin/php-cgi"
+#define PHP_EXT ".php"
 
 class Cgi
 {
@@ -44,7 +46,6 @@ class Cgi
 		void	cleanupCgiFds();
 
 	public:
-		CgiType						_cgiType;
 		std::string					_uploadDir;
 
 		Cgi(Client &client);

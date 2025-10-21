@@ -52,6 +52,10 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 
 	if (directive == "root") {
 		location.root = getFirstToken(rest);
+	} else if (directive == "upload_dir") {
+		location.uploadDir = getFirstToken(rest);
+		if (location.uploadDir.empty())
+			throw std::runtime_error("Empty upload_dir");
 	} else if (directive == "index") {
 		location.index = getFirstToken(rest);
 	} else if (directive == "allow_methods") {
@@ -62,7 +66,7 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		std::istringstream returnStream(rest);
 		std::string codeStr, url;
 		returnStream >> codeStr >> url;
-		
+
 		try {
 			int code = std::stoi(codeStr);
 			if (code >= 300 && code < 400 && !url.empty()) {
@@ -73,7 +77,7 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		}
 	} else if (directive == "cgi") {
 		std::string token = getFirstToken(rest);
-		if (!token.empty() && token.back() == ';') 
+		if (!token.empty() && token.back() == ';')
 			token.pop_back();
 		if (token == "python") {
 			location.cgiType = CgiType::PYTHON;

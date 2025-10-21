@@ -54,6 +54,9 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (client->_resolvedPath.empty())
 		THROW_HTTP(404, "Not Found");
 
+	if (client->_fileType == FileType::CGI_SCRIPT)
+		client->_cgi._uploadDir = matchedLocation->uploadDir;
+
 	std::cout << "Validating headers is done" << std::endl;
 	return true;
 }

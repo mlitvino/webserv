@@ -45,6 +45,7 @@ class Cgi
 
 	public:
 		CgiType						_cgiType;
+		std::string					_uploadDir;
 
 		Cgi(Client &client);
 		~Cgi();

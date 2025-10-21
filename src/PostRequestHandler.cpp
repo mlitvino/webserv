@@ -7,15 +7,10 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	if (!_bodyProcessingInitialized)
 	{
 		_bodyProcessingInitialized = true;
-		_bodyBytesReceived = 0;
-		_bodyBuffer.clear();
-		_decodedBuffer.clear();
 		client->_state = ClientState::GETTING_BODY;
 		if (client->_chunked)
 		{
 			_readingChunkSize = true;
-			_currentChunkSize = 0;
-			_currentChunkRead = 0;
 			_parsingChunkTrailers = false;
 			_chunkedFinished = false;
 		}

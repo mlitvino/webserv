@@ -97,9 +97,9 @@
 	<div class="container">
 		<nav class="nav">
 			<a href="/">Home</a>
-			<a href="/about.html">About</a>
+			<a href="/cgi.html">CGI Scripts</a>
+			<a href="/status-codes.html">Status Codes</a>
 			<a href="/upload.html">Upload</a>
-			<a href="/test/">Test Directory</a>
 			<a href="/upload/">Uploaded Files</a>
 		</nav>
 
@@ -125,46 +125,6 @@
 				<button type="submit">Upload File</button>
 			</form>
 		</div>
-
-		<div class="test-commands">
-			<h3>🧪 Test Upload with curl</h3>
-			<p>You can also test file upload using curl commands:</p>
-
-			<h4>Upload a text file:</h4>
-			<code>curl -X POST -F "file=@test.txt" http://localhost:8080/upload</code>
-
-			<h4>Upload with description:</h4>
-			<code>curl -X POST -F "file=@test.txt" -F "description=Test file" http://localhost:8080/upload</code>
-
-			<h4>Create and upload a test file:</h4>
-			<code>echo "Hello Webserv!" > test.txt && curl -X POST -F "file=@test.txt" http://localhost:8080/upload</code>
-		</div>
-
-		<div class="upload-form">
-			<h2>Text Data Upload</h2>
-			<form action="/upload" method="post">
-				<div class="form-group">
-					<label for="textdata">Text Data:</label>
-					<textarea id="textdata" name="textdata" rows="5" placeholder="Enter some text data to upload..."></textarea>
-				</div>
-
-				<div class="form-group">
-					<label for="filename">Save as filename:</label>
-					<input type="text" id="filename" name="filename" placeholder="data.txt">
-				</div>
-
-				<button type="submit">Upload Text Data</button>
-			</form>
-		</div>
-
-		<h2>📋 Upload Testing Checklist</h2>
-		<ul>
-			<li>✅ HTML form with file input</li>
-			<li>✅ Multipart form data encoding</li>
-			<li>✅ POST method handling</li>
-			<li>✅ curl command examples</li>
-			<li>✅ Text data upload option</li>
-		</ul>
 
 		<p><a href="/">← Back to Home</a></p>
 	</div>

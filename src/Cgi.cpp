@@ -57,23 +57,10 @@ void	Cgi::buildEnv()
 	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	_envStorage.push_back("REDIRECT_STATUS=200");
 
-	std::string	uploadDir;
-	if (_client._ownerServer)
+	if (_client._httpMethod == "POST")
 	{
-		const std::vector<Location>& locs = _client._ownerServer->getLocations();
-		for (size_t i = 0; i < locs.size(); ++i)
-		{
-			if (!locs[i].path.empty() && locs[i].path == "/upload")
-			{
-				uploadDir = locs[i].root;
-				break;
-			}
-		}
+		_envStorage.push_back(std::string("UPLOAD_DIR=") + _uploadDir);
 	}
-	if (uploadDir.empty())
-		uploadDir = "web/upload";
-	_envStorage.push_back(std::string("UPLOAD_DIR=") + uploadDir);
-
 
 	_envp.clear();
 	for (auto &envLine : _envStorage)

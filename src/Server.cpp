@@ -118,7 +118,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 	std::cout << "FindFile: fsPath " << fsPath << std::endl;
 
-	if (client->_httpMethod == "POST")
+	if (client->_httpMethod == "POST" && matched->cgiType == CgiType::NONE)
 	{
 		std::string fsDir = fsPath.empty() ? docRoot : fsPath;
 		struct stat st{};

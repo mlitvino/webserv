@@ -7,3 +7,4 @@ print("<body>")
 print("<h2>Hello from Python CGI! (hello_py.cgi)</h2>")
 print("</body>")
 print("</html>")
+

@@ -27,7 +27,7 @@ struct Location {
 	bool autoindex = false;
 	int redirectCode = 0;
 	std::string redirectUrl;
-	CgiType cgiType = CgiType::NONE;
+	bool		isCgi = false;
 };
 
 struct ListenConfig {

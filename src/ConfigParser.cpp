@@ -79,12 +79,8 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		std::string token = getFirstToken(rest);
 		if (!token.empty() && token.back() == ';')
 			token.pop_back();
-		if (token == "python") {
-			location.cgiType = CgiType::PYTHON;
-		} else if (token == "php") {
-			location.cgiType = CgiType::PHP;
-		} else {
-			throw std::runtime_error("Unsupported CGI type: " + token);
+		if (token == "on") {
+			location.isCgi = true;
 		}
 	}
 }

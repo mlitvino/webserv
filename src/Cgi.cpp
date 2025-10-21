@@ -26,19 +26,22 @@ bool	Cgi::prepareScript()
 void	Cgi::buildArgv()
 {
 	_argv.clear();
-	if (_cgiType == CgiType::PYTHON)
+
+	_script = _client._resolvedPath;
+	size_t		dot = _script.find_last_of(".");
+	std::string	ext = _script.substr(dot + 1);
+
+	if (ext == PYTHON_EXT)
 	{
+		_interpreter = PYTHON_PATH;
 		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
 		_argv.push_back(const_cast<char*>(_script.c_str()));
 	}
-	else if (_cgiType == CgiType::PHP)
+	else if (ext == PHP_EXT)
 	{
+		_interpreter = PHP_PATH;
 		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
 		_argv.push_back(const_cast<char*>("-f"));
-		_argv.push_back(const_cast<char*>(_script.c_str()));
-	}
-	else
-	{
 		_argv.push_back(const_cast<char*>(_script.c_str()));
 	}
 	_argv.push_back(nullptr);
@@ -158,8 +161,6 @@ bool	Cgi::init()
 	int	inPipe[2] = {-1, -1};
 	int	outPipe[2] = {-1, -1};
 
-	if (!prepareScript())
-		return false;
 	if (!createPipes(inPipe, outPipe))
 		return false;
 

@@ -36,7 +36,6 @@ class Cgi
 		std::vector<std::string>	_envStorage;
 		std::vector<char*>			_envp;
 
-		bool	prepareScript();
 		void	buildArgv();
 		void	buildEnv();
 

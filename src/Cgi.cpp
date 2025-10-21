@@ -4,25 +4,6 @@
 #include "utils.hpp"
 #include "ConfigParser.hpp"
 
-bool	Cgi::prepareScript()
-{
-
-	_script = _client._resolvedPath;
-	switch (_cgiType)
-	{
-		case CgiType::PYTHON:
-			_interpreter = PYTHON_PATH;
-			break;
-		case CgiType::PHP:
-			_interpreter = PHP_PATH;
-			break;
-		case CgiType::NONE:
-		default:
-			return false;
-	}
-	return true;
-}
-
 void	Cgi::buildArgv()
 {
 	_argv.clear();
@@ -69,30 +50,6 @@ void	Cgi::buildEnv()
 	for (auto &envLine : _envStorage)
 		_envp.push_back(const_cast<char*>(envLine.c_str()));
 	_envp.push_back(nullptr);
-}
-
-// Constructors + Destructors
-
-Cgi::Cgi(Client &client)
-	: _client(client)
-	, _contentType("text/html")
-	, _stdinFd(-1)
-	, _stdoutFd(-1)
-	, _pid(-1)
-	, _headersParsed(false)
-	, _interpreter()
-	, _script()
-	, _argv()
-	, _envStorage()
-	, _envp()
-	, _cgiType(CgiType::NONE)
-{}
-
-Cgi::~Cgi() {}
-
-const	std::string& Cgi::defaultContentType() const
-{
-	return _contentType;
 }
 
 bool Cgi::createPipes(int inPipe[2], int outPipe[2])
@@ -199,6 +156,7 @@ bool	Cgi::init()
 		kill(_pid, SIGKILL);
 		int status;
 		waitpid(_pid, &status, 0);
+		_pid = -1;
 		return false;
 	}
 
@@ -206,4 +164,50 @@ bool	Cgi::init()
 	std::cout << "Client in cgi init was changed" << std::endl;
 
 	return true;
+}
+
+int	Cgi::reapChild()
+{
+	int	status;
+	waitpid(_pid, &status, 0);
+	return status;
+}
+
+// Constructors + Destructors
+
+Cgi::Cgi(Client &client)
+	: _client(client)
+	, _contentType("text/html")
+	, _stdinFd(-1)
+	, _stdoutFd(-1)
+	, _pid(-1)
+	, _headersParsed(false)
+	, _interpreter()
+	, _script()
+	, _argv()
+	, _envStorage()
+	, _envp()
+{}
+
+Cgi::~Cgi()
+{
+	if (_stdinFd != -1)
+	{
+		close(_stdinFd);
+	}
+	if (_stdoutFd != -1)
+	{
+		close(_stdoutFd);
+	}
+	if (_pid != -1)
+	{
+		kill(_pid, SIGKILL);
+		int status;
+		waitpid(_pid, &status, 0);
+	}
+}
+
+const	std::string& Cgi::defaultContentType() const
+{
+	return _contentType;
 }

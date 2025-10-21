@@ -59,6 +59,9 @@ void	Client::sendResponse()
 		_responseOffset = 0;
 		_responseBuffer.clear();
 
+		if (_keepAlive == false)
+			return _ipPort.closeConnection(_clientFd);
+
 		_postHandler.resetBodyState();
 		if (_fileFd != -1)
 		{

@@ -192,6 +192,8 @@ void	IpPort::parseHeaders(ClientPtr &client)
 		{
 			if (value.find("keep-alive") != std::string::npos)
 				client->_keepAlive = true;
+			else
+				client->_keepAlive = false;
 		}
 	}
 

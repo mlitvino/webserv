@@ -73,11 +73,11 @@ void	Client::sendResponse()
 	if (bytesSent == 0)
 	{
 		std::cout << "Connection was closed in resndResponse" << std::endl;
-		_ipPort.closeConnection(-1);
+		_ipPort.closeConnection(_clientFd);
 	}
 	else if (bytesSent == -1)
 	{
-		_ipPort.closeConnection(-1);
+		_ipPort.closeConnection(_clientFd);
 		THROW_ERRNO("send");
 	}
 
@@ -114,63 +114,76 @@ void	Client::openFile(std::string &filePath)
 
 void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 {
-	if (ev.events & EPOLLIN)
+	try
 	{
-		if (eventFd == _cgi.getStdinFd())
+		if (ev.events & (EPOLLIN | EPOLLHUP))
 		{
-			handleCgiStdinEvent(ev);
+			if (eventFd == _cgi.getStdoutFd())
+			{
+				handleCgiStdoutEvent(ev);
+				return;
+			}
+		}
+		if (ev.events & EPOLLOUT)
+		{
+			if (eventFd == _clientFd)
+			{
+				sendResponse();
+			}
+			else if (eventFd == _cgi.getStdinFd())
+			{
+				handleCgiStdinEvent(ev);
+			}
 		}
 	}
-	else if (ev.events & EPOLLOUT)
+	catch (...)
 	{
-
-		if (_state == ClientState::SENDING_RESPONSE)
-		{
-			sendResponse();
-		}
-		else if (eventFd == _cgi.getStdoutFd())
-		{
-			handleCgiStdoutEvent(ev);
-			return;
-		}
+		std::cout << "Bad" << std::endl;
+		exit(1);
 	}
 }
 
 void	Client::handleCgiStdoutEvent(epoll_event &ev)
 {
 	char	buf[IO_BUFFER_SIZE];
-	while (true)
+
+	ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
+	if (n > 0)
 	{
-		ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
-		if (n > 0)
+		std::cout << "handleCgiOut, n>0" << std::endl;
+		_cgiBuffer.append(buf, static_cast<size_t>(n));
+	}
+	else if (n == 0)
+	{
+		std::cout << "handleCgiOut, n=0" << std::endl;
+		// EOF from CGI stdout
+		// Parse headers if not yet done and prepare final response
+		if (!parseCgiHeadersAndPrepareResponse())
 		{
-			_cgiBuffer.append(buf, static_cast<size_t>(n));
+			_responseBuffer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+			_state = ClientState::SENDING_RESPONSE;
 		}
-		else if (n == 0)
+		epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdoutFd(), 0);
+		_handlersMap.erase(_cgi.getStdoutFd());
+		close(_cgi.getStdoutFd());
+		utils::changeEpollHandler(_handlersMap, _clientFd, this);
+		return;
+	}
+	else
+	{
+		std::cout << "handleCgiOut, n<0" << std::endl;
+		if (errno == EWOULDBLOCK)
 		{
-			// EOF from CGI stdout
-			// Parse headers if not yet done and prepare final response
-			if (!parseCgiHeadersAndPrepareResponse())
-			{
-				// Malformed CGI output; send 500
-				_responseBuffer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-				_state = ClientState::SENDING_RESPONSE;
-			}
-			// Stop monitoring CGI stdout
-			epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdoutFd(), 0);
-			_handlersMap.erase(_cgi.getStdoutFd());
-			close(_cgi.getStdoutFd());
-			// Now switch to sending response; client fd already monitored for EPOLLOUT
-			// Ensure client fd is handled by Client for sending response
-			utils::changeEpollHandler(_handlersMap, _clientFd, this);
+			std::cout << "handleCgiOut, errno == EWOULDBLOCK" << std::endl;
+		}
+		if (errno == EAGAIN)
+		{
+			std::cout << "handleCgiOut, errno == EAGAIN" << std::endl;
+		}
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;
-		}
-		else
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break;
-			THROW_ERRNO("read CGI stdout");
-		}
+		std::cout << "NOOO" << std::endl;
+		THROW_ERRNO("read CGI stdout");
 	}
 }
 
@@ -178,49 +191,47 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 {
 	// Drain request body temp file into CGI stdin
 	char buf[IO_BUFFER_SIZE];
-	while (true)
+
+	ssize_t n = read(_fileFd, buf, sizeof(buf));
+	if (n > 0)
 	{
-		ssize_t n = read(_fileFd, buf, sizeof(buf));
-		if (n > 0)
-		{
-			ssize_t wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
-			if (wr == -1)
-			{
-				if (errno == EAGAIN || errno == EWOULDBLOCK)
-				{
-					// put back read data into file by seeking back
-					lseek(_fileFd, -n, SEEK_CUR);
-					break;
-				}
-				THROW_ERRNO("write CGI stdin");
-			}
-			else if (wr < n)
-			{
-				// partial write; seek back the unwritten part
-				lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
-				break;
-			}
-		}
-		else if (n == 0)
-		{
-			// Finished sending body; close CGI stdin and stop monitoring
-			epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
-			_handlersMap.erase(_cgi.getStdinFd());
-			close(_cgi.getStdinFd());
-			// We can close the temp file as well
-			if (_fileFd != -1)
-			{
-				close(_fileFd);
-				_fileFd = -1;
-			}
-			break;
-		}
-		else
+		ssize_t wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
+		if (wr == -1)
 		{
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break;
-			THROW_ERRNO("read temp body file");
+			{
+				// put back read data into file by seeking back
+				lseek(_fileFd, -n, SEEK_CUR);
+				return;
+			}
+			THROW_ERRNO("write CGI stdin");
 		}
+		else if (wr < n)
+		{
+			// partial write; seek back the unwritten part
+			lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
+			return;
+		}
+	}
+	else if (n == 0)
+	{
+		// Finished sending body; close CGI stdin and stop monitoring
+		epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
+		_handlersMap.erase(_cgi.getStdinFd());
+		close(_cgi.getStdinFd());
+		// We can close the temp file as well
+		if (_fileFd != -1)
+		{
+			close(_fileFd);
+			_fileFd = -1;
+		}
+		return;
+	}
+	else
+	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return;
+		THROW_ERRNO("read temp body file");
 	}
 }
 

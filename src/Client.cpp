@@ -227,6 +227,10 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 bool	Client::parseCgiHeadersAndPrepareResponse()
 {
 	// Find the end of CGI headers: a blank line CRLF CRLF
+	_fileSize = 0;
+	_fileOffset = 0;
+
+
 	std::string::size_type pos = _cgiBuffer.find("\r\n\r\n");
 	std::string headers;
 	std::string body;

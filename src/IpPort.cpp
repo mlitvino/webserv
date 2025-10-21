@@ -407,22 +407,6 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	listingBuffer = oss.str();
 }
 
-// void	IpPort::processCgi(ClientPtr &client)
-// {
-// 	try {
-// 		Cgi cgi(*client);
-// 		if (!cgi.start()) {
-// 			generateResponse(client, "", 500);
-// 			return;
-// 		}
-// 		client->_state = ClientState::CGI_READING_OUTPUT;
-// 	}
-// 	catch (const std::exception &e) {
-// 		std::cerr << "CGI start exception: " << e.what() << std::endl;
-// 		generateResponse(client, "", 500);
-// 	}
-// }
-
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 {
 	int					err;

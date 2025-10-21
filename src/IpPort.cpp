@@ -225,7 +225,7 @@ void	IpPort::handleDeleteRequest(ClientPtr &client)
 	{
 		std::cout << "DEBUG: File deleted successfully, generating 303 response" << std::endl;
 		std::string dirPath = client->_httpPath.substr(0, client->_httpPath.find_last_of("/"));
-		client->_redirectedUrl = "http://localhost:8080" + dirPath + ".html";
+		client->_redirectedUrl = "http://localhost:8080" + dirPath + "/";
 		generateResponse(client, "", 303);
 	}
 	else

@@ -1,0 +1,29 @@
+# URLs for comprehensive webserv testing
+# Use with: siege -f urls.txt -c 10 -t 30s
+
+# Basic pages
+http://localhost:8080/
+http://localhost:8080/index.html
+http://localhost:8080/about.html
+
+# Different ports
+http://localhost:8081/
+http://localhost:8082/
+
+# API endpoints
+http://localhost:8080/api/
+http://localhost:8080/api/index.html
+
+# CGI scripts
+http://localhost:8080/cgi-bin/demo.py
+http://localhost:8080/cgi-bin/test.py
+
+# Upload area
+http://localhost:8080/upload/
+
+# Test areas
+http://localhost:8080/test/
+http://localhost:8080/restricted/
+
+# Status codes reference
+http://localhost:8080/status-codes.html

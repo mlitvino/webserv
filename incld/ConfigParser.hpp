@@ -49,7 +49,6 @@ struct ServerConfig {
 class ConfigParser {
 private:
 	std::vector<ServerConfig> _serverConfigs;
-	std::string _configFile;
 
 	void parseServerBlock(std::ifstream& file, ServerConfig& config);
 	void parseLocationBlock(std::ifstream& file, Location& location);
@@ -59,7 +58,6 @@ private:
 	std::string trim(const std::string& str);
 	std::vector<std::string> split(const std::string& str, char delimiter);
 	int parseHttpMethods(const std::string& methods);
-	void validatePortConflicts();
 
 public:
 	ConfigParser() = default;

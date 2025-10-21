@@ -214,7 +214,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 void IpPort::handleGetRequest(ClientPtr &client)
 {
 	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
-	generateResponse(client, client->_resolvedPath, 303);
+	generateResponse(client, client->_resolvedPath, 200);
 }
 
 void	IpPort::handleDeleteRequest(ClientPtr &client)

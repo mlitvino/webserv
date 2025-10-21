@@ -214,6 +214,44 @@ void	IpPort::parseHeaders(ClientPtr &client)
 void IpPort::handleGetRequest(ClientPtr &client)
 {
 	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
+
+	if (client->_fileType == FileType::CGI_SCRIPT)
+	{
+		std::cout << "Handling get cgi..." << std::endl;
+
+		// // Respect location-configured CGI type; if not set, decide based on file extension
+		// if (client->_cgi._cgiType == CgiType::NONE)
+		// {
+		// 	std::string ext;
+		// 	const std::string &path = client->_resolvedPath;
+		// 	size_t dot = path.find_last_of('.') ;
+		// 	if (dot != std::string::npos)
+		// 	{
+		// 		ext = path.substr(dot);
+		// 		std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+		// 	}
+
+		// 	if (ext == ".py" || ext == ".cgi")
+		// 		client->_cgi._cgiType = CgiType::PYTHON;
+		// 	else if (ext == ".php")
+		// 		client->_cgi._cgiType = CgiType::PHP;
+		// 	else
+		// 		THROW_HTTP(500, "Unsupported CGI script type");
+		// }
+
+		if (!client->_cgi.init())
+			THROW_HTTP(500, "Failed to start CGI process");
+
+		int cgiIn = client->_cgi.getStdinFd();
+		if (cgiIn != -1)
+		{
+			epoll_ctl(_epollFd, EPOLL_CTL_DEL, cgiIn, 0);
+			_handlersMap.erase(cgiIn);
+			close(cgiIn);
+		}
+
+		return;
+	}
 	generateResponse(client, client->_resolvedPath, 200);
 }
 

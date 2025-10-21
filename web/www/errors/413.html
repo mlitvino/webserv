@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>405 - Method Not Allowed</title>
+	<title>413 - Payload Too Large</title>
 	<style>
 		body {
 			font-family: Arial, sans-serif;
@@ -48,10 +48,10 @@
 </head>
 <body>
 	<div class="error-container">
-		<h1>405</h1>
-		<h2>Method Not Allowed</h2>
-		<p>The method specified in the request is not allowed for the requested resource.</p>
-		<p>Please check the allowed methods and try again.</p>
+		<h1>413</h1>
+		<h2>Payload Too Large</h2>
+		<p>The request is larger than the server is willing or able to process.</p>
+		<p>Try reducing the size of your request or contact the server administrator.</p>
 
 		<a href="/" class="home-link">🏠 Go Home</a>
 
@@ -59,7 +59,7 @@
 
 		<p style="font-size: 12px; color: #999;">
 			Server: Webserv/1.0<br>
-			Error Code: 405 Method Not Allowed
+			Error Code: 413 Payload Too Large
 		</p>
 	</div>
 </body>

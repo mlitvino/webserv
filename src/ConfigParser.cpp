@@ -31,7 +31,7 @@ int ConfigParser::parseHttpMethods(const std::string& methods) {
 		else if (method == "POST") result |= static_cast<int>(HttpMethod::POST);
 		else if (method == "DELETE") result |= static_cast<int>(HttpMethod::DELETE);
 	}
-	return result ? result : static_cast<int>(HttpMethod::GET);
+	return result;
 }
 
 void ConfigParser::parseLocationDirective(const std::string& line, Location& location) {

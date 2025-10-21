@@ -142,10 +142,11 @@ bool	Cgi::init()
 	int	inPipe[2] = {-1, -1};
 	int	outPipe[2] = {-1, -1};
 
-	if (!createPipes(inPipe, outPipe))
-		return false;
 	if (!prepareScript())
 		return false;
+	if (!createPipes(inPipe, outPipe))
+		return false;
+
 	buildArgv();
 	buildEnv();
 

@@ -114,7 +114,7 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 		std::string listenValue;
 		iss >> listenValue;
 		ListenConfig listen;
-		
+
 		size_t colonPos = listenValue.find(':');
 		if (colonPos != std::string::npos) {
 			listen.host = listenValue.substr(0, colonPos);
@@ -213,7 +213,7 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 
 	for (const auto& config : _serverConfigs) {
 		auto server = std::make_shared<Server>(config);
-		
+
 		std::vector<ListenConfig> listens = config.listens;
 		if (listens.empty()) {
 			ListenConfig defaultListen;

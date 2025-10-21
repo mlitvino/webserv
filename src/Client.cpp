@@ -145,6 +145,7 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 
 void	Client::handleCgiStdoutEvent(epoll_event &ev)
 {
+	std::cout << "Client: cgi stdout" << std::endl;
 	char	buf[IO_BUFFER_SIZE];
 
 	ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
@@ -189,6 +190,7 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 
 void	Client::handleCgiStdinEvent(epoll_event &ev)
 {
+	std::cout << "Client: cgi stdin" << std::endl;
 	// Drain request body temp file into CGI stdin
 	char buf[IO_BUFFER_SIZE];
 

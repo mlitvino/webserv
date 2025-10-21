@@ -299,6 +299,6 @@ Server::Server(const ServerConfig& config)
 	_clientBodySize(config.clientMaxBodySize),
 	_errorPages(config.errorPages),
 	_locations(config.locations),
-	_sockfd{-1} {
-}
+	_sockfd{-1}
+{}
 

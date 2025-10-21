@@ -53,7 +53,7 @@ class PostRequestHandler
 		std::string		composeUploadPath(ClientPtr &client);
 		void			writeBodyPart(ClientPtr &client);
 		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
-		void			processCgi(ClientPtr &client, BodyReadStatus status);
+		void			processPostCgi(ClientPtr &client, BodyReadStatus status);
 	public:
 		explicit		PostRequestHandler(IpPort &owner);
 

@@ -202,6 +202,7 @@ bool	Cgi::init()
 	}
 
 	_client._state = ClientState::READING_CGI_OUTPUT;
+	std::cout << "Client in cgi init was changed" << std::endl;
 
 	return true;
 }

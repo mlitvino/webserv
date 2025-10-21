@@ -55,11 +55,9 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			{
 				if (client->_state == ClientState::READING_REQUEST)
 				{
-					//std::cout << "Accepting data from existing client->.." << std::endl;
 					if (!client->readRequest())
 						return closeConnection(eventFd);
 					parseRequest(ev, epollFd, eventFd);
-					//std::cout << "Accepting data is done" << std::endl;
 				}
 				else if (client->_state == ClientState::GETTING_BODY)
 				{
@@ -101,7 +99,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 
 	std::cout << "---------" << std::endl;
-	std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
+	//std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
 	parseHeaders(client);
 	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
 	assignServerToClient(client);
@@ -498,7 +496,6 @@ void	IpPort::closeConnection(int clientFd)
 		if (err == -1)
 			THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
 	}
-	exit(1);
 
 	std::cout << "Closing connection is done" << std::endl;
 }

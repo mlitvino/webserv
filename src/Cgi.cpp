@@ -25,9 +25,16 @@ bool	Cgi::prepareScript()
 
 void	Cgi::buildArgv()
 {
-	if (!_interpreter.empty())
+	_argv.clear();
+	if (_cgiType == CgiType::PYTHON)
 	{
 		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
+		_argv.push_back(const_cast<char*>(_script.c_str()));
+	}
+	else if (_cgiType == CgiType::PHP)
+	{
+		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
+		_argv.push_back(const_cast<char*>("-f"));
 		_argv.push_back(const_cast<char*>(_script.c_str()));
 	}
 	else
@@ -40,12 +47,34 @@ void	Cgi::buildArgv()
 void	Cgi::buildEnv()
 {
 	_envStorage.clear();
+
 	_envStorage.push_back("REQUEST_METHOD=" + _client._httpMethod);
 	_envStorage.push_back(std::string("CONTENT_LENGTH=") + std::to_string(_client._fileSize));
 	_envStorage.push_back("SERVER_PROTOCOL=" + _client._httpVersion);
 	_envStorage.push_back(std::string("SCRIPT_FILENAME=") + _script);
+	_envStorage.push_back("CONTENT_TYPE=" + _client._contentType);
 	_envStorage.push_back(std::string("REQUEST_URI=") + _client._httpPath);
 	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	_envStorage.push_back("REDIRECT_STATUS=200");
+
+	std::string	uploadDir;
+	if (_client._ownerServer)
+	{
+		const std::vector<Location>& locs = _client._ownerServer->getLocations();
+		for (size_t i = 0; i < locs.size(); ++i)
+		{
+			if (!locs[i].path.empty() && locs[i].path == "/upload")
+			{
+				uploadDir = locs[i].root;
+				break;
+			}
+		}
+	}
+	if (uploadDir.empty())
+		uploadDir = "web/upload";
+	_envStorage.push_back(std::string("UPLOAD_DIR=") + uploadDir);
+
+
 	_envp.clear();
 	for (auto &envLine : _envStorage)
 		_envp.push_back(const_cast<char*>(envLine.c_str()));

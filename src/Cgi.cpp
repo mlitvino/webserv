@@ -178,7 +178,12 @@ bool	Cgi::init()
 	close(outPipe[STDOUT_FILENO]);
 	configureParentFds(inPipe[STDOUT_FILENO], outPipe[STDIN_FILENO], pid);
 	if (!registerWithEpoll())
+	{
+		kill(_pid, SIGKILL);
+		int status;
+		waitpid(_pid, &status, 0);
 		return false;
+	}
 
 	_client._state = ClientState::READING_CGI_OUTPUT;
 

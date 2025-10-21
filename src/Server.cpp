@@ -107,8 +107,6 @@ const Location* Server::findLocationForPath(const std::string& path) const
 
 std::string	Server::findFile(ClientPtr &client, const std::string& path, const Location* matched)
 {
-	client->_fileType = FileType::REGULAR;
-
 	std::string	docRoot = matched->root;
 	if (docRoot.empty())
 		docRoot = "web/www";
@@ -211,9 +209,12 @@ bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
 
 	int methodFlag = 0;
-	if (client->_httpMethod == "GET") methodFlag = static_cast<int>(HttpMethod::GET);
-	else if (client->_httpMethod == "POST") methodFlag = static_cast<int>(HttpMethod::POST);
-	else if (client->_httpMethod == "DELETE") methodFlag = static_cast<int>(HttpMethod::DELETE);
+	if (client->_httpMethod == "GET")
+		methodFlag = static_cast<int>(HttpMethod::GET);
+	else if (client->_httpMethod == "POST")
+		methodFlag = static_cast<int>(HttpMethod::POST);
+	else if (client->_httpMethod == "DELETE")
+		methodFlag = static_cast<int>(HttpMethod::DELETE);
 	else
 	{
 		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;

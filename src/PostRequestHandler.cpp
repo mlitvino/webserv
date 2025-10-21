@@ -305,30 +305,6 @@ bool	PostRequestHandler::getFormPart(ClientPtr &client)
 	return true;
 }
 
-void	PostRequestHandler::resetBodyState()
-{
-	_uploadFilename.clear();
-	_bodyBuffer.shrink_to_fit();
-	_bodyBuffer.clear();
-	_bodyBuffer.shrink_to_fit();
-	_decodedBuffer.clear();
-	_decodedBuffer.shrink_to_fit();
-	_bodyBytesExpected = 0;
-	_bodyBytesReceived = 0;
-	_bodyProcessingInitialized = false;
-	_currentChunkSize = 0;
-	_currentChunkRead = 0;
-	_readingChunkSize = true;
-	_parsingChunkTrailers = false;
-	_chunkedFinished = false;
-}
-
-// Constructors + Destructor
-
-PostRequestHandler::PostRequestHandler(IpPort &owner)
-	: _ipPort(owner)
-{}
-
 void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status)
 {
 	if (client->_fileFd == -1)
@@ -358,3 +334,29 @@ void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status
 	if (!client->_cgi.init())
 		THROW_HTTP(500, "Failed to start CGI process");
 }
+
+void	PostRequestHandler::resetBodyState()
+{
+	_uploadFilename.clear();
+	_bodyBuffer.shrink_to_fit();
+	_bodyBuffer.clear();
+	_bodyBuffer.shrink_to_fit();
+	_decodedBuffer.clear();
+	_decodedBuffer.shrink_to_fit();
+	_bodyBytesExpected = 0;
+	_bodyBytesReceived = 0;
+	_bodyProcessingInitialized = false;
+	_currentChunkSize = 0;
+	_currentChunkRead = 0;
+	_readingChunkSize = true;
+	_parsingChunkTrailers = false;
+	_chunkedFinished = false;
+}
+
+// Constructors + Destructor
+
+PostRequestHandler::PostRequestHandler(IpPort &owner)
+	: _ipPort(owner)
+{}
+
+

@@ -48,6 +48,9 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	}
 
 	client->_resolvedPath = findFile(client, client->_httpPath, matchedLocation);
+
+	std::cout << "DEBUG: type file: " << (client->_fileType == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
+
 	if (client->_resolvedPath.empty())
 		THROW_HTTP(404, "Not Found");
 

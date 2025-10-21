@@ -29,7 +29,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	bool	isBodyFinished;
 	if (client->_fileType == FileType::CGI_SCRIPT)
 	{
-		processCgi(client, status);
+		processPostCgi(client, status);
 		return;
 	}
 	else
@@ -334,7 +334,7 @@ PostRequestHandler::PostRequestHandler(IpPort &owner)
 	: _ipPort(owner)
 {}
 
-void	PostRequestHandler::processCgi(ClientPtr &client, BodyReadStatus status)
+void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status)
 {
 	if (client->_fileFd == -1)
 	{

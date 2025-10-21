@@ -214,7 +214,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 void IpPort::handleGetRequest(ClientPtr &client)
 {
 	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
-	generateResponse(client, client->_resolvedPath, 303);
+	generateResponse(client, client->_resolvedPath, 200);
 }
 
 void	IpPort::handleDeleteRequest(ClientPtr &client)
@@ -225,7 +225,7 @@ void	IpPort::handleDeleteRequest(ClientPtr &client)
 	{
 		std::cout << "DEBUG: File deleted successfully, generating 303 response" << std::endl;
 		std::string dirPath = client->_httpPath.substr(0, client->_httpPath.find_last_of("/"));
-		client->_redirectedUrl = "http://localhost:8080" + dirPath + ".html";
+		client->_redirectedUrl = "http://localhost:8080" + dirPath + "/";
 		generateResponse(client, "", 303);
 	}
 	else
@@ -406,22 +406,6 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	oss << "</ul><hr><address>webserv/1.0</address></body></html>";
 	listingBuffer = oss.str();
 }
-
-// void	IpPort::processCgi(ClientPtr &client)
-// {
-// 	try {
-// 		Cgi cgi(*client);
-// 		if (!cgi.start()) {
-// 			generateResponse(client, "", 500);
-// 			return;
-// 		}
-// 		client->_state = ClientState::CGI_READING_OUTPUT;
-// 	}
-// 	catch (const std::exception &e) {
-// 		std::cerr << "CGI start exception: " << e.what() << std::endl;
-// 		generateResponse(client, "", 500);
-// 	}
-// }
 
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 {

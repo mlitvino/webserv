@@ -42,8 +42,6 @@ class IpPort : public IEpollFdOwner
 		void			listDirectory(ClientPtr &client, std::string &listingBuffer);
 		std::string		formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode);
 
-		void			processCgi(ClientPtr &client);
-
 		void			setAddrPort(std::string addrPort);
 		int				getSockFd();
 

@@ -34,6 +34,7 @@ class IpPort : public IEpollFdOwner
 
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
 		void			parseHeaders(ClientPtr &client);
+		void			parseQuery(ClientPtr &client, const std::string &pathAndQuery);
 		void			assignServerToClient(ClientPtr &client);
 
 		void			handleGetRequest(ClientPtr &client);

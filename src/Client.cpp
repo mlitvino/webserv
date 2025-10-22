@@ -339,6 +339,7 @@ void	Client::resetRequestData()
 	_contentLen = 0;
 	_chunked = false;
 	_contentType.clear();
+	_query.clear();
 	_redirectedUrl.clear();
 	_fileType = FileType::REGULAR;
 

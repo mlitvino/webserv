@@ -138,13 +138,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	client->_httpMethod = line.substr(0, firstSpace);
 
 	std::string	pathAndQuery = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
-	client->_httpPath = pathAndQuery;
-	size_t		qpos = pathAndQuery.find("?_method=DELETE");
-	if (qpos != std::string::npos)
-	{
-		client->_httpPath = pathAndQuery.substr(0, qpos);
-		client->_httpMethod = "DELETE";
-	}
+	parseQuery(client, pathAndQuery);
 	client->_httpVersion = line.substr(secondSpace + 1);
 
 	while (std::getline(iss, line))
@@ -200,6 +194,25 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	client->_buffer.erase(0, headersEnd + 4);
 }
 
+void	IpPort::parseQuery(ClientPtr &client, const std::string &pathAndQuery)
+{
+	size_t	q = pathAndQuery.find_last_of('?');
+	std::string	query = pathAndQuery.substr(q + 1);
+	client->_httpPath = pathAndQuery;
+
+	if (query == "_method=DELETE")
+	{
+		client->_query = query;
+		client->_httpMethod = "DELETE";
+		client->_httpPath.erase(q);
+	}
+	else if (query.find("_download_file=") != std::string::npos)
+	{
+		client->_query = query;
+		client->_httpPath.erase(q);
+	}
+}
+
 void IpPort::handleGetRequest(ClientPtr &client)
 {
 	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
@@ -207,26 +220,6 @@ void IpPort::handleGetRequest(ClientPtr &client)
 	if (client->_fileType == FileType::CGI_SCRIPT)
 	{
 		std::cout << "Handling get cgi..." << std::endl;
-
-		// // Respect location-configured CGI type; if not set, decide based on file extension
-		// if (client->_cgi._cgiType == CgiType::NONE)
-		// {
-		// 	std::string ext;
-		// 	const std::string &path = client->_resolvedPath;
-		// 	size_t dot = path.find_last_of('.') ;
-		// 	if (dot != std::string::npos)
-		// 	{
-		// 		ext = path.substr(dot);
-		// 		std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-		// 	}
-
-		// 	if (ext == ".py" || ext == ".cgi")
-		// 		client->_cgi._cgiType = CgiType::PYTHON;
-		// 	else if (ext == ".php")
-		// 		client->_cgi._cgiType = CgiType::PHP;
-		// 	else
-		// 		THROW_HTTP(500, "Unsupported CGI script type");
-		// }
 
 		if (!client->_cgi.init())
 			THROW_HTTP(500, "Failed to start CGI process");
@@ -331,7 +324,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
 	std::cout << "DEBUG: Response buffer: " << client->_responseBuffer << std::endl;
 }
-
 
 std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode)
 {

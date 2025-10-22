@@ -5,7 +5,6 @@
 #include <unordered_map>
 
 #define IO_BUFFER_SIZE 1024
-#define MAX_CHUNK_SIZE 20000
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
 

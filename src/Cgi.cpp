@@ -41,13 +41,13 @@ void	Cgi::buildEnv()
 	_envStorage.push_back(std::string("SCRIPT_FILENAME=") + _script);
 	_envStorage.push_back("CONTENT_TYPE=" + _client._contentType);
 	_envStorage.push_back(std::string("REQUEST_URI=") + _client._httpPath);
+	_envStorage.push_back(std::string("PATH_INFO=") + _script);
 	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	_envStorage.push_back("REDIRECT_STATUS=200");
+	_envStorage.push_back("QUERY_STRING=" + _client._query);
 
 	if (_client._httpMethod == "POST")
-	{
 		_envStorage.push_back(std::string("UPLOAD_DIR=") + _uploadDir);
-	}
 
 	_envp.clear();
 	for (auto &envLine : _envStorage)
@@ -166,7 +166,6 @@ bool	Cgi::init()
 
 	_client._state = ClientState::READING_CGI_OUTPUT;
 	std::cout << "Client in cgi init was changed" << std::endl;
-
 	return true;
 }
 

@@ -63,11 +63,7 @@ void	Client::sendResponse()
 			return _ipPort.closeConnection(_clientFd);
 
 		_postHandler.resetBodyState();
-		if (_fileFd != -1)
-		{
-			close(_fileFd);
-			_fileFd = -1;
-		}
+		closeFile();
 		_state = ClientState::READING_REQUEST;
 		utils::changeEpollHandler(_handlersMap, _clientFd, &_ipPort);
 		return ;
@@ -86,9 +82,11 @@ void	Client::sendResponse()
 	std::cout << "Sending part of response is done" << std::endl;
 }
 
-void	Client::closeFile(epoll_event &ev, int epollFd, int eventFd)
+void	Client::closeFile()
 {
-	close(_fileFd);
+	if (_fileFd != -1)
+		close(_fileFd);
+	_fileFd = -1;
 	_fileBuffer.clear();
 	_fileSize = 0;
 	_fileOffset = 0;
@@ -170,19 +168,13 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 		int status = _cgi.reapChild();
 		if (status != 0)
 		{
-			if (_fileFd != -1)
-			{
-				close(_fileFd);
-				_fileFd = -1;
-			}
-			THROW_HTTP(500, "Child failed");
+			closeFile();
+			std::string	errorPage = _ownerServer->getCustomErrorPage(status);
+			ClientPtr	self = _clientsMap.at(_clientFd);
+			_ipPort.generateResponse(self, errorPage, status);
+			return;
 		}
-		if (!parseCgiHeadersAndPrepareResponse())
-		{
-			_responseBuffer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-			_state = ClientState::SENDING_RESPONSE;
-		}
-		epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdoutFd(), 0);
+		parseCgiOutput();
 		_handlersMap.erase(_cgi.getStdoutFd());
 		close(_cgi.getStdoutFd());
 		utils::changeEpollHandler(_handlersMap, _clientFd, this);
@@ -220,11 +212,7 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 		std::cout << "Client Cgi   In, n=0" << std::endl;
 		_handlersMap.erase(_cgi.getStdinFd());
 		close(_cgi.getStdinFd());
-		if (_fileFd != -1)
-		{
-			close(_fileFd);
-			_fileFd = -1;
-		}
+		closeFile();
 		_state = ClientState::READING_CGI_OUTPUT;
 		return;
 	}
@@ -234,7 +222,7 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 	}
 }
 
-bool	Client::parseCgiHeadersAndPrepareResponse()
+bool	Client::parseCgiOutput()
 {
 	_fileSize = 0;
 	_fileOffset = 0;

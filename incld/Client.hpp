@@ -81,7 +81,6 @@ class Client : public IEpollFdOwner
 		Cgi					_cgi;
 		PostRequestHandler	_postHandler;
 
-
 		Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner);
 		~Client();
 
@@ -91,11 +90,11 @@ class Client : public IEpollFdOwner
 		void	sendResponse();
 		bool	readRequest();
 
-		void	closeFile(epoll_event &ev, int epollFd, int eventFd);
+		void	closeFile();
 		void	openFile(std::string &filePath);
 
 		void	handleCgiStdoutEvent(epoll_event &ev);
 		void	handleCgiStdinEvent(epoll_event &ev);
-		bool	parseCgiHeadersAndPrepareResponse();
+		bool	parseCgiOutput();
 		void	resetRequestData();
 };

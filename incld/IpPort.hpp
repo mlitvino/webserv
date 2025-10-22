@@ -30,7 +30,7 @@ class IpPort : public IEpollFdOwner
 		void			handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
 
 		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
-		void			closeConnection(int clientFd);
+		void			closeConnection(int &clientFd);
 
 		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
 		void			parseHeaders(ClientPtr &client);

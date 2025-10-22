@@ -1,4 +1,0 @@
-This is a sample uploaded file in the uploads directory.
-Route: /uploads
-Server: example.com
-File created for testing route functionality.

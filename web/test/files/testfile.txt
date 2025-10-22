@@ -1,4 +1,0 @@
-Test file in the files directory.
-Route: /files  
-Server: test.local
-This demonstrates route-based directory serving.

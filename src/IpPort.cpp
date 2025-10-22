@@ -53,8 +53,11 @@ std::string	IpPort::getStatusText(int statusCode)
 		case 404: return "Not Found";
 		case 405: return "Method Not Allowed";
 		case 413: return "Payload Too Large";
+		case 415: return "Unsupported Media Type";
 
 		case 500: return "Internal Server Error";
+		case 501: return "Not Implemented";
+		case 505: return "HTTP Version Not Supported";
 		default: return "Unknown";
 	}
 }
@@ -488,9 +491,39 @@ int	IpPort::getSockFd()
 	return _sockFd;
 }
 
-void	IpPort::setAddrPort(std::string addrPort)
+FdClientMap&	IpPort::getClientsMap()
+{
+	return _clientsMap;
+}
+
+FdEpollOwnerMap&	IpPort::getHandlersMap()
+{
+	return _handlersMap;
+}
+
+ServerDeq&	IpPort::getServers()
+{
+	return _servers;
+}
+
+const std::string&	IpPort::getAddrPort()
+{
+	return _addrPort;
+}
+
+int&	IpPort::getEpollFd()
+{
+	return _epollFd;
+}
+
+void	IpPort::setAddrPort(const std::string &addrPort)
 {
 	_addrPort = addrPort;
+}
+
+void	IpPort::setSockFd(int fd)
+{
+	_sockFd = fd;
 }
 
 // Constructors + Destructor
@@ -506,5 +539,4 @@ IpPort::IpPort(Program &program)
 	, _handlersMap{program.getHandlersMap()}
 	, _sockFd{-1}
 	, _epollFd{program.getEpollFd()}
-{
-}
+{}

@@ -8,7 +8,8 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::cout << "Validating headers..." << std::endl;
 	const Location	*matchedLocation = findLocationForPath(client->_httpPath);
 
-	// optional: check HTTP version here
+	if (client->_httpVersion != HTTP_VERSION)
+		THROW_HTTP(505, "Not supported HTTP vesion");
 
 	if (!matchedLocation)
 		THROW_HTTP(400, "No matched location");
@@ -20,10 +21,10 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	}
 
 	if (client->_httpPath.find("%") != std::string::npos)
-		THROW_HTTP(400, "Unsupported encoded request");
+		THROW_HTTP(501, "Unsupported encoded request");
 
 	if (client->_contentLen > 0 && client->_chunked)
-		THROW_HTTP(400, "Chunked body and content-length are presented");
+		THROW_HTTP(415, "Chunked body and content-length are presented");
 
 	if (client->_contentLen < 0)
 		THROW_HTTP(400, "Invalid content-length");

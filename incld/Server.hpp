@@ -13,6 +13,8 @@
 #include "IpPort.hpp"
 #include "Client.hpp"
 
+#define HTTP_VERSION "HTTP/1.1"
+
 class Server
 {
 	private:

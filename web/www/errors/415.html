@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>415 - Unsupported Media Type</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			text-align: center;
+			padding: 50px;
+			background-color: #f8f9fa;
+		}
+		.error-container {
+			max-width: 600px;
+			margin: 0 auto;
+			background: white;
+			padding: 40px;
+			border-radius: 10px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+		}
+		h1 {
+			font-size: 72px;
+			color: #dc3545;
+			margin: 0;
+		}
+		h2 {
+			color: #333;
+			margin: 20px 0;
+		}
+		p {
+			color: #666;
+			line-height: 1.6;
+		}
+		.home-link {
+			display: inline-block;
+			margin-top: 20px;
+			padding: 10px 20px;
+			background-color: #007acc;
+			color: white;
+			text-decoration: none;
+			border-radius: 5px;
+		}
+		.home-link:hover {
+			background-color: #005a8c;
+		}
+	</style>
+</head>
+<body>
+	<div class="error-container">
+		<h1>415</h1>
+		<h2>Unsupported Media Type</h2>
+		<p>The server cannot process the request because the payload format is unsupported.</p>
+		<p>Please check the Content-Type header and try again with a supported media type.</p>
+
+		<a href="/" class="home-link">🏠 Go Home</a>
+
+		<hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+
+		<p style="font-size: 12px; color: #999;">
+			Server: Webserv/1.0<br>
+			Error Code: 415 Unsupported Media Type
+		</p>
+	</div>
+</body>
+</html>

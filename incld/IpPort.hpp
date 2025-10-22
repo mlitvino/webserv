@@ -1,0 +1,51 @@
+#pragma once
+
+#include <iostream>
+
+#include <netdb.h>
+
+#include "webserv.hpp"
+#include "Program.hpp"
+#include "HttpException.hpp"
+#include "IEpollFdOwner.hpp"
+#include "utils.hpp"
+#include "Client.hpp"
+
+#define QUEUE_SIZE 20
+
+class IpPort : public IEpollFdOwner
+{
+	public:
+		FdClientMap		&_clientsMap;
+		FdEpollOwnerMap	&_handlersMap;
+
+		ServerDeq		_servers;
+		std::string		_addrPort;
+
+		int				_sockFd;
+		int				&_epollFd;
+
+		void			OpenSocket(addrinfo &hints, addrinfo *_servInfo);
+
+		void			handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
+
+		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
+		void			closeConnection(int clientFd);
+
+		void			parseRequest(epoll_event &ev, int epollFd, int eventFd);
+		void			parseHeaders(ClientPtr &client);
+		void			assignServerToClient(ClientPtr &client);
+
+		void			handleGetRequest(ClientPtr &client);
+		void			handleDeleteRequest(ClientPtr &client);
+		void			generateResponse(ClientPtr &client, std::string path, int statusCode);
+		bool			listDirectory(ClientPtr &client, std::string &listingBuffer);
+		std::string		formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode);
+
+		void			setAddrPort(std::string addrPort);
+		int				getSockFd();
+
+		~IpPort();
+		IpPort(Program &program);
+
+};

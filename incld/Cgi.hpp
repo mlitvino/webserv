@@ -4,15 +4,11 @@
 #include <vector>
 #include <string>
 
+#include "webserv.hpp"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-
-class Client;
-class IpPort;
-using ClientPtr = std::shared_ptr<Client>;
-enum class CgiType;
 
 #define PYTHON_PATH "/usr/bin/python3"
 #define PYTHON_EXT ".py"

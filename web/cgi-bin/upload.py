@@ -10,8 +10,7 @@ import uuid
 import cgi
 from urllib.parse import parse_qs
 
-print("Content-Type: text/html")
-print()
+sys.stdout.write("Content-Type: text/html\r\n\r\n")
 
 print("""<!DOCTYPE html>
 <html lang="en">
@@ -71,6 +70,7 @@ if request_method == 'POST':
             form = None  # explicit to avoid lints
         else:
             saved_any = False
+            invalid_found = False
             print('<div class="section success">')
             print('<h2>✅ File Upload Result</h2>')
 
@@ -86,6 +86,11 @@ if request_method == 'POST':
                     continue
                 # Use original filename from Content-Disposition (sanitized)
                 safe_filename = os.path.basename(filename)
+                # Reject filenames containing space or '#'
+                if (' ' in safe_filename) or ('#' in safe_filename):
+                    print(f'<p class="error">❌ Invalid filename "{filename}": spaces and # characters are not allowed. Please rename your file and try again.</p>')
+                    invalid_found = True
+                    continue
                 file_path = os.path.join(upload_dir, safe_filename)
 
                 # Stream to disk and count bytes
@@ -108,7 +113,10 @@ if request_method == 'POST':
                     print(f'<p class="error">Error saving file {filename}: {e}</p>')
 
             if not saved_any:
-                print('<p>No files were found in the upload request.</p>')
+                if invalid_found:
+                    print('<p>No files were saved because one or more filenames contain invalid characters (spaces or #). Please rename your files and try again.</p>')
+                else:
+                    print('<p>No files were found in the upload request.</p>')
             print('</div>')
 
     except Exception as e:
@@ -117,7 +125,6 @@ if request_method == 'POST':
         print(f'<p>Error processing upload: {str(e)}</p>')
         print('</div>')
 
-# Best-effort cleanup: ensure no __pycache__ is left by this script
 try:
     import shutil
     pycache_dir = os.path.join(os.path.dirname(__file__), "__pycache__")
@@ -143,16 +150,6 @@ print(f"""
                     <input type="file" id="file" name="file" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="description">Description (optional):</label>
-                    <textarea id="description" name="description" rows="3" placeholder="Enter a description for the file..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="uploader">Uploader Name (optional):</label>
-                    <input type="text" id="uploader" name="uploader" placeholder="Your name">
-                </div>
-
                 <button type="submit">Upload File</button>
             </form>
         </div>
@@ -162,12 +159,8 @@ print(f"""
             <ul>
                 <li>✅ Multipart/form-data parsing</li>
                 <li>✅ File content extraction</li>
-                <li>✅ Automatic file saving</li>
-                <li>✅ Unique filename generation</li>
                 <li>✅ File size reporting</li>
-                <li>✅ Text file preview</li>
                 <li>✅ Upload directory management</li>
-                <li>✅ Error handling</li>
             </ul>
         </div>
 
@@ -178,7 +171,6 @@ print(f"""
                 <li><strong>Multipart Form Data:</strong> Proper parsing of multipart/form-data requests</li>
                 <li><strong>File Handling:</strong> Binary and text file processing</li>
                 <li><strong>Path Management:</strong> Correct directory handling for file operations</li>
-                <li><strong>Security:</strong> Unique filename generation to prevent conflicts</li>
                 <li><strong>CGI Environment:</strong> Full use of CGI environment variables</li>
             </ul>
         </div>

@@ -3,10 +3,84 @@ import os
 import sys
 import datetime
 import json
+import mimetypes
 from urllib.parse import parse_qs
 
-print("Content-Type: text/html")
-print()
+# If a download is requested via QUERY_STRING "_download_file=filename",
+# stream the requested file from UPLOAD_DIR and exit before rendering HTML.
+try:
+    qs = os.environ.get('QUERY_STRING', '')
+    params = parse_qs(qs) if qs else {}
+    download_vals = params.get('_download_file')
+    if download_vals:
+        requested = download_vals[0]
+        upload_dir = os.environ.get('UPLOAD_DIR', 'web/upload')
+        safe_name = os.path.basename(requested)
+
+        # Basic validation: disallow path traversal and certain characters
+        if (
+            not safe_name
+            or safe_name != requested  # no subdirs
+            or '..' in safe_name
+            or ' ' in safe_name
+            or '#' in safe_name
+        ):
+            sys.stdout.write("Status: 400 Bad Request\r\n")
+            sys.stdout.write("Content-Type: text/plain\r\n")
+            sys.stdout.write("\r\n")
+            sys.stdout.write("Invalid filename. Spaces, '#' and path components are not allowed.")
+            sys.exit(0)
+
+        file_path = os.path.join(upload_dir, safe_name)
+        if not os.path.isfile(file_path):
+            sys.stdout.write("Status: 404 Not Found\r\n")
+            sys.stdout.write("Content-Type: text/plain\r\n")
+            sys.stdout.write("\r\n")
+            sys.stdout.write("File not found.")
+            sys.exit(0)
+
+        ctype, _ = mimetypes.guess_type(safe_name)
+        if not ctype:
+            ctype = 'application/octet-stream'
+
+        try:
+            size = os.path.getsize(file_path)
+        except Exception:
+            size = None
+
+        sys.stdout.write(f"Content-Type: {ctype}\r\n")
+        if size is not None:
+            sys.stdout.write(f"Content-Length: {size}\r\n")
+        sys.stdout.write(f"Content-Disposition: attachment; filename=\"{safe_name}\"\r\n")
+        sys.stdout.write("\r\n")
+        # Ensure headers are flushed before sending binary data
+        try:
+            sys.stdout.flush()
+        except:
+            pass
+
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                sys.stdout.buffer.write(chunk)
+        try:
+            sys.stdout.flush()
+        except Exception:
+            pass
+        sys.exit(0)
+except SystemExit:
+    raise
+except Exception:
+    # On unexpected error before headers, return 500 text
+    sys.stdout.write("Status: 500 Internal Server Error\r\n")
+    sys.stdout.write("Content-Type: text/plain\r\n")
+    sys.stdout.write("\r\n")
+    sys.stdout.write("Internal Server Error while processing download request.")
+    sys.exit(0)
+
+sys.stdout.write("Content-Type: text/html\r\n\r\n")
 
 print("""<!DOCTYPE html>
 <html lang="en">
@@ -125,7 +199,7 @@ print("""
 
             <h3>GET Request with Parameters</h3>
             <form method="GET" action="/cgi-bin/demo.py">
-                <input type="text" name="test_param" placeholder="Enter test value" />
+                <input type="text" name="_download_file" placeholder="Enter filename (from UPLOAD_DIR)" />
                 <input type="submit" value="Send GET Request" />
             </form>
 
@@ -152,7 +226,6 @@ print("""
         <div class="section">
             <h2>🔗 CGI Features Demonstrated</h2>
             <ul>
-                <li>✅ Environment variable access (REQUEST_METHOD, QUERY_STRING, etc.)</li>
                 <li>✅ GET parameter parsing</li>
                 <li>✅ POST data handling</li>
                 <li>✅ HTTP header generation (Content-Type)</li>

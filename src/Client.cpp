@@ -92,7 +92,6 @@ void	Client::closeFile()
 	if (_fileFd != -1)
 		close(_fileFd);
 	_fileFd = -1;
-	_fileBuffer.clear();
 	_fileSize = 0;
 	_fileOffset = 0;
 }
@@ -101,9 +100,8 @@ void	Client::openFile(std::string &filePath)
 {
 	int			err;
 	struct stat	fileInfo;
-	_filePath = filePath;
 
-	_fileFd = open(_filePath.c_str(), O_RDWR | O_NONBLOCK, 667);
+	_fileFd = open(filePath.c_str(), O_RDWR | O_NONBLOCK, 667);
 	if (_fileFd < 0)
 		return ;
 
@@ -305,15 +303,91 @@ void	Client::resetRequestData()
 
 // Getters + Setters
 
-int		Client::getFd()
-{
-	return _clientFd;
-}
+int				Client::getFd() { return _clientFd; }
+
+Time			Client::getLastActivity() { return _lastActivity; }
+void			Client::setLastActivity(Time t) { _lastActivity = t; }
+
+std::string&	Client::getBuffer() { return _buffer; }
+void			Client::setBuffer(const std::string &v) { _buffer = v; }
+
+std::string&	Client::getResponseBuffer() { return _responseBuffer; }
+void			Client::setResponseBuffer(const std::string &v) { _responseBuffer = v; }
+
+size_t			Client::getResponseOffset() { return _responseOffset; }
+void			Client::setResponseOffset(size_t v) { _responseOffset = v; }
+
+ClientState		Client::getState() { return _state; }
+void			Client::setState(ClientState s) { _state = s; }
+
+ServerPtr&		Client::getOwnerServer() { return _ownerServer; }
+void			Client::setOwnerServer(const ServerPtr &srv) { _ownerServer = srv; }
+
+std::string&	Client::getHttpMethod() { return _httpMethod; }
+void			Client::setHttpMethod(const std::string &v) { _httpMethod = v; }
+
+std::string&	Client::getHttpPath() { return _httpPath; }
+void			Client::setHttpPath(const std::string &v) { _httpPath = v; }
+
+std::string&	Client::getQuery() { return _query; }
+void			Client::setQuery(const std::string &v) { _query = v; }
+
+std::string&	Client::getHttpVersion() { return _httpVersion; }
+void			Client::setHttpVersion(const std::string &v) { _httpVersion = v; }
+
+size_t			Client::getContentLen() { return _contentLen; }
+void			Client::setContentLen(size_t v) { _contentLen = v; }
+
+bool			Client::getChunked() { return _chunked; }
+void			Client::setChunked(bool v) { _chunked = v; }
+
+bool			Client::getKeepAlive() { return _keepAlive; }
+void			Client::setKeepAlive(bool v) { _keepAlive = v; }
+
+std::string&	Client::getHostHeader() { return _hostHeader; }
+void			Client::setHostHeader(const std::string &v) { _hostHeader = v; }
+
+std::string&	Client::getContentType() { return _contentType; }
+void			Client::setContentType(const std::string &v) { _contentType = v; }
+
+std::string&	Client::getMultipartBoundary() { return _multipartBoundary; }
+void			Client::setMultipartBoundary(const std::string &v) { _multipartBoundary = v; }
+
+std::string&	Client::getResolvedPath() { return _resolvedPath; }
+void			Client::setResolvedPath(const std::string &v) { _resolvedPath = v; }
+
+FileType		Client::getFileType() { return _fileType; }
+void			Client::setFileType(FileType t) { _fileType = t; }
+
+std::string&	Client::getRedirectedUrl() { return _redirectedUrl; }
+void			Client::setRedirectedUrl(const std::string &v) { _redirectedUrl = v; }
+
+int				Client::getRedirectCode() { return _redirectCode; }
+void			Client::setRedirectCode(int v) { _redirectCode = v; }
+
+int				Client::getClientFd() { return _clientFd; }
+void			Client::setClientFd(int fd) { _clientFd = fd; }
+
+int				Client::getFileFd() { return _fileFd; }
+void			Client::setFileFd(int fd) { _fileFd = fd; }
+
+int				Client::getFileSize() { return _fileSize; }
+void			Client::setFileSize(int sz) { _fileSize = sz; }
+
+Cgi&			Client::getCgi() { return _cgi; }
+PostRequestHandler&	Client::getPostRequestHandler() { return _postHandler; }
+
+FdClientMap&		Client::getClientsMap() { return _clientsMap; }
+FdEpollOwnerMap&	Client::getHandlersMap() { return _handlersMap; }
+IpPort&				Client::getIpPort() { return _ipPort; }
 
 // Constructors + Destructor
 
 Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
-	: _lastActivity{g_current_time}
+	: _clientFd{clientFd}
+	, _clientAddr{clientAddr}
+	, _clientAddrLen{clientAddrLen}
+	, _lastActivity{g_current_time}
 	, _buffer()
 	, _responseOffset{0}
 	, _state(ClientState::READING_REQUEST)
@@ -323,11 +397,7 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _chunked(false)
 	, _keepAlive(false)
 	, _hostHeader()
-	, _clientAddr{clientAddr}
-	, _clientAddrLen{clientAddrLen}
-	, _clientFd{clientFd}
 	, _fileFd{-1}
-	, _fileBuffer()
 	, _fileSize{0}
 	, _fileOffset{0}
 	, _cgi{*this}

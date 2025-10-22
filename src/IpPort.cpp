@@ -325,7 +325,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		response += listingBuffer;
 
 	client->_state = ClientState::SENDING_RESPONSE;
-	utils::changeEpollHandler(_handlersMap, client->_clientFd, client.get());
+	utils::changeEpollHandler(_handlersMap, client->getFd(), client.get());
 	client->_responseBuffer = std::move(response);
 
 	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;

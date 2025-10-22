@@ -337,6 +337,7 @@ void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status
 
 	if (!client->_cgi.init())
 		THROW_HTTP(500, "Failed to start CGI process");
+	client->_state = ClientState::WRITING_CGI_INPUT;
 }
 
 void	PostRequestHandler::resetBodyState()

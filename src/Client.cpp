@@ -161,14 +161,12 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 	ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
 	if (n > 0)
 	{
-		std::cout << "handleCgiOut, n>0" << std::endl;
+		std::cout << "Client Cgi   Out, n>0" << std::endl;
 		_cgiBuffer.append(buf, static_cast<size_t>(n));
 	}
 	else if (n == 0)
 	{
-		std::cout << "handleCgiOut, n=0" << std::endl;
-		// EOF from CGI stdout
-		// Parse headers if not yet done and prepare final response
+		std::cout << "Client Cgi   Out, n=0" << std::endl;
 		int status = _cgi.reapChild();
 		if (status != 0)
 		{
@@ -192,18 +190,6 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 	}
 	else
 	{
-		std::cout << "handleCgiOut, n<0" << std::endl;
-		if (errno == EWOULDBLOCK)
-		{
-			std::cout << "handleCgiOut, errno == EWOULDBLOCK" << std::endl;
-		}
-		if (errno == EAGAIN)
-		{
-			std::cout << "handleCgiOut, errno == EAGAIN" << std::endl;
-		}
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return;
-		std::cout << "NOOO" << std::endl;
 		THROW_ERRNO("read CGI stdout");
 	}
 }
@@ -211,58 +197,48 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 void	Client::handleCgiStdinEvent(epoll_event &ev)
 {
 	std::cout << "Client: cgi stdin" << std::endl;
-	// Drain request body temp file into CGI stdin
 	char buf[IO_BUFFER_SIZE];
 
-	ssize_t n = read(_fileFd, buf, sizeof(buf));
+	ssize_t	n = read(_fileFd, buf, sizeof(buf));
 	if (n > 0)
 	{
-		ssize_t wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
+		std::cout << "Client Cgi   In, n>0" << std::endl;
+		ssize_t	wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
 		if (wr == -1)
 		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-			{
-				// put back read data into file by seeking back
-				lseek(_fileFd, -n, SEEK_CUR);
-				return;
-			}
-			THROW_ERRNO("write CGI stdin");
+			THROW_HTTP(500, "write failed in CGI");
 		}
 		else if (wr < n)
 		{
-			// partial write; seek back the unwritten part
+			std::cout << "Client Cgi   In, n<0" << std::endl;
 			lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
 			return;
 		}
 	}
 	else if (n == 0)
 	{
-		// Finished sending body; close CGI stdin and stop monitoring
+		std::cout << "Client Cgi   In, n=0" << std::endl;
 		epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
 		_handlersMap.erase(_cgi.getStdinFd());
 		close(_cgi.getStdinFd());
-		// We can close the temp file as well
 		if (_fileFd != -1)
 		{
 			close(_fileFd);
 			_fileFd = -1;
 		}
+		_state = ClientState::READING_CGI_OUTPUT;
 		return;
 	}
 	else
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return;
-		THROW_ERRNO("read temp body file");
+		THROW_HTTP(500, "read temp body file");
 	}
 }
 
 bool	Client::parseCgiHeadersAndPrepareResponse()
 {
-	// Find the end of CGI headers: a blank line CRLF CRLF
 	_fileSize = 0;
 	_fileOffset = 0;
-
 
 	std::string::size_type pos = _cgiBuffer.find("\r\n\r\n");
 	std::string headers;
@@ -273,55 +249,37 @@ bool	Client::parseCgiHeadersAndPrepareResponse()
 		body = _cgiBuffer.substr(pos + 4);
 	}
 	else
-	{
-		// No headers delimiter found; assume entire buffer is body with default content-type
 		body = _cgiBuffer;
-	}
 
-	std::string statusLine = "HTTP/1.1 200 OK\r\n";
-	std::string outHeaders;
-	// Parse CGI-style headers (e.g., Status:, Content-Type:)
-	if (!headers.empty())
+	std::string	statusLine = "HTTP/1.1 200 OK\r\n";
+	std::string	outHeaders;
+	if (headers.empty())
+		THROW_HTTP(500, "Invalid CGI Status header");
+	std::istringstream iss(headers);
+	std::string line;
+	while (std::getline(iss, line))
 	{
-		std::istringstream iss(headers);
-		std::string line;
-		while (std::getline(iss, line))
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		if (line.rfind("Status:", 0) == 0)
 		{
-			if (!line.empty() && line.back() == '\r')
-				line.pop_back();
-			if (line.rfind("Status:", 0) == 0)
-			{
-				std::string val = line.substr(7);
-				while (!val.empty() && isspace(val.front())) val.erase(0,1);
-				outHeaders += "Status: " + val + "\r\n"; // we'll convert to HTTP status below
-				// Extract code
-				std::istringstream cs(val);
-				int code; cs >> code;
-				if (!cs.fail())
-				{
-					// Minimal mapping to status text
-					std::string text = (code==200?"OK": code==302?"Found": code==404?"Not Found": code==500?"Internal Server Error":"");
-					statusLine = "HTTP/1.1 " + std::to_string(code) + " " + (text.empty()?"":text) + "\r\n";
-				}
+			std::string	val = line.substr(7);
+			int			code;
+			try {
+				code = std::stoi(val);
 			}
-			else if (line.rfind("Content-Type:", 0) == 0)
-			{
-				outHeaders += line + "\r\n";
+			catch(std::exception& e) {
+				THROW_HTTP(500, "Inernal Error");
 			}
-			else if (line.rfind("Location:", 0) == 0)
-			{
-				// Support CGI redirect
-				outHeaders += line + "\r\n";
-				statusLine = "HTTP/1.1 302 Found\r\n";
-			}
+			statusLine = "HTTP/1.1 " + std::to_string(code) + " " + _ipPort.getStatusText(code) + "\r\n";
 		}
+		else if (line.rfind("Content-Length:", 0) == 0 || line.rfind("Connection:", 0) == 0)
+		{
+		}
+		else
+			outHeaders += line + "\r\n";
 	}
-	else
-	{
-		// No headers; set default content-type
-		outHeaders += "Content-Type: " + _cgi.defaultContentType() + "\r\n";
-	}
-
+	_keepAlive = false;
 	_responseBuffer = statusLine;
 	_responseBuffer += outHeaders;
 	_responseBuffer += "Content-Length: " + std::to_string(body.size()) + "\r\n";

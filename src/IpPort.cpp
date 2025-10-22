@@ -491,6 +491,9 @@ void	IpPort::closeConnection(int clientFd)
 		_clientsMap.erase(clientFd);
 	}
 
+	_handlersMap.erase(clientFd);
+	_clientsMap.erase(clientFd);
+
 	std::cout << "Closing connection is done" << std::endl;
 }
 

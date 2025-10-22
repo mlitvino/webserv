@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uploads - Example.com</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #e91e63;
+            text-align: center;
+        }
+        .upload-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #e91e63;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 Upload Directory</h1>
+        <p><strong>Route:</strong> /uploads</p>
+        <p><strong>Server:</strong> example.com</p>
+        <p><strong>Document Root:</strong> ./web/example/uploads</p>
+        
+        <div class="upload-info">
+            <h3>Available Methods:</h3>
+            <ul>
+                <li>GET - List uploaded files</li>
+                <li>POST - Upload new files</li>
+                <li>DELETE - Remove files</li>
+            </ul>
+            <p><strong>Autoindex:</strong> ON (directory listing enabled)</p>
+        </div>
+        
+        <div class="upload-info">
+            <h3>Test Commands:</h3>
+            <code>curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/uploads/</code>
+        </div>
+    </div>
+</body>
+</html>

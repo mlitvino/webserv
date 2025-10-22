@@ -362,6 +362,10 @@ void	PostRequestHandler::resetBodyState()
 
 PostRequestHandler::PostRequestHandler(IpPort &owner)
 	: _ipPort(owner)
-{}
+{
+	resetBodyState();
+}
 
+PostRequestHandler::~PostRequestHandler()
+{}
 

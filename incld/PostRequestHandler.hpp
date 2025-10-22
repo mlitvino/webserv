@@ -19,23 +19,21 @@ enum class BodyReadStatus
 class PostRequestHandler
 {
 	private:
-		IpPort &_ipPort;
+		IpPort			&_ipPort;
 
-		std::string	_uploadFilename;
-		std::string	_bodyBuffer;
-		std::string	_decodedBuffer;
+		std::string		_uploadFilename;
+		std::string		_bodyBuffer;
+		std::string		_decodedBuffer;
 		std::ofstream	_uploadStream;
-		std::string	_currentUploadPath;
-		size_t		_bodyBytesExpected = 0;
-		size_t		_bodyBytesReceived = 0;
-		bool		_bodyProcessingInitialized = false;
-		size_t		_currentChunkSize = 0;
-		size_t		_currentChunkRead = 0;
-		bool		_readingChunkSize = true;
-		bool		_parsingChunkTrailers = false;
-		bool		_chunkedFinished = false;
-
-
+		std::string		_currentUploadPath;
+		size_t			_bodyBytesExpected;
+		size_t			_bodyBytesReceived;
+		bool			_bodyProcessingInitialized;
+		size_t			_currentChunkSize;
+		size_t			_currentChunkRead;
+		bool			_readingChunkSize;
+		bool			_parsingChunkTrailers;
+		bool			_chunkedFinished;
 
 		BodyReadStatus	getContentLengthBody(ClientPtr &client);
 		BodyReadStatus	getChunkedBody(ClientPtr &client);
@@ -49,9 +47,8 @@ class PostRequestHandler
 		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
 		void			processPostCgi(ClientPtr &client, BodyReadStatus status);
 	public:
-		explicit		PostRequestHandler(IpPort &owner);
-
+		PostRequestHandler(IpPort &owner);
+		~PostRequestHandler();
 		void			handlePostRequest(ClientPtr &client, const std::string &path);
-
 		void			resetBodyState();
 };

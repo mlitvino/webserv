@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files - Test.local</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 20px;
+            margin: 0;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            color: #fff;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        .file-info {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📂 Files Directory</h1>
+        <p><strong>Route:</strong> /files</p>
+        <p><strong>Server:</strong> test.local</p>
+        <p><strong>Document Root:</strong> ./web/test/files</p>
+        
+        <div class="file-info">
+            <h3>Available Methods:</h3>
+            <ul>
+                <li>GET - Access files</li>
+                <li>POST - Upload files</li>
+                <li>DELETE - Remove files</li>
+            </ul>
+            <p><strong>Autoindex:</strong> ON (directory listing enabled)</p>
+        </div>
+        
+        <div class="file-info">
+            <h3>Test Commands:</h3>
+            <code>curl --resolve test.local:8080:127.0.0.1 http://test.local:8080/files/</code>
+        </div>
+    </div>
+</body>
+</html>

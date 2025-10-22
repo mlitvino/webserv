@@ -11,9 +11,9 @@
 
 class Program
 {
-	public:
+	private:
 		int						_epollFd;
-		std::vector<IpPortPtr>	_addrPortVec;
+		IpPortDeq	_addrPortVec;
 		addrinfo				*_servInfo;
 
 		ServerDeq				_servers;
@@ -23,11 +23,16 @@ class Program
 
 		FdClientMap				_clientsMap;
 		FdEpollOwnerMap			_handlersMap;
+	public:
+		Program();
+		~Program();
 
 		void	parseConfFile(char *conf_file);
 		void	initSockets();
 		void	waitEpollEvent();
-
-		Program();
-		~Program();
+		int				&getEpollFd();
+		FdClientMap		&getClientsMap();
+		FdEpollOwnerMap	&getHandlersMap();
+		IpPortDeq		&getAddrPortVec();
+		ServerDeq 		&getServers();
 };

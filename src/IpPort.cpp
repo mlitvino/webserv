@@ -514,9 +514,9 @@ IpPort::~IpPort()
 }
 
 IpPort::IpPort(Program &program)
-	: _clientsMap{program._clientsMap}
-	, _handlersMap{program._handlersMap}
+	: _clientsMap{program.getClientsMap()}
+	, _handlersMap{program.getHandlersMap()}
 	, _sockFd{-1}
-	, _epollFd{program._epollFd}
+	, _epollFd{program.getEpollFd()}
 {
 }

@@ -225,18 +225,18 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 				auto ipPort = std::make_shared<IpPort>(program);
 				ipPort->setAddrPort(addrPort);
 				ipPortMap[addrPort] = ipPort;
-				program._addrPortVec.push_back(ipPort);
+				program.getAddrPortVec().push_back(ipPort);
 			}
 
 			ipPortMap[addrPort]->_servers.push_back(server);
 		}
-		program._servers.push_back(server);
+		program.getServers().push_back(server);
 	}
 
-	for (auto &ipPort : program._addrPortVec) {
+	for (auto &ipPort : program.getAddrPortVec()) {
 		for (auto &server : ipPort->_servers) {
-			server->_handlersMap = &program._handlersMap;
-			server->_clientsMap = &program._clientsMap;
+			server->_handlersMap = &program.getHandlersMap();
+			server->_clientsMap = &program.getClientsMap();
 		}
 	}
 }

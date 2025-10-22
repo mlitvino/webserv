@@ -22,6 +22,7 @@ struct		ServerConfig;
 struct		Location;
 
 using		IpPortPtr = std::shared_ptr<IpPort>;
+using		IpPortDeq = std::deque<IpPortPtr>;
 
 using		ServerPtr  = std::shared_ptr<Server>;
 using		ServerDeq = std::deque<ServerPtr>;

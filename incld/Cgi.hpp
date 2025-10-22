@@ -52,6 +52,7 @@ class Cgi
 
 		bool				init();
 		int					reapChild();
+		int					killChild();
 
 		const std::string&	defaultContentType() const;
 

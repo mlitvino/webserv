@@ -177,52 +177,18 @@ int	Cgi::reapChild()
 	return status;
 }
 
-// Constructors + Destructors
-
-Cgi::Cgi(Client &client)
-	: _client(client)
-	, _contentType("text/html")
-	, _stdinFd(-1)
-	, _stdoutFd(-1)
-	, _pid(-1)
-	, _headersParsed(false)
-	, _interpreter()
-	, _script()
-	, _argv()
-	, _envStorage()
-	, _envp()
-{}
-
-Cgi::~Cgi()
+int	Cgi::killChild()
 {
-	if (_stdinFd != -1)
-	{
-		close(_stdinFd);
-	}
-	if (_stdoutFd != -1)
-	{
-		close(_stdoutFd);
-	}
+	int status = 0;
 	if (_pid != -1)
 	{
 		kill(_pid, SIGKILL);
-		int status;
 		waitpid(_pid, &status, 0);
 	}
-}
-
-const	std::string& Cgi::defaultContentType() const
-{
-	return _contentType;
-}
-
-int	Cgi::reapChild()
-{
-	int	status;
-	waitpid(_pid, &status, 0);
 	return status;
 }
 
+
 // Constructors + Destructors
 
 Cgi::Cgi(Client &client)
@@ -249,12 +215,7 @@ Cgi::~Cgi()
 	{
 		close(_stdoutFd);
 	}
-	if (_pid != -1)
-	{
-		kill(_pid, SIGKILL);
-		int status;
-		waitpid(_pid, &status, 0);
-	}
+	killChild();
 }
 
 const	std::string& Cgi::defaultContentType() const

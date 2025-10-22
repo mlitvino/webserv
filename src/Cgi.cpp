@@ -10,21 +10,24 @@ void	Cgi::buildArgv()
 
 	_script = _client._resolvedPath;
 	size_t		dot = _script.find_last_of(".");
-	std::string	ext = _script.substr(dot + 1);
+	std::string	ext = _script.substr(dot);
 
 	if (ext == PYTHON_EXT)
 	{
 		_interpreter = PYTHON_PATH;
-		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
-		_argv.push_back(const_cast<char*>(_script.c_str()));
 	}
 	else if (ext == PHP_EXT)
 	{
 		_interpreter = PHP_PATH;
-		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
-		_argv.push_back(const_cast<char*>("-f"));
-		_argv.push_back(const_cast<char*>(_script.c_str()));
 	}
+	else
+	{
+		_interpreter = _script;
+	}
+	_argv.push_back(const_cast<char*>(_interpreter.c_str()));
+	if (ext == PHP_EXT)
+		_argv.push_back(const_cast<char*>("-f"));
+	_argv.push_back(const_cast<char*>(_script.c_str()));
 	_argv.push_back(nullptr);
 }
 

@@ -20,6 +20,7 @@ class Cgi
 	private:
 		Client						&_client;
 		std::string					_contentType;
+		std::string					_uploadDir;
 
 		int							_stdinFd;
 		int							_stdoutFd;
@@ -41,8 +42,6 @@ class Cgi
 		void	cleanupCgiFds();
 
 	public:
-		std::string					_uploadDir;
-
 		Cgi(Client &client);
 		~Cgi();
 
@@ -50,8 +49,8 @@ class Cgi
 		int					reapChild();
 		int					killChild();
 
-		const std::string&	defaultContentType() const;
+		int					getStdinFd();
+		int					getStdoutFd();
 
-		int					getStdinFd() const { return _stdinFd; }
-		int					getStdoutFd() const { return _stdoutFd; }
+		void				setUploadDir(const std::string &uploadDir);
 };

@@ -186,6 +186,22 @@ int	Cgi::killChild()
 	return status;
 }
 
+// Getters + Setters
+
+int	Cgi::getStdinFd()
+{
+	return _stdinFd;
+}
+
+int	Cgi::getStdoutFd()
+{
+	return _stdoutFd;
+}
+
+void	Cgi::setUploadDir(const std::string &uploadDir)
+{
+	_uploadDir = uploadDir;
+}
 
 // Constructors + Destructors
 
@@ -216,7 +232,3 @@ Cgi::~Cgi()
 	killChild();
 }
 
-const	std::string& Cgi::defaultContentType() const
-{
-	return _contentType;
-}

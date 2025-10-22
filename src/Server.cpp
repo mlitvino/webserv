@@ -62,7 +62,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 
 		if (ext != PYTHON_EXT && ext != PHP_EXT)
 			THROW_HTTP(400, "Unsupported cgi");
-		client->_cgi._uploadDir = matchedLocation->uploadDir;
+		client->_cgi.setUploadDir(matchedLocation->uploadDir);
 	}
 
 	std::cout << "Validating headers is done" << std::endl;

@@ -81,7 +81,7 @@ bool	Server::isRedirected(ClientPtr &client, const Location* matchedLocation)
 	return true;
 }
 
-const Location* Server::findLocationForPath(const std::string& path) const
+const Location* Server::findLocationForPath(std::string& path)
 {
 	const std::vector<Location>&	locations = getLocations();
 	const Location*					matched = nullptr;
@@ -239,6 +239,7 @@ std::string	Server::getCustomErrorPage(int statusCode)
 }
 
 // Setters
+
 void Server::setHost(std::string host) {
 	_host = std::move(host);
 }
@@ -264,6 +265,7 @@ void Server::setLocations(const std::vector<Location>& locations) {
 }
 
 // Getters
+
 std::string& Server::getHost() {
 	return _host;
 }
@@ -272,32 +274,26 @@ std::string& Server::getPort() {
 	return _port;
 }
 
-const std::string& Server::getServerName() const {
+const std::string& Server::getServerName() {
 	return _serverName;
 }
 
-size_t Server::getClientBodySize() const {
+size_t Server::getClientBodySize() {
 	return _clientBodySize;
 }
 
-const std::map<int, std::string>& Server::getErrorPages() const {
+const std::map<int, std::string>& Server::getErrorPages() {
 	return _errorPages;
 }
 
-const std::vector<Location>& Server::getLocations() const {
+const std::vector<Location>& Server::getLocations() {
 	return _locations;
-}
-
-int Server::getSockfd() const {
-	return _sockfd;
 }
 
 // Constructors + Destructor
 
-Server::~Server() {
-	if (_sockfd != -1)
-		close(_sockfd);
-}
+Server::~Server()
+{}
 
 Server::Server(const ServerConfig& config)
 	: _serverName(config.serverName),
@@ -305,7 +301,7 @@ Server::Server(const ServerConfig& config)
 	_port(std::to_string(config.getPort())),
 	_clientBodySize(config.clientMaxBodySize),
 	_errorPages(config.errorPages),
-	_locations(config.locations),
-	_sockfd{-1}
+	_locations(config.locations)
+
 {}
 

@@ -13,51 +13,42 @@
 #include "IpPort.hpp"
 #include "Client.hpp"
 
-class Server {
-private:
+class Server
+{
+	private:
+		std::string							_serverName;
+		std::string							_host;
+		std::string							_port;
 
-	std::string					_serverName;
-	std::string					_host;
-	std::string					_port;
+		size_t								_clientBodySize;
+		std::map<int, std::string>			_errorPages;
+		std::vector<Location>				_locations;
 
-	size_t						_clientBodySize;
-	std::map<int, std::string>	_errorPages;
-	std::vector<Location>		_locations;
+		const Location*						findLocationForPath(std::string& path);
 
-	int _sockfd;
+		bool								isMethodAllowed(ClientPtr &client, const Location* matchedLocation);
+		bool								isRedirected(ClientPtr &client, const Location* matchedLocation);
+		bool								isBodySizeValid(ClientPtr &client);
+	public:
+		Server(const ServerConfig& config);
+		~Server();
 
-	const Location* findLocationForPath(const std::string& path) const;
+		bool								areHeadersValid(ClientPtr &client);
+		std::string							findFile(ClientPtr &client, const std::string& path, const Location* matchedLocation);
+		std::string							getCustomErrorPage(int statusCode);
 
-public:
-	FdClientMap					*_clientsMap;
-	FdEpollOwnerMap				*_handlersMap;
+		void								setHost(std::string host);
+		void								setPort(std::string port);
+		void								setServerName(const std::string& name);
+		void								setClientBodySize(size_t size);
+		void								setErrorPages(const std::map<int, std::string>& errorPages);
+		void								setLocations(const std::vector<Location>& locations);
 
-	Server(const ServerConfig& config);
-	~Server();
-
-	Server(const Server&) = delete;
-	Server& operator=(const Server&) = delete;
-
-	bool		areHeadersValid(ClientPtr &client);
-	bool		isMethodAllowed(ClientPtr &client, const Location* matchedLocation);
-	bool		isRedirected(ClientPtr &client, const Location* matchedLocation);
-	bool		isBodySizeValid(ClientPtr &client);
-	std::string	findFile(ClientPtr &client, const std::string& path, const Location* matchedLocation);
-	std::string	getCustomErrorPage(int statusCode);
-
-	void	setHost(std::string host);
-	void	setPort(std::string port);
-	void	setServerName(const std::string& name);
-	void	setClientBodySize(size_t size);
-	void	setErrorPages(const std::map<int, std::string>& errorPages);
-	void	setLocations(const std::vector<Location>& locations);
-
-	std::string&						getHost();
-	std::string&						getPort();
-	const std::string&					getServerName() const;
-	size_t								getClientBodySize() const;
-	const std::map<int, std::string>&	getErrorPages() const;
-	const std::vector<Location>&		getLocations() const;
-	int									getSockfd() const;
+		std::string&						getHost();
+		std::string&						getPort();
+		const std::string&					getServerName();
+		size_t								getClientBodySize();
+		const std::map<int, std::string>&	getErrorPages();
+		const std::vector<Location>&		getLocations();
 };
 

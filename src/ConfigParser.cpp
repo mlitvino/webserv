@@ -125,7 +125,11 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 		if (!config.serverName.empty() && config.serverName.back() == ';')
 			config.serverName.pop_back();
 	} else if (directive == "client_max_body_size") {
-		iss >> config.clientMaxBodySize;
+		long long temp;
+		iss >> temp;
+		if (temp < 0)
+			std::runtime_error("Negative value in body size");
+		config.clientMaxBodySize = temp;
 	} else if (directive == "error_page") {
 		int code;
 		std::string path;
@@ -231,13 +235,6 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 			ipPortMap[addrPort]->_servers.push_back(server);
 		}
 		program.getServers().push_back(server);
-	}
-
-	for (auto &ipPort : program.getAddrPortVec()) {
-		for (auto &server : ipPort->_servers) {
-			server->_handlersMap = &program.getHandlersMap();
-			server->_clientsMap = &program.getClientsMap();
-		}
 	}
 }
 

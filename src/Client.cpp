@@ -146,7 +146,7 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 		resetRequestData();
 		_buffer.clear();
 		std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
-		auto FdclientPtr = _ipPort._clientsMap.find(_clientFd);
+		auto FdclientPtr = _ipPort.getClientsMap().find(_clientFd);
 		_ipPort.generateResponse(FdclientPtr->second, "", e.getStatusCode());
 	}
 	catch (std::exception &e)
@@ -317,8 +317,8 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _buffer()
 	, _responseOffset{0}
 	, _state(ClientState::READING_REQUEST)
-	, _clientsMap(owner._clientsMap)
-	, _handlersMap(owner._handlersMap)
+	, _clientsMap(owner.getClientsMap())
+	, _handlersMap(owner.getHandlersMap())
 	, _ipPort(owner)
 	, _chunked(false)
 	, _keepAlive(false)
@@ -332,9 +332,7 @@ Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientF
 	, _fileOffset{0}
 	, _cgi{*this}
 	, _postHandler{_ipPort}
-{
-
-}
+{}
 
 Client::~Client()
 {

@@ -95,7 +95,7 @@ bool	Cgi::registerWithEpoll()
 	epoll_event evIn = {0};
 	evIn.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evIn.data.fd = _stdoutFd;
-	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
+	if (epoll_ctl(_client._ipPort.getEpollFd(), EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
 	{
 		cleanupCgiFds();
 		return false;
@@ -105,9 +105,8 @@ bool	Cgi::registerWithEpoll()
 	epoll_event evOut = {0};
 	evOut.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evOut.data.fd = _stdinFd;
-	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
+	if (epoll_ctl(_client._ipPort.getEpollFd(), EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
 	{
-		epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_DEL, _stdoutFd, 0);
 		_client._handlersMap.erase(_stdoutFd);
 		cleanupCgiFds();
 		return false;

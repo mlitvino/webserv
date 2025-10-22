@@ -232,7 +232,7 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 				program.getAddrPortVec().push_back(ipPort);
 			}
 
-			ipPortMap[addrPort]->_servers.push_back(server);
+			ipPortMap[addrPort]->getServers().push_back(server);
 		}
 		program.getServers().push_back(server);
 	}

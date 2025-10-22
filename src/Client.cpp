@@ -9,6 +9,7 @@ bool	Client::readRequest()
 	{
 		buffer[bytesRead] = '\0';
 		_buffer.append(buffer, bytesRead);
+		_lastActivity = g_current_time;
 		return true;
 	}
 	else if (bytesRead == 0)
@@ -69,7 +70,11 @@ void	Client::sendResponse()
 		return ;
 	}
 
-	if (bytesSent == 0)
+	if (bytesSent > 0)
+	{
+		_lastActivity = g_current_time;
+	}
+	else if (bytesSent == 0)
 	{
 		std::cout << "Connection was closed in resndResponse" << std::endl;
 		_ipPort.closeConnection(_clientFd);
@@ -161,6 +166,7 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 	{
 		std::cout << "Client Cgi   Out, n>0" << std::endl;
 		_cgiBuffer.append(buf, static_cast<size_t>(n));
+		_lastActivity = g_current_time;
 	}
 	else if (n == 0)
 	{
@@ -206,6 +212,7 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 			lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
 			return;
 		}
+		_lastActivity = g_current_time;
 	}
 	else if (n == 0)
 	{
@@ -306,7 +313,8 @@ int		Client::getFd()
 // Constructors + Destructor
 
 Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
-	: _buffer()
+	: _lastActivity{g_current_time}
+	, _buffer()
 	, _responseOffset{0}
 	, _state(ClientState::READING_REQUEST)
 	, _clientsMap(owner._clientsMap)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <sstream>
 #include <cctype>
 
@@ -12,6 +13,9 @@
 #include "Cgi.hpp"
 #include "Server.hpp"
 #include "PostRequestHandler.hpp"
+#include "Program.hpp"
+
+extern Time g_current_time;
 
 enum class ClientState
 {
@@ -31,12 +35,14 @@ enum class FileType
 	CGI_SCRIPT,
 };
 
+#define TIMEOUT_MINUTES 5
+
 class Client : public IEpollFdOwner
 {
 	private:
 
 	public:
-
+		Time				_lastActivity;
 		std::string			_buffer;
 
 		std::string			_responseBuffer;

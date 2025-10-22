@@ -3,6 +3,7 @@
 #include <deque>
 #include <memory>
 #include <unordered_map>
+#include <chrono>
 
 #define IO_BUFFER_SIZE 1024
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
@@ -20,6 +21,8 @@ class		Cgi;
 class		ConfigParser;
 struct		ServerConfig;
 struct		Location;
+
+using		Time = std::chrono::steady_clock::time_point;
 
 using		IpPortPtr = std::shared_ptr<IpPort>;
 using		IpPortDeq = std::deque<IpPortPtr>;

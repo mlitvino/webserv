@@ -1,9 +1,12 @@
 #pragma once
 
+#include <chrono>
+
 #include "webserv.hpp"
 #include "ConfigParser.hpp"
 #include "CustomException.hpp"
 #include "ChildFailedException.hpp"
+#include "Client.hpp"
 
 #define DEFAULT_CONF "conf/default.conf"
 #define MAX_EVENTS 10
@@ -23,6 +26,7 @@ class Program
 
 		FdClientMap				_clientsMap;
 		FdEpollOwnerMap			_handlersMap;
+		Time					_nextTimeoutCheck;
 	public:
 		Program();
 		~Program();
@@ -30,6 +34,8 @@ class Program
 		void	parseConfFile(char *conf_file);
 		void	initSockets();
 		void	waitEpollEvent();
+		void	checkTimeOut();
+
 		int				&getEpollFd();
 		FdClientMap		&getClientsMap();
 		FdEpollOwnerMap	&getHandlersMap();

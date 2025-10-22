@@ -38,6 +38,27 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 		THROW_ERRNO("listen");
 }
 
+std::string	IpPort::getStatusText(int statusCode)
+{
+	switch (statusCode)
+	{
+		case 200: return "OK";
+		case 301: return "Moved Permanently";
+		case 302: return "Found";
+		case 303: return "See Other";
+		case 307: return "Temporary Redirect";
+		case 308: return "Permanent Redirect";
+
+		case 400: return "Bad Request";
+		case 404: return "Not Found";
+		case 405: return "Method Not Allowed";
+		case 413: return "Payload Too Large";
+
+		case 500: return "Internal Server Error";
+		default: return "Unknown";
+	}
+}
+
 void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 {
 	if (eventFd == getSockFd())
@@ -259,25 +280,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 {
 	std::string	statusText;
 	std::string	response;
-
-	switch (statusCode)
-	{
-		case 200: statusText = "OK"; break;
-
-		case 301: statusText = "Moved Permanently"; break;
-		case 302: statusText = "Found"; break;
-		case 303: statusText = "See Other"; break;
-		case 307: statusText = "Temporary Redirect"; break;
-		case 308: statusText = "Permanent Redirect"; break;
-
-		case 400: statusText = "Bad Request"; break;
-		case 404: statusText = "Not Found"; break;
-		case 405: statusText = "Method Not Allowed"; break;
-		case 413: statusText = "Payload Too Large"; break;
-
-		case 500: statusText = "Internal Server Error"; break;
-		default: statusText = "Unknown"; break;
-	}
+	statusText = getStatusText(statusCode);
 
 	if (statusCode >= 400)
 		filePath = client->_ownerServer->getCustomErrorPage(statusCode);

@@ -4,11 +4,8 @@
 #include <string>
 #include <fstream>
 
+#include "webserv.hpp"
 #include "ChildFailedException.hpp"
-
-class Client;
-class IpPort;
-using ClientPtr = std::shared_ptr<Client>;
 
 enum class BodyReadStatus
 {
@@ -17,9 +14,7 @@ enum class BodyReadStatus
 	ERROR
 };
 
-const size_t kMaxChunkDataSize = 10 * 1024 * 1024;
-const size_t kMaxChunkHeaderSize = 8 * 1024;
-const size_t kMaxTrailersSize = 8 * 1024;
+#define MAX_CHUNK_SIZE 1010241024
 
 class PostRequestHandler
 {
@@ -31,7 +26,6 @@ class PostRequestHandler
 		std::string	_decodedBuffer;
 		std::ofstream	_uploadStream;
 		std::string	_currentUploadPath;
-		int				_tempFd = -1;
 		size_t		_bodyBytesExpected = 0;
 		size_t		_bodyBytesReceived = 0;
 		bool		_bodyProcessingInitialized = false;

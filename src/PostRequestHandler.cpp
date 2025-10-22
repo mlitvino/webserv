@@ -93,7 +93,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			size_t lineEnd = client->_buffer.find("\r\n");
 			if (lineEnd == std::string::npos)
 			{
-				if (client->_buffer.size() > kMaxChunkHeaderSize)
+				if (client->_buffer.size() > MAX_CHUNK_SIZE)
 					THROW_HTTP(413, "Content too large");
 				return BodyReadStatus::NEED_MORE;
 			}
@@ -107,7 +107,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			if (iss.fail())
 				THROW_HTTP(400, "Bad request");
 			size_t	serverMax = client->_ownerServer->getClientBodySize();
-			if (chunkSize > kMaxChunkDataSize || _bodyBytesReceived + chunkSize > serverMax)
+			if (chunkSize > MAX_CHUNK_SIZE || _bodyBytesReceived + chunkSize > serverMax)
 				THROW_HTTP(413, "Content too large");
 			_currentChunkSize = static_cast<size_t>(chunkSize);
 			_currentChunkRead = 0;
@@ -129,7 +129,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			size_t trailerEnd = client->_buffer.find("\r\n\r\n");
 			if (trailerEnd == std::string::npos)
 			{
-				if (client->_buffer.size() > kMaxTrailersSize)
+				if (client->_buffer.size() > MAX_CHUNK_SIZE)
 					THROW_HTTP(413, "Content too large");
 				return BodyReadStatus::NEED_MORE;
 			}
@@ -187,7 +187,7 @@ bool	PostRequestHandler::extractFilename(ClientPtr &client, std::string &dashBou
 	size_t headersEnd = _bodyBuffer.find("\r\n\r\n");
 	if (headersEnd == std::string::npos)
 	{
-		if (_bodyBuffer.size() > kMaxChunkHeaderSize)
+		if (_bodyBuffer.size() > MAX_CHUNK_SIZE)
 			THROW_HTTP(413, "Content too large");
 		return false;
 	}

@@ -59,6 +59,9 @@ void	Client::sendResponse()
 		_responseOffset = 0;
 		_responseBuffer.clear();
 
+		if (_keepAlive == false)
+			return _ipPort.closeConnection(_clientFd);
+
 		_postHandler.resetBodyState();
 		if (_fileFd != -1)
 		{
@@ -118,7 +121,7 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 	{
 		if (ev.events & (EPOLLIN | EPOLLHUP))
 		{
-			if (eventFd == _cgi.getStdoutFd())
+			if (eventFd == _cgi.getStdoutFd()  && _state == ClientState::READING_CGI_OUTPUT)
 			{
 				handleCgiStdoutEvent(ev);
 				return;
@@ -126,20 +129,28 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 		}
 		if (ev.events & EPOLLOUT)
 		{
-			if (eventFd == _clientFd)
+			if (eventFd == _clientFd && _state == ClientState::SENDING_RESPONSE)
 			{
 				sendResponse();
 			}
-			else if (eventFd == _cgi.getStdinFd())
+			else if (eventFd == _cgi.getStdinFd() && _state == ClientState::WRITING_CGI_INPUT)
 			{
 				handleCgiStdinEvent(ev);
 			}
 		}
 	}
-	catch (...)
+	catch (HttpException &e)
 	{
-		std::cout << "Bad" << std::endl;
-		exit(1);
+		resetRequestData();
+		_buffer.clear();
+		std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
+		auto FdclientPtr = _ipPort._clientsMap.find(_clientFd);
+		_ipPort.generateResponse(FdclientPtr->second, "", e.getStatusCode());
+	}
+	catch (std::exception &e)
+	{
+		std::cout << "Exception: " << e.what() << std::endl;
+		_ipPort.closeConnection(eventFd);
 	}
 }
 
@@ -159,6 +170,16 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 		std::cout << "handleCgiOut, n=0" << std::endl;
 		// EOF from CGI stdout
 		// Parse headers if not yet done and prepare final response
+		int status = _cgi.reapChild();
+		if (status != 0)
+		{
+			if (_fileFd != -1)
+			{
+				close(_fileFd);
+				_fileFd = -1;
+			}
+			THROW_HTTP(500, "Child failed");
+		}
 		if (!parseCgiHeadersAndPrepareResponse())
 		{
 			_responseBuffer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
@@ -311,6 +332,23 @@ bool	Client::parseCgiHeadersAndPrepareResponse()
 	_state = ClientState::SENDING_RESPONSE;
 	_cgiBuffer.clear();
 	return true;
+}
+
+void	Client::resetRequestData()
+{
+	_postHandler.resetBodyState();
+	_contentLen = 0;
+	_chunked = false;
+	_contentType.clear();
+	_redirectedUrl.clear();
+	_fileType = FileType::REGULAR;
+
+
+	if (_fileFd != -1)
+	{
+		close(_fileFd);
+		_fileFd = -1;
+	}
 }
 
 // Getters + Setters

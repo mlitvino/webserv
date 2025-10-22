@@ -33,7 +33,7 @@ print("""<!DOCTYPE html>
             <a href="/cgi.html">CGI Scripts</a>
             <a href="/cgi-bin/test.py">CGI Test</a>
         </nav>
-        
+
         <h1>🧪 CGI Test Suite</h1>
         <p>Comprehensive testing of CGI functionality according to the specification.</p>
 """)
@@ -77,7 +77,7 @@ print('<h2>Test 3: Query String Processing</h2>')
 query_string = os.environ.get('QUERY_STRING', '')
 if query_string:
     print(f'<div class="test-result pass">✅ Query string received: {query_string}</div>')
-    
+
     # Parse query parameters
     from urllib.parse import parse_qs
     try:
@@ -103,7 +103,7 @@ if method == 'POST':
             post_data = sys.stdin.read(length)
             print(f'<div class="test-result pass">✅ POST data received ({length} bytes)</div>')
             print(f'<pre>Raw POST data: {post_data}</pre>')
-            
+
             # Try to parse as form data
             from urllib.parse import parse_qs
             try:
@@ -121,7 +121,7 @@ if method == 'POST':
         print(f'<div class="test-result fail">❌ Error reading POST data: {e}</div>')
 else:
     print('<div class="test-result info">ℹ️ Not a POST request</div>')
-    print('''<div class="test-result info">💡 Test with: 
+    print('''<div class="test-result info">💡 Test with:
     <form method="POST" action="/cgi-bin/test.py">
         <input type="text" name="test_input" placeholder="Test input">
         <button type="submit">Send POST</button>
@@ -132,11 +132,11 @@ print('<h2>Test 5: File System Access & Working Directory</h2>')
 try:
     cwd = os.getcwd()
     print(f'<div class="test-result pass">✅ Current working directory: {cwd}</div>')
-    
+
     # Test relative file access
     script_name = os.environ.get('SCRIPT_NAME', '')
     print(f'<div class="test-result pass">✅ Script name: {script_name}</div>')
-    
+
     # Test file listing
     try:
         files = os.listdir('.')
@@ -144,7 +144,7 @@ try:
         print(f'<pre>Files in current directory: {", ".join(files[:10])}{"..." if len(files) > 10 else ""}</pre>')
     except Exception as e:
         print(f'<div class="test-result fail">❌ Directory listing failed: {e}</div>')
-        
+
 except Exception as e:
     print(f'<div class="test-result fail">❌ File system access error: {e}</div>')
 
@@ -174,7 +174,7 @@ print('<h2>Test 8: Content Type Handling</h2>')
 content_type = os.environ.get('CONTENT_TYPE', '')
 if content_type:
     print(f'<div class="test-result pass">✅ Content-Type: {content_type}</div>')
-    
+
     if 'multipart/form-data' in content_type:
         print('<div class="test-result pass">✅ Multipart form data detected</div>')
     elif 'application/x-www-form-urlencoded' in content_type:

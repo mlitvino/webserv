@@ -1,0 +1,128 @@
+Different hostname testing
+
+# Test localhost (default)
+curl http://localhost:8080/
+
+# Test example.com (purple gradient theme)
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/
+
+# Test test.local (pink theme)  
+curl --resolve test.local:8080:127.0.0.1 http://test.local:8080/
+
+# Test dev.webserv.com (terminal/hacker theme)
+curl --resolve dev.webserv.com:8080:127.0.0.1 http://dev.webserv.com:8080/
+
+
+TESTING UPLOADS LIMITS
+
+# Create a 200MB test file
+dd if=/dev/zero of=large_file.bin bs=1M count=200
+
+# This should work (localhost = 2GB limit)
+curl -X POST -F "file=@large_file.bin" http://localhost:8080/upload
+
+
+
+# Test different routes on same server
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/          # Root
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/api/      # API route
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/uploads/  # Uploads route
+
+# Test same route on different servers  
+curl http://localhost:8080/                                                  # localhost root
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/          # example.com root
+curl --resolve test.local:8080:127.0.0.1 http://test.local:8080/            # test.local root
+
+
+
+TEST SPECIFIC FILES
+# JSON file in API route
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/api/status.json
+
+# Text file in files route
+curl --resolve test.local:8080:127.0.0.1 http://test.local:8080/files/testfile.txt
+
+
+
+1. GET Requests 
+
+# Basic GET
+curl -v http://localhost:8080/
+
+# GET specific file  
+curl -v http://localhost:8080/index.html
+
+# GET non-existent (should get 404)
+curl -v http://localhost:8080/missing.html
+
+
+2. POST Requests 
+
+# POST with data
+curl -v -X POST -d "test data" http://localhost:8080/upload/
+
+# POST file upload
+curl -v -X POST -F "file=@test.txt" http://localhost:8080/upload/
+
+# POST to CGI
+curl -v -X POST -d "name=test" http://localhost:8080/cgi-bin/demo.py
+
+
+3. DELETE Requests (Should Work)
+
+# Create test file first
+echo "delete me" > web/upload/deleteme.txt
+
+# DELETE it
+curl -v -X DELETE http://localhost:8080/upload/deleteme.txt
+
+# DELETE non-existent (should get 404)
+curl -v -X DELETE http://localhost:8080/upload/missing.txt
+
+
+
+4. UNKNOWN Methods 
+# These should return 405 Method Not Allowed, NOT crash server
+curl -v -X INVALID http://localhost:8080/
+curl -v -X PATCH http://localhost:8080/
+curl -v -X FOOBAR http://localhost:8080/
+curl -v -X "WEIRD METHOD" http://localhost:8080/
+
+
+
+📡 Telnet Testing:
+
+# Connect to server
+telnet localhost 8080
+
+# Type this exactly (press Enter twice at the end):
+GET / HTTP/1.1
+Host: localhost
+Connection: close
+
+
+# For POST:
+POST /upload HTTP/1.1
+Host: localhost
+Content-Type: text/plain
+Content-Length: 9
+Connection: close
+
+test data
+
+# For invalid method (should not crash):
+INVALID / HTTP/1.1
+Host: localhost
+Connection: close
+
+
+
+ Server Health Check:
+  
+# Check server is still running after tests
+ps aux | grep webserv
+
+# Test basic connectivity  
+curl -I http://localhost:8080/
+
+# The server should still respond after all invalid requests

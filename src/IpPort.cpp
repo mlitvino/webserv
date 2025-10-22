@@ -63,10 +63,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				{
 					std::cout << "Continuing to read POST body..." << std::endl;
 					if (!client->readRequest())
-					{
-						client->_postHandler.resetBodyState();
 						return closeConnection(eventFd);
-					}
 					client->_postHandler.handlePostRequest(client, client->_httpPath);
 				}
 			}
@@ -77,7 +74,8 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			}
 			catch (HttpException &e)
 			{
-				client->_postHandler.resetBodyState();
+				client->resetRequestData();
+				client->_buffer.clear();
 				std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
 				generateResponse(client, "", e.getStatusCode());
 			}
@@ -107,10 +105,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	client->_ownerServer->areHeadersValid(client);
 
 	if (client->_state == ClientState::SENDING_RESPONSE)
-	{
-		std::cout << "Redirecting..." << std::endl;
 		return;
-	}
 
 	if (client->_httpMethod == "GET")
 	{
@@ -118,7 +113,6 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->_httpMethod == "POST")
 	{
-		client->_postHandler.resetBodyState();
 		client->_postHandler.handlePostRequest(client, client->_httpPath);
 	}
 	else if (client->_httpMethod == "DELETE")
@@ -133,15 +127,10 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	if (headersEnd == std::string::npos)
 		return;
 
+	client->resetRequestData();
 	std::string			headers = client->_buffer.substr(0, headersEnd);
 	std::istringstream	iss(headers);
 	std::string			line;
-
-	client->_contentLen = 0;
-	client->_chunked = false;
-	client->_keepAlive = false;
-	client->_contentType.clear();
-	client->_redirectedUrl.clear();
 
 	std::getline(iss, line);
 	size_t firstSpace = line.find(' ');
@@ -203,6 +192,8 @@ void	IpPort::parseHeaders(ClientPtr &client)
 		{
 			if (value.find("keep-alive") != std::string::npos)
 				client->_keepAlive = true;
+			else
+				client->_keepAlive = false;
 		}
 	}
 
@@ -285,6 +276,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		case 307: statusText = "Temporary Redirect"; break;
 		case 308: statusText = "Permanent Redirect"; break;
 
+		case 400: statusText = "Bad Request"; break;
 		case 404: statusText = "Not Found"; break;
 		case 405: statusText = "Method Not Allowed"; break;
 		case 413: statusText = "Payload Too Large"; break;
@@ -301,21 +293,24 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	if (!filePath.empty())
 	{
 		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
+		int	success = true;
 		if (client->_fileType == FileType::DIRECTORY)
 		{
-			listDirectory(client, listingBuffer);
+			success = listDirectory(client, listingBuffer);
 			contentLentgh = listingBuffer.size();
 		}
 		else
 		{
 			client->openFile(filePath);
 			if (client->_fileFd < 0)
-			{
-				std::cout << "DEBUG: Coudln't open filePath" << std::endl;
-				statusCode = 500;
-				statusText = "Internal Server Error";
-			}
+				success = false;
 			contentLentgh = client->_fileSize;
+		}
+		if (!success)
+		{
+			std::cout << "DEBUG: Coudln't open filePath" << std::endl;
+			statusCode = 500;
+			statusText = "Internal Server Error";
 		}
 	}
 	else
@@ -407,12 +402,12 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 	}
 }
 
-void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
+bool	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 {
 	std::string	dirPath = client->_resolvedPath;
 	DIR *dir = opendir(dirPath.c_str());
 	if (!dir)
-		THROW_HTTP(500, "Failed to open directory");
+		return false;
 
 	std::vector<std::string>	entries;
 	struct dirent *ent;
@@ -441,6 +436,7 @@ void	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	}
 	oss << "</ul><hr><address>webserv/1.0</address></body></html>";
 	listingBuffer = oss.str();
+	return true;
 }
 
 void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
@@ -468,6 +464,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 			_handlersMap.erase(clientFd);
 			_clientsMap.erase(clientFd);
 			close(clientFd);
+			clientFd = -1;
 			THROW_ERRNO("epoll_ctl");
 		}
 	}
@@ -487,15 +484,15 @@ void	IpPort::closeConnection(int clientFd)
 {
 	std::cout << "Closing connection..." << std::endl;
 
-	_handlersMap.erase(clientFd);
-	_clientsMap.erase(clientFd);
-
 	if (clientFd != -1)
 	{
 		int err = epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
 		if (err == -1)
 			THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
 	}
+
+	_handlersMap.erase(clientFd);
+	_clientsMap.erase(clientFd);
 
 	std::cout << "Closing connection is done" << std::endl;
 }

@@ -31,7 +31,7 @@ int ConfigParser::parseHttpMethods(const std::string& methods) {
 		else if (method == "POST") result |= static_cast<int>(HttpMethod::POST);
 		else if (method == "DELETE") result |= static_cast<int>(HttpMethod::DELETE);
 	}
-	return result ? result : static_cast<int>(HttpMethod::GET);
+	return result;
 }
 
 void ConfigParser::parseLocationDirective(const std::string& line, Location& location) {
@@ -79,12 +79,8 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		std::string token = getFirstToken(rest);
 		if (!token.empty() && token.back() == ';')
 			token.pop_back();
-		if (token == "python") {
-			location.cgiType = CgiType::PYTHON;
-		} else if (token == "php") {
-			location.cgiType = CgiType::PHP;
-		} else {
-			throw std::runtime_error("Unsupported CGI type: " + token);
+		if (token == "on") {
+			location.isCgi = true;
 		}
 	}
 }

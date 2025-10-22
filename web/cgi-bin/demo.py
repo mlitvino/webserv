@@ -33,7 +33,7 @@ print("""<!DOCTYPE html>
             <a href="/cgi-bin/demo.py">CGI Demo</a>
             <a href="/upload.html">Upload</a>
         </nav>
-        
+
         <h1>🐍 CGI Demonstration</h1>
         <p>This page demonstrates Common Gateway Interface (CGI) functionality using Python.</p>
 """)
@@ -75,22 +75,22 @@ if request_method == 'POST' and content_length:
     try:
         content_length = int(content_length)
         post_data = sys.stdin.read(content_length)
-        
+
         print("""
         <div class="section">
             <h2>📥 POST Data Received</h2>
             <p>The following data was sent via POST request:</p>
             <pre>""")
-        
+
         print(f"Raw POST data: {post_data}")
-        
+
         if post_data:
             try:
                 parsed_data = parse_qs(post_data)
                 print(f"Parsed data: {parsed_data}")
             except:
                 print("Could not parse POST data as form data")
-        
+
         print("""</pre>
         </div>""")
     except:
@@ -107,14 +107,14 @@ if query_string:
             <h2>🔍 Query Parameters</h2>
             <p>Parameters from the URL query string:</p>
             <pre>""")
-    
+
     try:
         params = parse_qs(query_string)
         for key, values in params.items():
             print(f"{key}: {values}")
     except:
         print(f"Raw query string: {query_string}")
-    
+
     print("""</pre>
         </div>""")
 
@@ -122,13 +122,13 @@ print("""
         <div class="section">
             <h2>🧪 Test CGI Functionality</h2>
             <p>Test different CGI features:</p>
-            
+
             <h3>GET Request with Parameters</h3>
             <form method="GET" action="/cgi-bin/demo.py">
                 <input type="text" name="test_param" placeholder="Enter test value" />
                 <input type="submit" value="Send GET Request" />
             </form>
-            
+
             <h3>POST Request with Data</h3>
             <form method="POST" action="/cgi-bin/demo.py">
                 <textarea name="post_data" placeholder="Enter POST data here..." rows="3" cols="50"></textarea><br>

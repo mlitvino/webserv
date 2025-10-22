@@ -98,4 +98,5 @@ class Client : public IEpollFdOwner
 		void	handleCgiStdoutEvent(epoll_event &ev);
 		void	handleCgiStdinEvent(epoll_event &ev);
 		bool	parseCgiHeadersAndPrepareResponse();
+		void	resetRequestData();
 };

@@ -55,7 +55,14 @@ bool	Server::areHeadersValid(ClientPtr &client)
 		THROW_HTTP(404, "Not Found");
 
 	if (client->_fileType == FileType::CGI_SCRIPT)
+	{
+		size_t		dot = client->_resolvedPath.find_last_of(".");
+		std::string	ext = client->_resolvedPath.substr(dot);
+
+		if (ext != PYTHON_EXT && ext != PHP_EXT)
+			THROW_HTTP(400, "Unsupported cgi");
 		client->_cgi._uploadDir = matchedLocation->uploadDir;
+	}
 
 	std::cout << "Validating headers is done" << std::endl;
 	return true;
@@ -100,8 +107,6 @@ const Location* Server::findLocationForPath(const std::string& path) const
 
 std::string	Server::findFile(ClientPtr &client, const std::string& path, const Location* matched)
 {
-	client->_fileType = FileType::REGULAR;
-
 	std::string	docRoot = matched->root;
 	if (docRoot.empty())
 		docRoot = "web/www";
@@ -121,7 +126,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 	std::cout << "FindFile: fsPath " << fsPath << std::endl;
 
-	if (client->_httpMethod == "POST" && matched->cgiType == CgiType::NONE)
+	if (client->_httpMethod == "POST" && matched->isCgi == false)
 	{
 		std::string fsDir = fsPath.empty() ? docRoot : fsPath;
 		struct stat st{};
@@ -137,10 +142,9 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 		{
 			if (S_ISREG(st.st_mode))
 			{
-				if (matched->cgiType != CgiType::NONE)
+				if (matched->isCgi == true)
 				{
 					client->_fileType = FileType::CGI_SCRIPT;
-					client->_cgi._cgiType = matched->cgiType;
 				}
 				return fsPath;
 			}
@@ -205,9 +209,12 @@ bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
 
 	int methodFlag = 0;
-	if (client->_httpMethod == "GET") methodFlag = static_cast<int>(HttpMethod::GET);
-	else if (client->_httpMethod == "POST") methodFlag = static_cast<int>(HttpMethod::POST);
-	else if (client->_httpMethod == "DELETE") methodFlag = static_cast<int>(HttpMethod::DELETE);
+	if (client->_httpMethod == "GET")
+		methodFlag = static_cast<int>(HttpMethod::GET);
+	else if (client->_httpMethod == "POST")
+		methodFlag = static_cast<int>(HttpMethod::POST);
+	else if (client->_httpMethod == "DELETE")
+		methodFlag = static_cast<int>(HttpMethod::DELETE);
 	else
 	{
 		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;

@@ -9,13 +9,6 @@
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
 
-enum class CgiType
-{
-	PYTHON,
-	PHP,
-	NONE,
-};
-
 class		Program;
 class		PostRequestHandler;
 class		Server;

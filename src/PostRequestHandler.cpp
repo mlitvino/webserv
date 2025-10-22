@@ -252,6 +252,8 @@ bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 		extractFilename(client, dashBoundary);
 		if (_uploadFilename.empty())
 			return false;
+		if (_uploadFilename.find("#") != std::string::npos ||_uploadFilename.find(" ") != std::string::npos )
+			THROW_HTTP(400, "Unsupported symbol");
 	}
 	size_t markerPos = _bodyBuffer.find(boundaryMarker);
 	if (markerPos == std::string::npos)

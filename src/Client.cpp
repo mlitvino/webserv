@@ -80,7 +80,6 @@ void	Client::sendResponse()
 	}
 	else if (bytesSent == -1)
 	{
-		_ipPort.closeConnection(_clientFd);
 		THROW_ERRNO("send");
 	}
 

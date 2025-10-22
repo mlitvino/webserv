@@ -486,13 +486,10 @@ void	IpPort::closeConnection(int clientFd)
 
 	if (clientFd != -1)
 	{
-		int err = epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
-		if (err == -1)
-			THROW_ERRNO("epoll_ctl(EPOLL_CTL_DEL)");
+		epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
+		_handlersMap.erase(clientFd);
+		_clientsMap.erase(clientFd);
 	}
-
-	_handlersMap.erase(clientFd);
-	_clientsMap.erase(clientFd);
 
 	std::cout << "Closing connection is done" << std::endl;
 }

@@ -457,38 +457,26 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &newEv);
 		if (err)
 		{
-			_handlersMap.erase(clientFd);
-			_clientsMap.erase(clientFd);
-			close(clientFd);
-			clientFd = -1;
+			closeConnection(clientFd);
 			THROW_ERRNO("epoll_ctl");
 		}
 	}
 	catch (const std::exception& e)
 	{
-		if (clientFd != -1)
-		{
-			_handlersMap.erase(clientFd);
-			_clientsMap.erase(clientFd);
-			close(clientFd);
-		}
+		closeConnection(clientFd);
 		std::cerr << "Failed to accept new connection:" << e.what() << std::endl;
 	}
 }
 
-void	IpPort::closeConnection(int clientFd)
+void	IpPort::closeConnection(int &clientFd)
 {
 	std::cout << "Closing connection..." << std::endl;
 
 	if (clientFd != -1)
 	{
-		epoll_ctl(_epollFd, EPOLL_CTL_DEL, clientFd, 0);
 		_handlersMap.erase(clientFd);
 		_clientsMap.erase(clientFd);
 	}
-
-	_handlersMap.erase(clientFd);
-	_clientsMap.erase(clientFd);
 
 	std::cout << "Closing connection is done" << std::endl;
 }

@@ -218,7 +218,6 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 	else if (n == 0)
 	{
 		std::cout << "Client Cgi   In, n=0" << std::endl;
-		epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
 		_handlersMap.erase(_cgi.getStdinFd());
 		close(_cgi.getStdinFd());
 		if (_fileFd != -1)

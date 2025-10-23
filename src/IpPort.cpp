@@ -59,54 +59,46 @@ std::string	IpPort::getStatusText(int statusCode)
 
 void	IpPort::handleEpollEvent(epoll_event &ev, int eventFd)
 {
-	if (eventFd == getSockFd())
+	if (eventFd == getSockFd() && ev.events & EPOLLIN)
 	{
-		std::cout << "Accepting new connection..." << std::endl;
-		acceptConnection();
-		std::cout << "Connection was accepted" << std::endl;
+			acceptConnection();
 	}
-	else
+	else if (ev.events & EPOLLIN)
 	{
 		ClientPtr	client = (*_clientsMap.find(eventFd)).second;
-		if (ev.events & EPOLLIN)
+		try
 		{
-			try
+			if (client->getState() == ClientState::READING_REQUEST)
 			{
-				if (client->getState() == ClientState::READING_REQUEST)
-				{
-					if (!client->readRequest())
-						return closeConnection(eventFd);
-					parseRequest(client);
-				}
-				else if (client->getState() == ClientState::GETTING_BODY)
-				{
-					std::cout << "Continuing to read POST body..." << std::endl;
-					if (!client->readRequest())
-						return closeConnection(eventFd);
-					client->getPostRequestHandler().handlePostRequest(client, client->getHttpPath());
-				}
+				if (!client->readRequest())
+					return closeConnection(eventFd);
+				parseRequest(client);
 			}
-			catch (std::bad_alloc &e)
+			else if (client->getState() == ClientState::GETTING_BODY)
 			{
-				std::cout << "ERROR: Infficient memory space" << std::endl;
-				closeConnection(eventFd);
+				if (!client->readRequest())
+					return closeConnection(eventFd);
+				client->getPostRequestHandler().handlePostRequest(client);
 			}
-			catch (HttpException &e)
-			{
-				client->resetRequestData();
-				client->getBuffer().clear();
-				std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
-				generateResponse(client, "", e.getStatusCode());
-			}
-			catch (ChildFailedException& e)
-			{
-				throw;
-			}
-			catch (std::exception &e)
-			{
-				std::cout << "Exception: " << e.what() << std::endl;
-				closeConnection(eventFd);
-			}
+		}
+		catch (std::bad_alloc &e)
+		{
+			std::cerr << "ERROR: Infficient memory" << std::endl;
+			closeConnection(eventFd);
+		}
+		catch (HttpException &e)
+		{
+			client->resetRequestData();
+			client->getBuffer().clear();
+			generateResponse(client, "", e.getStatusCode());
+		}
+		catch (ChildFailedException& e)
+		{
+			throw;
+		}
+		catch (std::exception &e)
+		{
+			closeConnection(eventFd);
 		}
 	}
 }

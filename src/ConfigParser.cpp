@@ -238,6 +238,10 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 				ipPortMap[addrPort] = ipPort;
 				program.getAddrPortVec().push_back(ipPort);
 			}
+			else
+			{
+				throw std::runtime_error("Several the same configuration");
+			}
 
 			ipPortMap[addrPort]->getServers().push_back(server);
 		}

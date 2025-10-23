@@ -309,10 +309,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 			statusText = "Internal Server Error";
 		}
 	}
-	else
-	{
-		std::cout << "DEBUG: filePath is empty" << std::endl;
-	}
 
 	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
 	response += formHeaders(client, filePath, contentLentgh, statusCode);
@@ -334,9 +330,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 	std::string	hdrs;
 
 	if (client->_fileType == FileType::DIRECTORY)
-	{
 		contentType = "text/html";
-	}
 	else if (!filePath.empty() && client->_httpMethod == "GET")
 	{
 		size_t		lastSlash = filePath.find_last_of("/\\");

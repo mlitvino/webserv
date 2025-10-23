@@ -166,27 +166,29 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 		_cgiBuffer.append(buf, static_cast<size_t>(n));
 		_lastActivity = g_current_time;
 	}
-	else if (n == 0)
-	{
-		std::cout << "Client Cgi   Out, n=0" << std::endl;
-		int status = _cgi.reapChild();
-		if (status != 0)
-		{
-			closeFile();
-			std::string	errorPage = _ownerServer->getCustomErrorPage(status);
-			ClientPtr	self = _clientsMap.at(_clientFd);
-			_ipPort.generateResponse(self, errorPage, status);
-			return;
-		}
-		parseCgiOutput();
-		_handlersMap.erase(_cgi.getStdoutFd());
-		close(_cgi.getStdoutFd());
-		utils::changeEpollHandler(_handlersMap, _clientFd, this);
-		return;
-	}
 	else
 	{
-		THROW_ERRNO("read CGI stdout");
+		epoll_ctl(_ipPort.getEpollFd(), EPOLL_CTL_DEL, _cgi.getStdoutFd(), 0);
+		close(_cgi.getStdoutFd());
+		_handlersMap.erase(_cgi.getStdoutFd());
+		if (n == 0)
+		{
+			std::cout << "Client Cgi   Out, n=0" << std::endl;
+			int status = _cgi.reapChild();
+			if (status != 0)
+			{
+				closeFile();
+				std::string	errorPage = _ownerServer->getCustomErrorPage(status);
+				ClientPtr	self = _clientsMap.at(_clientFd);
+				_ipPort.generateResponse(self, errorPage, status);
+				return;
+			}
+			parseCgiOutput();
+			utils::changeEpollHandler(_handlersMap, _clientFd, this);
+			return;
+		}
+		else
+			THROW_ERRNO("read CGI stdout");
 	}
 }
 
@@ -212,19 +214,24 @@ void	Client::handleCgiStdinEvent(epoll_event &ev)
 		}
 		_lastActivity = g_current_time;
 	}
-	else if (n == 0)
-	{
-		std::cout << "Client Cgi   In, n=0" << std::endl;
-		_handlersMap.erase(_cgi.getStdinFd());
-		close(_cgi.getStdinFd());
-		closeFile();
-		_state = ClientState::READING_CGI_OUTPUT;
-		return;
-	}
 	else
 	{
-		THROW_HTTP(500, "read temp body file");
+		epoll_ctl(_ipPort.getEpollFd(), EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
+		close(_cgi.getStdinFd());
+		_handlersMap.erase(_cgi.getStdinFd());
+		if (n == 0)
+		{
+			std::cout << "Client Cgi   In, n=0" << std::endl;
+			closeFile();
+			_state = ClientState::READING_CGI_OUTPUT;
+			return;
+		}
+		else
+		{
+			THROW_HTTP(500, "read temp body file");
+		}
 	}
+
 }
 
 bool	Client::parseCgiOutput()
@@ -232,9 +239,9 @@ bool	Client::parseCgiOutput()
 	_fileSize = 0;
 	_fileOffset = 0;
 
-	std::string::size_type pos = _cgiBuffer.find("\r\n\r\n");
-	std::string headers;
-	std::string body;
+	std::string::size_type	pos = _cgiBuffer.find("\r\n\r\n");
+	std::string				headers;
+	std::string				body;
 	if (pos != std::string::npos)
 	{
 		headers = _cgiBuffer.substr(0, pos);
@@ -253,9 +260,10 @@ bool	Client::parseCgiOutput()
 	{
 		if (!line.empty() && line.back() == '\r')
 			line.pop_back();
-		if (line.rfind("Status:", 0) == 0)
+		std::string	status = "Status:";
+		if (line.rfind(status, 0) == 0)
 		{
-			std::string	val = line.substr(7);
+			std::string	val = line.substr(status.size());
 			int			code;
 			try {
 				code = std::stoi(val);
@@ -263,10 +271,9 @@ bool	Client::parseCgiOutput()
 			catch(std::exception& e) {
 				THROW_HTTP(500, "Inernal Error");
 			}
+			if (code >= 400)
+				THROW_HTTP(code, "Cgi returned error");
 			statusLine = "HTTP/1.1 " + std::to_string(code) + " " + _ipPort.getStatusText(code) + "\r\n";
-		}
-		else if (line.rfind("Content-Length:", 0) == 0 || line.rfind("Connection:", 0) == 0)
-		{
 		}
 		else
 			outHeaders += line + "\r\n";

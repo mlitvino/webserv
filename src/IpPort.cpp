@@ -2,7 +2,7 @@
 #include "Cgi.hpp"
 #include "PostRequestHandler.hpp"
 
-void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
+void	IpPort::OpenSocket(addrinfo &hints, addrinfo **_servInfo)
 {
 	int	err;
 
@@ -10,11 +10,11 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	std::string	host = _addrPort.substr(0, delim);
 	std::string	port = _addrPort.substr(delim + 1, _addrPort.size() - delim);
 
-	err = getaddrinfo(host.c_str(), port.c_str(), &hints, &_servInfo);
+	err = getaddrinfo(host.c_str(), port.c_str(), &hints, _servInfo);
 	if (err == -1)
 		THROW(gai_strerror(err));
 
-	_sockFd = socket(_servInfo->ai_family, _servInfo->ai_socktype, _servInfo->ai_protocol);
+	_sockFd = socket((*_servInfo)->ai_family, (*_servInfo)->ai_socktype, (*_servInfo)->ai_protocol);
 	if (_sockFd == -1)
 		THROW_ERRNO("socket");
 
@@ -24,7 +24,7 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 	if (err == -1)
 		THROW_ERRNO("setsockopt(SO_REUSEADDR)");
 
-	err = bind(_sockFd, _servInfo->ai_addr, _servInfo->ai_addrlen);
+	err = bind(_sockFd, (*_servInfo)->ai_addr, (*_servInfo)->ai_addrlen);
 	if (err == -1)
 		THROW_ERRNO("bind");
 
@@ -317,7 +317,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	client->setState(ClientState::SENDING_RESPONSE);
 	utils::changeEpollHandler(_handlersMap, client->getFd(), client.get());
 	client->setResponseBuffer(std::move(response));
-
+	
 	std::cout << "DEBUG: Response buffer size after generation: " << client->getResponseBuffer().size() << std::endl;
 	std::cout << "DEBUG: Response buffer: " << client->getResponseBuffer() << std::endl;
 }

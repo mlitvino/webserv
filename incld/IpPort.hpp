@@ -43,7 +43,7 @@ class IpPort : public IEpollFdOwner
 		~IpPort();
 		IpPort(Program &program);
 
-		void			OpenSocket(addrinfo &hints, addrinfo *_servInfo);
+		void			OpenSocket(addrinfo &hints, addrinfo **_servInfo);
 		void			handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
 		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
 		void			closeConnection(int &clientFd);

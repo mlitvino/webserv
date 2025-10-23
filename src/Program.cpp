@@ -49,14 +49,14 @@ void	Program::initSockets()
 	utils::makeFdNoninheritable(_epollFd);
 	for (IpPortPtr &ipPort: _addrPortVec)
 	{
-		ipPort->OpenSocket(hints, _servInfo);
+		ipPort->OpenSocket(hints, &_servInfo);
 		ev.events = EPOLLIN;
 		ev.data.fd = ipPort->getSockFd();
 		_handlersMap.emplace(ipPort->getSockFd(), ipPort.get());
 		err = epoll_ctl(_epollFd, EPOLL_CTL_ADD, ipPort->getSockFd(), &ev);
 		if (err)
 			THROW_ERRNO("epoll_ctl");
-		free(_servInfo);
+		freeaddrinfo(_servInfo);
 		_servInfo = nullptr;
 	}
 }
@@ -159,7 +159,7 @@ Program::Program()
 
 Program::~Program()
 {
-	free(_servInfo);
+	freeaddrinfo(_servInfo);
 	close(_epollFd);
 }
 

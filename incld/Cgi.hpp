@@ -4,24 +4,23 @@
 #include <vector>
 #include <string>
 
+#include "webserv.hpp"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 
-class Client;
-class IpPort;
-using ClientPtr = std::shared_ptr<Client>;
-enum class CgiType;
-
 #define PYTHON_PATH "/usr/bin/python3"
+#define PYTHON_EXT ".py"
 #define PHP_PATH "/usr/bin/php-cgi"
+#define PHP_EXT ".php"
 
 class Cgi
 {
 	private:
 		Client						&_client;
 		std::string					_contentType;
+		std::string					_uploadDir;
 
 		int							_stdinFd;
 		int							_stdoutFd;
@@ -34,7 +33,6 @@ class Cgi
 		std::vector<std::string>	_envStorage;
 		std::vector<char*>			_envp;
 
-		bool	prepareScript();
 		void	buildArgv();
 		void	buildEnv();
 
@@ -44,15 +42,15 @@ class Cgi
 		void	cleanupCgiFds();
 
 	public:
-		CgiType						_cgiType;
-
 		Cgi(Client &client);
 		~Cgi();
 
 		bool				init();
+		int					reapChild();
+		int					killChild();
 
-		const std::string&	defaultContentType() const;
+		int					getStdinFd();
+		int					getStdoutFd();
 
-		int					getStdinFd() const { return _stdinFd; }
-		int					getStdoutFd() const { return _stdoutFd; }
+		void				setUploadDir(const std::string &uploadDir);
 };

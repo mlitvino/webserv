@@ -1,71 +1,16 @@
 #!/usr/bin/env python3
-import os
 import sys
+# Prevent creation of __pycache__ and .pyc files
+sys.dont_write_bytecode = True
+
+import os
 import datetime
 import tempfile
 import uuid
+import cgi
 from urllib.parse import parse_qs
 
-def parse_multipart_form_data():
-    """Parse multipart/form-data from stdin"""
-    content_type = os.environ.get('CONTENT_TYPE', '')
-    if 'multipart/form-data' not in content_type:
-        return {}
-    
-    try:
-        boundary = content_type.split('boundary=')[1]
-        boundary = '--' + boundary
-    except:
-        return {}
-    
-    content_length = int(os.environ.get('CONTENT_LENGTH', 0))
-    if content_length == 0:
-        return {}
-    
-    data = sys.stdin.buffer.read(content_length)
-    
-    files = {}
-    form_data = {}
-    
-    parts = data.split(boundary.encode())
-    
-    for part in parts:
-        if b'Content-Disposition' in part:
-            lines = part.split(b'\r\n')
-            headers = {}
-            content = b''
-            
-            in_headers = True
-            for line in lines:
-                if in_headers:
-                    if line == b'':
-                        in_headers = False
-                        continue
-                    if b':' in line:
-                        key, value = line.decode().split(':', 1)
-                        headers[key.lower().strip()] = value.strip()
-                else:
-                    if content:
-                        content += b'\r\n'
-                    content += line
-            
-            disposition = headers.get('content-disposition', '')
-            if 'form-data' in disposition:
-                if 'filename=' in disposition:
-                    name = disposition.split('name="')[1].split('"')[0]
-                    filename = disposition.split('filename="')[1].split('"')[0]
-                    files[name] = {
-                        'filename': filename,
-                        'content': content.rstrip(b'\r\n')
-                    }
-                else:
-                    name = disposition.split('name="')[1].split('"')[0]
-                    form_data[name] = content.decode().rstrip('\r\n')
-    
-    return {'files': files, 'form': form_data}
-
-print("Content-Type: text/html")
-print()
+sys.stdout.write("Content-Type: text/html\r\n\r\n")
 
 print("""<!DOCTYPE html>
 <html lang="en">
@@ -96,11 +41,11 @@ print("""<!DOCTYPE html>
     <div class="container">
         <nav class="nav">
             <a href="/">Home</a>
-            <a href="/cgi-bin/demo.py">CGI Demo</a>
+            <a href="/cgi.html">CGI Demo</a>
             <a href="/cgi-bin/upload.py">File Upload</a>
             <a href="/upload.html">Upload</a>
         </nav>
-        
+
         <h1>📁 File Upload CGI</h1>
         <p>This CGI script demonstrates file upload functionality with proper multipart/form-data handling.</p>
 """)
@@ -109,70 +54,84 @@ request_method = os.environ.get('REQUEST_METHOD', '')
 
 if request_method == 'POST':
     try:
-        parsed_data = parse_multipart_form_data()
-        files = parsed_data.get('files', {})
-        form_data = parsed_data.get('form', {})
-        
-        if files:
+        # Parse the request while keeping FieldStorage alive during processing
+        form = cgi.FieldStorage(fp=sys.stdin.buffer, environ=os.environ, keep_blank_values=True)
+
+        # Resolve upload directory from environment, fallback to project default
+        upload_dir = os.environ.get('UPLOAD_DIR', 'web/upload')
+        try:
+            os.makedirs(upload_dir, exist_ok=True)
+        except Exception as e:
+            print('<div class="section error">')
+            print('<h2>❌ Upload Error</h2>')
+            print('<p>Failed to create upload directory.</p>')
+            print(f'<pre>{upload_dir} -> {e}</pre>')
+            print('</div>')
+            form = None  # explicit to avoid lints
+        else:
+            saved_any = False
+            invalid_found = False
             print('<div class="section success">')
-            print('<h2>✅ File Upload Successful</h2>')
-            
-            for field_name, file_info in files.items():
-                filename = file_info['filename']
-                content = file_info['content']
-                
-                # Save file to upload directory
-                upload_dir = '/home/riamaev/Downloads/webserv-main21-10/webserv-main/web/upload'
-                if not os.path.exists(upload_dir):
-                    os.makedirs(upload_dir)
-                
-                # Generate unique filename to prevent conflicts
-                file_id = str(uuid.uuid4())[:8]
-                safe_filename = f"{file_id}_{filename}"
+            print('<h2>✅ File Upload Result</h2>')
+
+            # Accept single or multiple file inputs under the name "file"
+            items = []
+            if 'file' in form:
+                field = form['file']
+                items = field if isinstance(field, list) else [field]
+
+            for item in items:
+                filename = getattr(item, 'filename', None)
+                if not filename:
+                    continue
+                # Use original filename from Content-Disposition (sanitized)
+                safe_filename = os.path.basename(filename)
+                # Reject filenames containing space or '#'
+                if (' ' in safe_filename) or ('#' in safe_filename):
+                    print(f'<p class="error">❌ Invalid filename "{filename}": spaces and # characters are not allowed. Please rename your file and try again.</p>')
+                    invalid_found = True
+                    continue
                 file_path = os.path.join(upload_dir, safe_filename)
-                
+
+                # Stream to disk and count bytes
+                total_bytes = 0
                 try:
-                    with open(file_path, 'wb') as f:
-                        f.write(content)
-                    
+                    with open(file_path, 'wb') as out:
+                        while True:
+                            chunk = item.file.read(65536)
+                            if not chunk:
+                                break
+                            out.write(chunk)
+                            total_bytes += len(chunk)
+
                     print(f'<p><strong>File:</strong> {filename}</p>')
-                    print(f'<p><strong>Size:</strong> {len(content)} bytes</p>')
+                    print(f'<p><strong>Size:</strong> {total_bytes} bytes</p>')
                     print(f'<p><strong>Saved as:</strong> {safe_filename}</p>')
                     print(f'<p><strong>Upload time:</strong> {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>')
-                    
-                    # Show file content preview if it's text
-                    if len(content) < 1000 and filename.endswith(('.txt', '.html', '.css', '.js', '.py', '.cpp', '.c')):
-                        try:
-                            text_content = content.decode('utf-8')
-                            print('<p><strong>Content preview:</strong></p>')
-                            print(f'<pre>{text_content[:500]}{"..." if len(text_content) > 500 else ""}</pre>')
-                        except:
-                            print('<p>Binary file - content preview not available</p>')
-                    else:
-                        print('<p>Large or binary file - content preview not available</p>')
-                        
+                    saved_any = True
                 except Exception as e:
-                    print(f'<p class="error">Error saving file: {str(e)}</p>')
-            
-            if form_data:
-                print('<p><strong>Additional form data:</strong></p>')
-                print('<pre>')
-                for key, value in form_data.items():
-                    print(f"{key}: {value}")
-                print('</pre>')
-            
+                    print(f'<p class="error">Error saving file {filename}: {e}</p>')
+
+            if not saved_any:
+                if invalid_found:
+                    print('<p>No files were saved because one or more filenames contain invalid characters (spaces or #). Please rename your files and try again.</p>')
+                else:
+                    print('<p>No files were found in the upload request.</p>')
             print('</div>')
-        else:
-            print('<div class="section error">')
-            print('<h2>❌ No Files Received</h2>')
-            print('<p>No files were found in the upload request.</p>')
-            print('</div>')
-            
+
     except Exception as e:
         print('<div class="section error">')
         print('<h2>❌ Upload Error</h2>')
         print(f'<p>Error processing upload: {str(e)}</p>')
         print('</div>')
+
+try:
+    import shutil
+    pycache_dir = os.path.join(os.path.dirname(__file__), "__pycache__")
+    if os.path.isdir(pycache_dir):
+        shutil.rmtree(pycache_dir, ignore_errors=True)
+except Exception:
+    pass
 
 print(f"""
         <div class="section">
@@ -190,17 +149,7 @@ print(f"""
                     <label for="file">Select File:</label>
                     <input type="file" id="file" name="file" required>
                 </div>
-                
-                <div class="form-group">
-                    <label for="description">Description (optional):</label>
-                    <textarea id="description" name="description" rows="3" placeholder="Enter a description for the file..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="uploader">Uploader Name (optional):</label>
-                    <input type="text" id="uploader" name="uploader" placeholder="Your name">
-                </div>
-                
+
                 <button type="submit">Upload File</button>
             </form>
         </div>
@@ -210,12 +159,8 @@ print(f"""
             <ul>
                 <li>✅ Multipart/form-data parsing</li>
                 <li>✅ File content extraction</li>
-                <li>✅ Automatic file saving</li>
-                <li>✅ Unique filename generation</li>
                 <li>✅ File size reporting</li>
-                <li>✅ Text file preview</li>
                 <li>✅ Upload directory management</li>
-                <li>✅ Error handling</li>
             </ul>
         </div>
 
@@ -226,7 +171,6 @@ print(f"""
                 <li><strong>Multipart Form Data:</strong> Proper parsing of multipart/form-data requests</li>
                 <li><strong>File Handling:</strong> Binary and text file processing</li>
                 <li><strong>Path Management:</strong> Correct directory handling for file operations</li>
-                <li><strong>Security:</strong> Unique filename generation to prevent conflicts</li>
                 <li><strong>CGI Environment:</strong> Full use of CGI environment variables</li>
             </ul>
         </div>

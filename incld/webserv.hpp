@@ -3,18 +3,11 @@
 #include <deque>
 #include <memory>
 #include <unordered_map>
+#include <chrono>
 
 #define IO_BUFFER_SIZE 1024
-#define MAX_CHUNK_SIZE 20000
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
-
-enum class CgiType
-{
-	PYTHON,
-	PHP,
-	NONE,
-};
 
 class		Program;
 class		PostRequestHandler;
@@ -29,7 +22,10 @@ class		ConfigParser;
 struct		ServerConfig;
 struct		Location;
 
+using		Time = std::chrono::steady_clock::time_point;
+
 using		IpPortPtr = std::shared_ptr<IpPort>;
+using		IpPortDeq = std::deque<IpPortPtr>;
 
 using		ServerPtr  = std::shared_ptr<Server>;
 using		ServerDeq = std::deque<ServerPtr>;

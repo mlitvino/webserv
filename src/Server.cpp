@@ -8,7 +8,8 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::cout << "Validating headers..." << std::endl;
 	const Location	*matchedLocation = findLocationForPath(client->_httpPath);
 
-	// optional: check HTTP version here
+	//if (client->_httpVersion != HTTP_VERSION)
+	//	THROW_HTTP(505, "Not supported HTTP vesion");
 
 	if (!matchedLocation)
 		THROW_HTTP(400, "No matched location");
@@ -20,10 +21,10 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	}
 
 	if (client->_httpPath.find("%") != std::string::npos)
-		THROW_HTTP(400, "Unsupported encoded request");
+		THROW_HTTP(501, "Unsupported encoded request");
 
 	if (client->_contentLen > 0 && client->_chunked)
-		THROW_HTTP(400, "Chunked body and content-length are presented");
+		THROW_HTTP(415, "Chunked body and content-length are presented");
 
 	if (client->_contentLen < 0)
 		THROW_HTTP(400, "Invalid content-length");
@@ -48,8 +49,21 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	}
 
 	client->_resolvedPath = findFile(client, client->_httpPath, matchedLocation);
+
+	std::cout << "DEBUG: type file: " << (client->_fileType == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
+
 	if (client->_resolvedPath.empty())
 		THROW_HTTP(404, "Not Found");
+
+	if (client->_fileType == FileType::CGI_SCRIPT)
+	{
+		size_t		dot = client->_resolvedPath.find_last_of(".");
+		std::string	ext = client->_resolvedPath.substr(dot);
+
+		if (ext != PYTHON_EXT && ext != PHP_EXT)
+			THROW_HTTP(400, "Unsupported cgi");
+		client->_cgi.setUploadDir(matchedLocation->uploadDir);
+	}
 
 	std::cout << "Validating headers is done" << std::endl;
 	return true;
@@ -68,7 +82,7 @@ bool	Server::isRedirected(ClientPtr &client, const Location* matchedLocation)
 	return true;
 }
 
-const Location* Server::findLocationForPath(const std::string& path) const
+const Location* Server::findLocationForPath(std::string& path)
 {
 	const std::vector<Location>&	locations = getLocations();
 	const Location*					matched = nullptr;
@@ -94,8 +108,6 @@ const Location* Server::findLocationForPath(const std::string& path) const
 
 std::string	Server::findFile(ClientPtr &client, const std::string& path, const Location* matched)
 {
-	client->_fileType = FileType::REGULAR;
-
 	std::string	docRoot = matched->root;
 	if (docRoot.empty())
 		docRoot = "web/www";
@@ -115,7 +127,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 	std::cout << "FindFile: fsPath " << fsPath << std::endl;
 
-	if (client->_httpMethod == "POST")
+	if (client->_httpMethod == "POST" && matched->isCgi == false)
 	{
 		std::string fsDir = fsPath.empty() ? docRoot : fsPath;
 		struct stat st{};
@@ -131,10 +143,9 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 		{
 			if (S_ISREG(st.st_mode))
 			{
-				if (matched->cgiType != CgiType::NONE)
+				if (matched->isCgi == true)
 				{
 					client->_fileType = FileType::CGI_SCRIPT;
-					client->_cgi._cgiType = matched->cgiType;
 				}
 				return fsPath;
 			}
@@ -199,9 +210,12 @@ bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
 
 	int methodFlag = 0;
-	if (client->_httpMethod == "GET") methodFlag = static_cast<int>(HttpMethod::GET);
-	else if (client->_httpMethod == "POST") methodFlag = static_cast<int>(HttpMethod::POST);
-	else if (client->_httpMethod == "DELETE") methodFlag = static_cast<int>(HttpMethod::DELETE);
+	if (client->_httpMethod == "GET")
+		methodFlag = static_cast<int>(HttpMethod::GET);
+	else if (client->_httpMethod == "POST")
+		methodFlag = static_cast<int>(HttpMethod::POST);
+	else if (client->_httpMethod == "DELETE")
+		methodFlag = static_cast<int>(HttpMethod::DELETE);
 	else
 	{
 		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;
@@ -226,6 +240,7 @@ std::string	Server::getCustomErrorPage(int statusCode)
 }
 
 // Setters
+
 void Server::setHost(std::string host) {
 	_host = std::move(host);
 }
@@ -251,6 +266,7 @@ void Server::setLocations(const std::vector<Location>& locations) {
 }
 
 // Getters
+
 std::string& Server::getHost() {
 	return _host;
 }
@@ -259,32 +275,26 @@ std::string& Server::getPort() {
 	return _port;
 }
 
-const std::string& Server::getServerName() const {
+const std::string& Server::getServerName() {
 	return _serverName;
 }
 
-size_t Server::getClientBodySize() const {
+size_t Server::getClientBodySize() {
 	return _clientBodySize;
 }
 
-const std::map<int, std::string>& Server::getErrorPages() const {
+const std::map<int, std::string>& Server::getErrorPages() {
 	return _errorPages;
 }
 
-const std::vector<Location>& Server::getLocations() const {
+const std::vector<Location>& Server::getLocations() {
 	return _locations;
-}
-
-int Server::getSockfd() const {
-	return _sockfd;
 }
 
 // Constructors + Destructor
 
-Server::~Server() {
-	if (_sockfd != -1)
-		close(_sockfd);
-}
+Server::~Server()
+{}
 
 Server::Server(const ServerConfig& config)
 	: _serverName(config.serverName),
@@ -292,7 +302,7 @@ Server::Server(const ServerConfig& config)
 	_port(std::to_string(config.getPort())),
 	_clientBodySize(config.clientMaxBodySize),
 	_errorPages(config.errorPages),
-	_locations(config.locations),
-	_sockfd{-1} {
-}
+	_locations(config.locations)
+
+{}
 

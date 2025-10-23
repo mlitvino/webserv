@@ -31,7 +31,7 @@ int ConfigParser::parseHttpMethods(const std::string& methods) {
 		else if (method == "POST") result |= static_cast<int>(HttpMethod::POST);
 		else if (method == "DELETE") result |= static_cast<int>(HttpMethod::DELETE);
 	}
-	return result ? result : static_cast<int>(HttpMethod::GET);
+	return result;
 }
 
 void ConfigParser::parseLocationDirective(const std::string& line, Location& location) {
@@ -52,6 +52,10 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 
 	if (directive == "root") {
 		location.root = getFirstToken(rest);
+	} else if (directive == "upload_dir") {
+		location.uploadDir = getFirstToken(rest);
+		if (location.uploadDir.empty())
+			throw std::runtime_error("Empty upload_dir");
 	} else if (directive == "index") {
 		location.index = getFirstToken(rest);
 	} else if (directive == "allow_methods") {
@@ -62,7 +66,7 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		std::istringstream returnStream(rest);
 		std::string codeStr, url;
 		returnStream >> codeStr >> url;
-		
+
 		try {
 			int code = std::stoi(codeStr);
 			if (code >= 300 && code < 400 && !url.empty()) {
@@ -73,14 +77,10 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 		}
 	} else if (directive == "cgi") {
 		std::string token = getFirstToken(rest);
-		if (!token.empty() && token.back() == ';') 
+		if (!token.empty() && token.back() == ';')
 			token.pop_back();
-		if (token == "python") {
-			location.cgiType = CgiType::PYTHON;
-		} else if (token == "php") {
-			location.cgiType = CgiType::PHP;
-		} else {
-			throw std::runtime_error("Unsupported CGI type: " + token);
+		if (token == "on") {
+			location.isCgi = true;
 		}
 	}
 }
@@ -110,7 +110,7 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 		std::string listenValue;
 		iss >> listenValue;
 		ListenConfig listen;
-		
+
 		size_t colonPos = listenValue.find(':');
 		if (colonPos != std::string::npos) {
 			listen.host = listenValue.substr(0, colonPos);
@@ -125,7 +125,11 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 		if (!config.serverName.empty() && config.serverName.back() == ';')
 			config.serverName.pop_back();
 	} else if (directive == "client_max_body_size") {
-		iss >> config.clientMaxBodySize;
+		long long temp;
+		iss >> temp;
+		if (temp < 0)
+			std::runtime_error("Negative value in body size");
+		config.clientMaxBodySize = temp;
 	} else if (directive == "error_page") {
 		int code;
 		std::string path;
@@ -209,7 +213,7 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 
 	for (const auto& config : _serverConfigs) {
 		auto server = std::make_shared<Server>(config);
-		
+
 		std::vector<ListenConfig> listens = config.listens;
 		if (listens.empty()) {
 			ListenConfig defaultListen;
@@ -225,19 +229,12 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 				auto ipPort = std::make_shared<IpPort>(program);
 				ipPort->setAddrPort(addrPort);
 				ipPortMap[addrPort] = ipPort;
-				program._addrPortVec.push_back(ipPort);
+				program.getAddrPortVec().push_back(ipPort);
 			}
 
-			ipPortMap[addrPort]->_servers.push_back(server);
+			ipPortMap[addrPort]->getServers().push_back(server);
 		}
-		program._servers.push_back(server);
-	}
-
-	for (auto &ipPort : program._addrPortVec) {
-		for (auto &server : ipPort->_servers) {
-			server->_handlersMap = &program._handlersMap;
-			server->_clientsMap = &program._clientsMap;
-		}
+		program.getServers().push_back(server);
 	}
 }
 

@@ -7,15 +7,10 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	if (!_bodyProcessingInitialized)
 	{
 		_bodyProcessingInitialized = true;
-		_bodyBytesReceived = 0;
-		_bodyBuffer.clear();
-		_decodedBuffer.clear();
 		client->_state = ClientState::GETTING_BODY;
 		if (client->_chunked)
 		{
 			_readingChunkSize = true;
-			_currentChunkSize = 0;
-			_currentChunkRead = 0;
 			_parsingChunkTrailers = false;
 			_chunkedFinished = false;
 		}
@@ -29,7 +24,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	bool	isBodyFinished;
 	if (client->_fileType == FileType::CGI_SCRIPT)
 	{
-		processCgi(client, status);
+		processPostCgi(client, status);
 		return;
 	}
 	else
@@ -50,7 +45,9 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	}
 	resetBodyState();
 	std::cout << "DEBUG: File uploaded successfully to: " << client->_resolvedPath + _uploadFilename << std::endl;
-	client->_redirectedUrl = "http://localhost:8080" + client->_httpPath + ".html";
+	std::string	addrPort = client->_ipPort.getAddrPort();
+	std::string	port = addrPort.substr(addrPort.find(":") + 1);
+	client->_redirectedUrl = "http://localhost:" + port + "/" + client->_httpPath + ".html";
 	_ipPort.generateResponse(client, "", 303);
 }
 
@@ -98,7 +95,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			size_t lineEnd = client->_buffer.find("\r\n");
 			if (lineEnd == std::string::npos)
 			{
-				if (client->_buffer.size() > kMaxChunkHeaderSize)
+				if (client->_buffer.size() > MAX_CHUNK_SIZE)
 					THROW_HTTP(413, "Content too large");
 				return BodyReadStatus::NEED_MORE;
 			}
@@ -112,7 +109,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			if (iss.fail())
 				THROW_HTTP(400, "Bad request");
 			size_t	serverMax = client->_ownerServer->getClientBodySize();
-			if (chunkSize > kMaxChunkDataSize || _bodyBytesReceived + chunkSize > serverMax)
+			if (chunkSize > MAX_CHUNK_SIZE || _bodyBytesReceived + chunkSize > serverMax)
 				THROW_HTTP(413, "Content too large");
 			_currentChunkSize = static_cast<size_t>(chunkSize);
 			_currentChunkRead = 0;
@@ -134,7 +131,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			size_t trailerEnd = client->_buffer.find("\r\n\r\n");
 			if (trailerEnd == std::string::npos)
 			{
-				if (client->_buffer.size() > kMaxTrailersSize)
+				if (client->_buffer.size() > MAX_CHUNK_SIZE)
 					THROW_HTTP(413, "Content too large");
 				return BodyReadStatus::NEED_MORE;
 			}
@@ -192,7 +189,7 @@ bool	PostRequestHandler::extractFilename(ClientPtr &client, std::string &dashBou
 	size_t headersEnd = _bodyBuffer.find("\r\n\r\n");
 	if (headersEnd == std::string::npos)
 	{
-		if (_bodyBuffer.size() > kMaxChunkHeaderSize)
+		if (_bodyBuffer.size() > MAX_CHUNK_SIZE)
 			THROW_HTTP(413, "Content too large");
 		return false;
 	}
@@ -255,6 +252,8 @@ bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 		extractFilename(client, dashBoundary);
 		if (_uploadFilename.empty())
 			return false;
+		if (_uploadFilename.find("#") != std::string::npos ||_uploadFilename.find(" ") != std::string::npos )
+			THROW_HTTP(400, "Unsupported symbol");
 	}
 	size_t markerPos = _bodyBuffer.find(boundaryMarker);
 	if (markerPos == std::string::npos)
@@ -310,31 +309,7 @@ bool	PostRequestHandler::getFormPart(ClientPtr &client)
 	return true;
 }
 
-void	PostRequestHandler::resetBodyState()
-{
-	_uploadFilename.clear();
-	_bodyBuffer.shrink_to_fit();
-	_bodyBuffer.clear();
-	_bodyBuffer.shrink_to_fit();
-	_decodedBuffer.clear();
-	_decodedBuffer.shrink_to_fit();
-	_bodyBytesExpected = 0;
-	_bodyBytesReceived = 0;
-	_bodyProcessingInitialized = false;
-	_currentChunkSize = 0;
-	_currentChunkRead = 0;
-	_readingChunkSize = true;
-	_parsingChunkTrailers = false;
-	_chunkedFinished = false;
-}
-
-// Constructors + Destructor
-
-PostRequestHandler::PostRequestHandler(IpPort &owner)
-	: _ipPort(owner)
-{}
-
-void	PostRequestHandler::processCgi(ClientPtr &client, BodyReadStatus status)
+void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status)
 {
 	if (client->_fileFd == -1)
 	{
@@ -362,4 +337,35 @@ void	PostRequestHandler::processCgi(ClientPtr &client, BodyReadStatus status)
 
 	if (!client->_cgi.init())
 		THROW_HTTP(500, "Failed to start CGI process");
+	client->_state = ClientState::WRITING_CGI_INPUT;
 }
+
+void	PostRequestHandler::resetBodyState()
+{
+	_uploadFilename.clear();
+	_bodyBuffer.shrink_to_fit();
+	_bodyBuffer.clear();
+	_bodyBuffer.shrink_to_fit();
+	_decodedBuffer.clear();
+	_decodedBuffer.shrink_to_fit();
+	_bodyBytesExpected = 0;
+	_bodyBytesReceived = 0;
+	_bodyProcessingInitialized = false;
+	_currentChunkSize = 0;
+	_currentChunkRead = 0;
+	_readingChunkSize = true;
+	_parsingChunkTrailers = false;
+	_chunkedFinished = false;
+}
+
+// Constructors + Destructor
+
+PostRequestHandler::PostRequestHandler(IpPort &owner)
+	: _ipPort(owner)
+{
+	resetBodyState();
+}
+
+PostRequestHandler::~PostRequestHandler()
+{}
+

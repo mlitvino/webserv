@@ -9,6 +9,7 @@ bool	Client::readRequest()
 	{
 		buffer[bytesRead] = '\0';
 		_buffer.append(buffer, bytesRead);
+		_lastActivity = g_current_time;
 		return true;
 	}
 	else if (bytesRead == 0)
@@ -59,35 +60,38 @@ void	Client::sendResponse()
 		_responseOffset = 0;
 		_responseBuffer.clear();
 
+		if (_keepAlive == false)
+			return _ipPort.closeConnection(_clientFd);
+
 		_postHandler.resetBodyState();
-		if (_fileFd != -1)
-		{
-			close(_fileFd);
-			_fileFd = -1;
-		}
+		closeFile();
 		_state = ClientState::READING_REQUEST;
 		utils::changeEpollHandler(_handlersMap, _clientFd, &_ipPort);
 		return ;
 	}
 
-	if (bytesSent == 0)
+	if (bytesSent > 0)
+	{
+		_lastActivity = g_current_time;
+	}
+	else if (bytesSent == 0)
 	{
 		std::cout << "Connection was closed in resndResponse" << std::endl;
-		_ipPort.closeConnection(-1);
+		_ipPort.closeConnection(_clientFd);
 	}
 	else if (bytesSent == -1)
 	{
-		_ipPort.closeConnection(-1);
 		THROW_ERRNO("send");
 	}
 
 	std::cout << "Sending part of response is done" << std::endl;
 }
 
-void	Client::closeFile(epoll_event &ev, int epollFd, int eventFd)
+void	Client::closeFile()
 {
-	close(_fileFd);
-	_fileBuffer.clear();
+	if (_fileFd != -1)
+		close(_fileFd);
+	_fileFd = -1;
 	_fileSize = 0;
 	_fileOffset = 0;
 }
@@ -96,9 +100,8 @@ void	Client::openFile(std::string &filePath)
 {
 	int			err;
 	struct stat	fileInfo;
-	_filePath = filePath;
 
-	_fileFd = open(_filePath.c_str(), O_RDWR | O_NONBLOCK, 667);
+	_fileFd = open(filePath.c_str(), O_RDWR | O_NONBLOCK, 667);
 	if (_fileFd < 0)
 		return ;
 
@@ -114,119 +117,121 @@ void	Client::openFile(std::string &filePath)
 
 void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 {
-	if (ev.events & EPOLLIN)
+	try
 	{
-		if (eventFd == _cgi.getStdinFd())
+		if (ev.events & (EPOLLIN | EPOLLHUP))
 		{
-			handleCgiStdinEvent(ev);
+			if (eventFd == _cgi.getStdoutFd()  && _state == ClientState::READING_CGI_OUTPUT)
+			{
+				handleCgiStdoutEvent(ev);
+				return;
+			}
+		}
+		if (ev.events & EPOLLOUT)
+		{
+			if (eventFd == _clientFd && _state == ClientState::SENDING_RESPONSE)
+			{
+				sendResponse();
+			}
+			else if (eventFd == _cgi.getStdinFd() && _state == ClientState::WRITING_CGI_INPUT)
+			{
+				handleCgiStdinEvent(ev);
+			}
 		}
 	}
-	else if (ev.events & EPOLLOUT)
+	catch (HttpException &e)
 	{
-
-		if (_state == ClientState::SENDING_RESPONSE)
-		{
-			sendResponse();
-		}
-		else if (eventFd == _cgi.getStdoutFd())
-		{
-			handleCgiStdoutEvent(ev);
-			return;
-		}
+		resetRequestData();
+		_buffer.clear();
+		std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
+		auto FdclientPtr = _ipPort.getClientsMap().find(_clientFd);
+		_ipPort.generateResponse(FdclientPtr->second, "", e.getStatusCode());
+	}
+	catch (std::exception &e)
+	{
+		std::cout << "Exception: " << e.what() << std::endl;
+		_ipPort.closeConnection(eventFd);
 	}
 }
 
 void	Client::handleCgiStdoutEvent(epoll_event &ev)
 {
+	std::cout << "Client: cgi stdout" << std::endl;
 	char	buf[IO_BUFFER_SIZE];
-	while (true)
+
+	ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
+	if (n > 0)
 	{
-		ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
-		if (n > 0)
+		std::cout << "Client Cgi   Out, n>0" << std::endl;
+		_cgiBuffer.append(buf, static_cast<size_t>(n));
+		_lastActivity = g_current_time;
+	}
+	else if (n == 0)
+	{
+		std::cout << "Client Cgi   Out, n=0" << std::endl;
+		int status = _cgi.reapChild();
+		if (status != 0)
 		{
-			_cgiBuffer.append(buf, static_cast<size_t>(n));
-		}
-		else if (n == 0)
-		{
-			// EOF from CGI stdout
-			// Parse headers if not yet done and prepare final response
-			if (!parseCgiHeadersAndPrepareResponse())
-			{
-				// Malformed CGI output; send 500
-				_responseBuffer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-				_state = ClientState::SENDING_RESPONSE;
-			}
-			// Stop monitoring CGI stdout
-			epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdoutFd(), 0);
-			_handlersMap.erase(_cgi.getStdoutFd());
-			close(_cgi.getStdoutFd());
-			// Now switch to sending response; client fd already monitored for EPOLLOUT
-			// Ensure client fd is handled by Client for sending response
-			utils::changeEpollHandler(_handlersMap, _clientFd, this);
+			closeFile();
+			std::string	errorPage = _ownerServer->getCustomErrorPage(status);
+			ClientPtr	self = _clientsMap.at(_clientFd);
+			_ipPort.generateResponse(self, errorPage, status);
 			return;
 		}
-		else
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break;
-			THROW_ERRNO("read CGI stdout");
-		}
+		parseCgiOutput();
+		_handlersMap.erase(_cgi.getStdoutFd());
+		close(_cgi.getStdoutFd());
+		utils::changeEpollHandler(_handlersMap, _clientFd, this);
+		return;
+	}
+	else
+	{
+		THROW_ERRNO("read CGI stdout");
 	}
 }
 
 void	Client::handleCgiStdinEvent(epoll_event &ev)
 {
-	// Drain request body temp file into CGI stdin
+	std::cout << "Client: cgi stdin" << std::endl;
 	char buf[IO_BUFFER_SIZE];
-	while (true)
+
+	ssize_t	n = read(_fileFd, buf, sizeof(buf));
+	if (n > 0)
 	{
-		ssize_t n = read(_fileFd, buf, sizeof(buf));
-		if (n > 0)
+		std::cout << "Client Cgi   In, n>0" << std::endl;
+		ssize_t	wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
+		if (wr == -1)
 		{
-			ssize_t wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
-			if (wr == -1)
-			{
-				if (errno == EAGAIN || errno == EWOULDBLOCK)
-				{
-					// put back read data into file by seeking back
-					lseek(_fileFd, -n, SEEK_CUR);
-					break;
-				}
-				THROW_ERRNO("write CGI stdin");
-			}
-			else if (wr < n)
-			{
-				// partial write; seek back the unwritten part
-				lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
-				break;
-			}
+			THROW_HTTP(500, "write failed in CGI");
 		}
-		else if (n == 0)
+		else if (wr < n)
 		{
-			// Finished sending body; close CGI stdin and stop monitoring
-			epoll_ctl(_ipPort._epollFd, EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
-			_handlersMap.erase(_cgi.getStdinFd());
-			close(_cgi.getStdinFd());
-			// We can close the temp file as well
-			if (_fileFd != -1)
-			{
-				close(_fileFd);
-				_fileFd = -1;
-			}
-			break;
+			std::cout << "Client Cgi   In, n<0" << std::endl;
+			lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
+			return;
 		}
-		else
-		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break;
-			THROW_ERRNO("read temp body file");
-		}
+		_lastActivity = g_current_time;
+	}
+	else if (n == 0)
+	{
+		std::cout << "Client Cgi   In, n=0" << std::endl;
+		_handlersMap.erase(_cgi.getStdinFd());
+		close(_cgi.getStdinFd());
+		closeFile();
+		_state = ClientState::READING_CGI_OUTPUT;
+		return;
+	}
+	else
+	{
+		THROW_HTTP(500, "read temp body file");
 	}
 }
 
-bool	Client::parseCgiHeadersAndPrepareResponse()
+bool	Client::parseCgiOutput()
 {
-	// Find the end of CGI headers: a blank line CRLF CRLF
+	_fileSize = 0;
+	_fileOffset = 0;
+
 	std::string::size_type pos = _cgiBuffer.find("\r\n\r\n");
 	std::string headers;
 	std::string body;
@@ -236,55 +241,37 @@ bool	Client::parseCgiHeadersAndPrepareResponse()
 		body = _cgiBuffer.substr(pos + 4);
 	}
 	else
-	{
-		// No headers delimiter found; assume entire buffer is body with default content-type
 		body = _cgiBuffer;
-	}
 
-	std::string statusLine = "HTTP/1.1 200 OK\r\n";
-	std::string outHeaders;
-	// Parse CGI-style headers (e.g., Status:, Content-Type:)
-	if (!headers.empty())
+	std::string	statusLine = "HTTP/1.1 200 OK\r\n";
+	std::string	outHeaders;
+	if (headers.empty())
+		THROW_HTTP(500, "Invalid CGI Status header");
+	std::istringstream iss(headers);
+	std::string line;
+	while (std::getline(iss, line))
 	{
-		std::istringstream iss(headers);
-		std::string line;
-		while (std::getline(iss, line))
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		if (line.rfind("Status:", 0) == 0)
 		{
-			if (!line.empty() && line.back() == '\r')
-				line.pop_back();
-			if (line.rfind("Status:", 0) == 0)
-			{
-				std::string val = line.substr(7);
-				while (!val.empty() && isspace(val.front())) val.erase(0,1);
-				outHeaders += "Status: " + val + "\r\n"; // we'll convert to HTTP status below
-				// Extract code
-				std::istringstream cs(val);
-				int code; cs >> code;
-				if (!cs.fail())
-				{
-					// Minimal mapping to status text
-					std::string text = (code==200?"OK": code==302?"Found": code==404?"Not Found": code==500?"Internal Server Error":"");
-					statusLine = "HTTP/1.1 " + std::to_string(code) + " " + (text.empty()?"":text) + "\r\n";
-				}
+			std::string	val = line.substr(7);
+			int			code;
+			try {
+				code = std::stoi(val);
 			}
-			else if (line.rfind("Content-Type:", 0) == 0)
-			{
-				outHeaders += line + "\r\n";
+			catch(std::exception& e) {
+				THROW_HTTP(500, "Inernal Error");
 			}
-			else if (line.rfind("Location:", 0) == 0)
-			{
-				// Support CGI redirect
-				outHeaders += line + "\r\n";
-				statusLine = "HTTP/1.1 302 Found\r\n";
-			}
+			statusLine = "HTTP/1.1 " + std::to_string(code) + " " + _ipPort.getStatusText(code) + "\r\n";
 		}
+		else if (line.rfind("Content-Length:", 0) == 0 || line.rfind("Connection:", 0) == 0)
+		{
+		}
+		else
+			outHeaders += line + "\r\n";
 	}
-	else
-	{
-		// No headers; set default content-type
-		outHeaders += "Content-Type: " + _cgi.defaultContentType() + "\r\n";
-	}
-
+	_keepAlive = false;
 	_responseBuffer = statusLine;
 	_responseBuffer += outHeaders;
 	_responseBuffer += "Content-Length: " + std::to_string(body.size()) + "\r\n";
@@ -296,37 +283,126 @@ bool	Client::parseCgiHeadersAndPrepareResponse()
 	return true;
 }
 
+void	Client::resetRequestData()
+{
+	_postHandler.resetBodyState();
+	_contentLen = 0;
+	_chunked = false;
+	_contentType.clear();
+	_query.clear();
+	_redirectedUrl.clear();
+	_fileType = FileType::REGULAR;
+
+
+	if (_fileFd != -1)
+	{
+		close(_fileFd);
+		_fileFd = -1;
+	}
+}
+
 // Getters + Setters
 
-int		Client::getFd()
-{
-	return _clientFd;
-}
+int				Client::getFd() { return _clientFd; }
+
+Time			Client::getLastActivity() { return _lastActivity; }
+void			Client::setLastActivity(Time t) { _lastActivity = t; }
+
+std::string&	Client::getBuffer() { return _buffer; }
+void			Client::setBuffer(const std::string &v) { _buffer = v; }
+
+std::string&	Client::getResponseBuffer() { return _responseBuffer; }
+void			Client::setResponseBuffer(const std::string &v) { _responseBuffer = v; }
+
+size_t			Client::getResponseOffset() { return _responseOffset; }
+void			Client::setResponseOffset(size_t v) { _responseOffset = v; }
+
+ClientState		Client::getState() { return _state; }
+void			Client::setState(ClientState s) { _state = s; }
+
+ServerPtr&		Client::getOwnerServer() { return _ownerServer; }
+void			Client::setOwnerServer(const ServerPtr &srv) { _ownerServer = srv; }
+
+std::string&	Client::getHttpMethod() { return _httpMethod; }
+void			Client::setHttpMethod(const std::string &v) { _httpMethod = v; }
+
+std::string&	Client::getHttpPath() { return _httpPath; }
+void			Client::setHttpPath(const std::string &v) { _httpPath = v; }
+
+std::string&	Client::getQuery() { return _query; }
+void			Client::setQuery(const std::string &v) { _query = v; }
+
+std::string&	Client::getHttpVersion() { return _httpVersion; }
+void			Client::setHttpVersion(const std::string &v) { _httpVersion = v; }
+
+size_t			Client::getContentLen() { return _contentLen; }
+void			Client::setContentLen(size_t v) { _contentLen = v; }
+
+bool			Client::getChunked() { return _chunked; }
+void			Client::setChunked(bool v) { _chunked = v; }
+
+bool			Client::getKeepAlive() { return _keepAlive; }
+void			Client::setKeepAlive(bool v) { _keepAlive = v; }
+
+std::string&	Client::getHostHeader() { return _hostHeader; }
+void			Client::setHostHeader(const std::string &v) { _hostHeader = v; }
+
+std::string&	Client::getContentType() { return _contentType; }
+void			Client::setContentType(const std::string &v) { _contentType = v; }
+
+std::string&	Client::getMultipartBoundary() { return _multipartBoundary; }
+void			Client::setMultipartBoundary(const std::string &v) { _multipartBoundary = v; }
+
+std::string&	Client::getResolvedPath() { return _resolvedPath; }
+void			Client::setResolvedPath(const std::string &v) { _resolvedPath = v; }
+
+FileType		Client::getFileType() { return _fileType; }
+void			Client::setFileType(FileType t) { _fileType = t; }
+
+std::string&	Client::getRedirectedUrl() { return _redirectedUrl; }
+void			Client::setRedirectedUrl(const std::string &v) { _redirectedUrl = v; }
+
+int				Client::getRedirectCode() { return _redirectCode; }
+void			Client::setRedirectCode(int v) { _redirectCode = v; }
+
+int				Client::getClientFd() { return _clientFd; }
+void			Client::setClientFd(int fd) { _clientFd = fd; }
+
+int				Client::getFileFd() { return _fileFd; }
+void			Client::setFileFd(int fd) { _fileFd = fd; }
+
+int				Client::getFileSize() { return _fileSize; }
+void			Client::setFileSize(int sz) { _fileSize = sz; }
+
+Cgi&			Client::getCgi() { return _cgi; }
+PostRequestHandler&	Client::getPostRequestHandler() { return _postHandler; }
+
+FdClientMap&		Client::getClientsMap() { return _clientsMap; }
+FdEpollOwnerMap&	Client::getHandlersMap() { return _handlersMap; }
+IpPort&				Client::getIpPort() { return _ipPort; }
 
 // Constructors + Destructor
 
 Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
-	: _buffer()
+	: _clientFd{clientFd}
+	, _clientAddr{clientAddr}
+	, _clientAddrLen{clientAddrLen}
+	, _lastActivity{g_current_time}
+	, _buffer()
 	, _responseOffset{0}
 	, _state(ClientState::READING_REQUEST)
-	, _clientsMap(owner._clientsMap)
-	, _handlersMap(owner._handlersMap)
+	, _clientsMap(owner.getClientsMap())
+	, _handlersMap(owner.getHandlersMap())
 	, _ipPort(owner)
 	, _chunked(false)
 	, _keepAlive(false)
 	, _hostHeader()
-	, _clientAddr{clientAddr}
-	, _clientAddrLen{clientAddrLen}
-	, _clientFd{clientFd}
 	, _fileFd{-1}
-	, _fileBuffer()
 	, _fileSize{0}
 	, _fileOffset{0}
 	, _cgi{*this}
 	, _postHandler{_ipPort}
-{
-
-}
+{}
 
 Client::~Client()
 {

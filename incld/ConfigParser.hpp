@@ -21,12 +21,13 @@ enum class HttpMethod {
 struct Location {
 	std::string path;
 	std::string root;
+	std::string uploadDir;
 	std::string index;
 	int allowedMethods = static_cast<int>(HttpMethod::GET);
 	bool autoindex = false;
 	int redirectCode = 0;
 	std::string redirectUrl;
-	CgiType cgiType;
+	bool		isCgi = false;
 };
 
 struct ListenConfig {

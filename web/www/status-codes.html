@@ -57,7 +57,7 @@
 		.redirection { background-color: #fff3cd; color: #856404; }
 		.client-error { background-color: #f8d7da; color: #721c24; }
 		.server-error { background-color: #f5c6cb; color: #721c24; }
-		
+
 		.status-code {
 			display: flex;
 			padding: 12px 20px;
@@ -110,7 +110,6 @@
 		<nav class="nav">
 			<a href="/">Home</a>
 			<a href="/cgi.html">CGI Scripts</a>
-			<a href="/status-codes.html">Status Codes</a>
 			<a href="/upload.html">Upload</a>
 		</nav>
 
@@ -119,14 +118,14 @@
 		<div class="config-analysis">
 			<h2>🔧 Current Webserv Configuration Analysis</h2>
 			<p>Based on the configuration files, our webserver currently supports:</p>
-			
+
 			<h3>Configured Error Pages:</h3>
 			<div class="config-code">
 # default.conf
 error_page 404 web/www/errors/404.html;
 error_page 500 web/www/errors/500.html;
 
-# comprehensive.conf  
+# comprehensive.conf
 error_page 404 /errors/404.html;
 error_page 500 /errors/500.html;
 error_page 403 /errors/403.html;
@@ -352,12 +351,12 @@ location /old-site {
 		<div class="config-analysis">
 			<h2>📋 Configuration Recommendations</h2>
 			<p>To improve the webserver configuration, consider adding these status codes:</p>
-			
+
 			<h3>Essential Error Pages to Add:</h3>
 			<div class="config-code">
 # Add to server configuration
 error_page 400 /errors/400.html;    # Bad Request
-error_page 401 /errors/401.html;    # Unauthorized  
+error_page 401 /errors/401.html;    # Unauthorized
 error_page 405 /errors/405.html;    # Method Not Allowed
 error_page 413 /errors/413.html;    # Content Too Large
 error_page 414 /errors/414.html;    # URI Too Long

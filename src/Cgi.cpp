@@ -4,76 +4,55 @@
 #include "utils.hpp"
 #include "ConfigParser.hpp"
 
-bool	Cgi::prepareScript()
-{
-
-	_script = _client._resolvedPath;
-	switch (_cgiType)
-	{
-		case CgiType::PYTHON:
-			_interpreter = PYTHON_PATH;
-			break;
-		case CgiType::PHP:
-			_interpreter = PHP_PATH;
-			break;
-		case CgiType::NONE:
-		default:
-			return false;
-	}
-	return true;
-}
-
 void	Cgi::buildArgv()
 {
-	if (!_interpreter.empty())
+	_argv.clear();
+
+	_script = _client._resolvedPath;
+	size_t		dot = _script.find_last_of(".");
+	std::string	ext = _script.substr(dot);
+
+	if (ext == PYTHON_EXT)
 	{
-		_argv.push_back(const_cast<char*>(_interpreter.c_str()));
-		_argv.push_back(const_cast<char*>(_script.c_str()));
+		_interpreter = PYTHON_PATH;
+	}
+	else if (ext == PHP_EXT)
+	{
+		_interpreter = PHP_PATH;
 	}
 	else
 	{
-		_argv.push_back(const_cast<char*>(_script.c_str()));
+		_interpreter = _script;
 	}
+	_argv.push_back(const_cast<char*>(_interpreter.c_str()));
+	if (ext == PHP_EXT)
+		_argv.push_back(const_cast<char*>("-f"));
+	_argv.push_back(const_cast<char*>(_script.c_str()));
 	_argv.push_back(nullptr);
 }
 
 void	Cgi::buildEnv()
 {
 	_envStorage.clear();
+
 	_envStorage.push_back("REQUEST_METHOD=" + _client._httpMethod);
 	_envStorage.push_back(std::string("CONTENT_LENGTH=") + std::to_string(_client._fileSize));
 	_envStorage.push_back("SERVER_PROTOCOL=" + _client._httpVersion);
 	_envStorage.push_back(std::string("SCRIPT_FILENAME=") + _script);
+	_envStorage.push_back("CONTENT_TYPE=" + _client._contentType);
 	_envStorage.push_back(std::string("REQUEST_URI=") + _client._httpPath);
+	_envStorage.push_back(std::string("PATH_INFO=") + _script);
 	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	_envStorage.push_back("REDIRECT_STATUS=200");
+	_envStorage.push_back("QUERY_STRING=" + _client._query);
+
+	if (_client._httpMethod == "POST")
+		_envStorage.push_back(std::string("UPLOAD_DIR=") + _uploadDir);
+
 	_envp.clear();
 	for (auto &envLine : _envStorage)
 		_envp.push_back(const_cast<char*>(envLine.c_str()));
 	_envp.push_back(nullptr);
-}
-
-// Constructors + Destructors
-
-Cgi::Cgi(Client &client)
-	: _client(client)
-	, _contentType("text/html")
-	, _stdinFd(-1)
-	, _stdoutFd(-1)
-	, _pid(-1)
-	, _headersParsed(false)
-	, _interpreter()
-	, _script()
-	, _argv()
-	, _envStorage()
-	, _envp()
-	, _cgiType(CgiType::NONE)
-{}
-
-Cgi::~Cgi() {}
-
-const	std::string& Cgi::defaultContentType() const
-{
-	return _contentType;
 }
 
 bool Cgi::createPipes(int inPipe[2], int outPipe[2])
@@ -114,9 +93,9 @@ void	Cgi::cleanupCgiFds()
 bool	Cgi::registerWithEpoll()
 {
 	epoll_event evIn = {0};
-	evIn.events = EPOLLIN | EPOLLOUT;
+	evIn.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evIn.data.fd = _stdoutFd;
-	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
+	if (epoll_ctl(_client._ipPort.getEpollFd(), EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
 	{
 		cleanupCgiFds();
 		return false;
@@ -124,11 +103,10 @@ bool	Cgi::registerWithEpoll()
 	_client._handlersMap.emplace(_stdoutFd, &_client);
 
 	epoll_event evOut = {0};
-	evOut.events = EPOLLIN | EPOLLOUT;
+	evOut.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evOut.data.fd = _stdinFd;
-	if (epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
+	if (epoll_ctl(_client._ipPort.getEpollFd(), EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
 	{
-		epoll_ctl(_client._ipPort._epollFd, EPOLL_CTL_DEL, _stdoutFd, 0);
 		_client._handlersMap.erase(_stdoutFd);
 		cleanupCgiFds();
 		return false;
@@ -144,8 +122,7 @@ bool	Cgi::init()
 
 	if (!createPipes(inPipe, outPipe))
 		return false;
-	if (!prepareScript())
-		return false;
+
 	buildArgv();
 	buildEnv();
 
@@ -177,9 +154,81 @@ bool	Cgi::init()
 	close(outPipe[STDOUT_FILENO]);
 	configureParentFds(inPipe[STDOUT_FILENO], outPipe[STDIN_FILENO], pid);
 	if (!registerWithEpoll())
+	{
+		kill(_pid, SIGKILL);
+		int status;
+		waitpid(_pid, &status, 0);
+		_pid = -1;
+		_pid = -1;
 		return false;
+	}
 
 	_client._state = ClientState::READING_CGI_OUTPUT;
-
+	std::cout << "Client in cgi init was changed" << std::endl;
 	return true;
 }
+
+int	Cgi::reapChild()
+{
+	int	status;
+	waitpid(_pid, &status, 0);
+	return status;
+}
+
+int	Cgi::killChild()
+{
+	int status = 0;
+	if (_pid != -1)
+	{
+		kill(_pid, SIGKILL);
+		waitpid(_pid, &status, 0);
+	}
+	return status;
+}
+
+// Getters + Setters
+
+int	Cgi::getStdinFd()
+{
+	return _stdinFd;
+}
+
+int	Cgi::getStdoutFd()
+{
+	return _stdoutFd;
+}
+
+void	Cgi::setUploadDir(const std::string &uploadDir)
+{
+	_uploadDir = uploadDir;
+}
+
+// Constructors + Destructors
+
+Cgi::Cgi(Client &client)
+	: _client(client)
+	, _contentType("text/html")
+	, _stdinFd(-1)
+	, _stdoutFd(-1)
+	, _pid(-1)
+	, _headersParsed(false)
+	, _interpreter()
+	, _script()
+	, _argv()
+	, _envStorage()
+	, _envp()
+{}
+
+Cgi::~Cgi()
+{
+	if (_stdinFd != -1)
+	{
+		close(_stdinFd);
+	}
+	if (_stdoutFd != -1)
+	{
+		close(_stdoutFd);
+	}
+	killChild();
+}
+

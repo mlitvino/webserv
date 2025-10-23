@@ -1,0 +1,30 @@
+
+cd $HOME/src
+
+
+curl -LO https://download.joedog.org/siege/siege-latest.tar.gz
+
+
+tar -xzf siege-latest.tar.gz
+
+
+cd siege-*/
+
+./configure --prefix=$HOME/.local
+
+make -j$(nproc)
+
+
+make install
+
+export PATH="$HOME/.local/bin:$PATH"
+
+source ~/.zshrc
+
+
+which siege
+siege --version
+
+
+
+siege -c255 -t10s http://localhost:8080/

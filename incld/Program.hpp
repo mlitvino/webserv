@@ -1,9 +1,12 @@
 #pragma once
 
+#include <chrono>
+
 #include "webserv.hpp"
 #include "ConfigParser.hpp"
 #include "CustomException.hpp"
 #include "ChildFailedException.hpp"
+#include "Client.hpp"
 
 #define DEFAULT_CONF "conf/default.conf"
 #define MAX_EVENTS 10
@@ -11,9 +14,9 @@
 
 class Program
 {
-	public:
+	private:
 		int						_epollFd;
-		std::vector<IpPortPtr>	_addrPortVec;
+		IpPortDeq	_addrPortVec;
 		addrinfo				*_servInfo;
 
 		ServerDeq				_servers;
@@ -23,11 +26,19 @@ class Program
 
 		FdClientMap				_clientsMap;
 		FdEpollOwnerMap			_handlersMap;
+		Time					_nextTimeoutCheck;
+	public:
+		Program();
+		~Program();
 
 		void	parseConfFile(char *conf_file);
 		void	initSockets();
 		void	waitEpollEvent();
+		void	checkTimeOut();
 
-		Program();
-		~Program();
+		int				&getEpollFd();
+		FdClientMap		&getClientsMap();
+		FdEpollOwnerMap	&getHandlersMap();
+		IpPortDeq		&getAddrPortVec();
+		ServerDeq 		&getServers();
 };

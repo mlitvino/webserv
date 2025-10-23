@@ -11,7 +11,7 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo **_servInfo)
 	std::string	port = _addrPort.substr(delim + 1, _addrPort.size() - delim);
 
 	err = getaddrinfo(host.c_str(), port.c_str(), &hints, _servInfo);
-	if (err == -1)
+	if (err != 0)
 		THROW(gai_strerror(err));
 
 	_sockFd = socket((*_servInfo)->ai_family, (*_servInfo)->ai_socktype, (*_servInfo)->ai_protocol);
@@ -307,7 +307,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	}
 
 	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
-	response += formHeaders(client, filePath, contentLentgh);
+	response += formHeaders(client, filePath, contentLentgh, statusCode);
 
 	if (!listingBuffer.empty())
 		response += listingBuffer;
@@ -320,14 +320,14 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	std::cout << "DEBUG: Response buffer: " << client->getResponseBuffer() << std::endl;
 }
 
-std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
+std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int code)
 {
 	std::string	contentType;
 	std::string	hdrs;
 
 	if (client->getFileType() == FileType::DIRECTORY)
 		contentType = "text/html";
-	else if (!filePath.empty() && client->getHttpMethod() == "GET")
+	else if (!filePath.empty() && client->getHttpMethod() == "GET" && code < 400)
 	{
 		size_t		lastSlash = filePath.find_last_of("/\\");
 		std::string	fileName = (lastSlash == std::string::npos) ? filePath : filePath.substr(lastSlash + 1);

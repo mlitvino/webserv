@@ -12,13 +12,8 @@ bool	Client::readRequest()
 		_lastActivity = g_current_time;
 		return true;
 	}
-	else if (bytesRead == 0)
+	else if (bytesRead == 0 || bytesRead == -1)
 		return false;
-	else if (bytesRead == -1)
-	{
-		THROW_ERRNO("read");
-	}
-
 	return true;
 }
 
@@ -65,13 +60,9 @@ void	Client::sendResponse()
 	{
 		_lastActivity = g_current_time;
 	}
-	else if (bytesSent == 0)
+	else if (bytesSent == 0 || bytesSent == -1)
 	{
 		_ipPort.closeConnection(_clientFd);
-	}
-	else if (bytesSent == -1)
-	{
-		THROW_ERRNO("send");
 	}
 }
 

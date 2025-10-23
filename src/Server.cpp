@@ -3,9 +3,9 @@
 bool	Server::areHeadersValid(ClientPtr &client)
 {
 	std::cout << "Validating headers..." << std::endl;
-	const Location	*matchedLocation = findLocationForPath(client->_httpPath);
+	const Location	*matchedLocation = findLocationForPath(client->getHttpPath());
 
-	if (client->_httpVersion != HTTP_VERSION)
+	if (client->getHttpVersion() != HTTP_VERSION)
 		THROW_HTTP(505, "Not supported HTTP vesion");
 
 	if (!matchedLocation)
@@ -17,7 +17,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 		return true;
 	}
 
-	if (client->_httpPath.find("%") != std::string::npos)
+	if (client->getHttpPath().find("%") != std::string::npos)
 		THROW_HTTP(501, "Unsupported encoded request");
 
 	if (client->_contentLen > 0 && client->_chunked)
@@ -38,14 +38,14 @@ bool	Server::areHeadersValid(ClientPtr &client)
 		THROW_HTTP(400, "Multipart boundary missing");
 	}
 
-	if (client->_httpMethod == "POST"
+	if (client->getHttpMethod()== "POST"
 		&& client->_contentType.find(CONTENT_TYPE_MULTIPART) == std::string::npos
 		&& client->_contentType.find(CONTENT_TYPE_APP_FORM) == std::string::npos)
 	{
 		THROW_HTTP(415, "Unsupported media type");
 	}
 
-	client->_resolvedPath = findFile(client, client->_httpPath, matchedLocation);
+	client->_resolvedPath = findFile(client, client->getHttpPath(), matchedLocation);
 
 	std::cout << "DEBUG: type file: " << (client->_fileType == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
 
@@ -124,7 +124,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 	std::cout << "FindFile: fsPath " << fsPath << std::endl;
 
-	if (client->_httpMethod == "POST" && matched->isCgi == false)
+	if (client->getHttpMethod()== "POST" && matched->isCgi == false)
 	{
 		std::string fsDir = fsPath.empty() ? docRoot : fsPath;
 		struct stat st{};
@@ -207,20 +207,20 @@ bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
 
 	int methodFlag = 0;
-	if (client->_httpMethod == "GET")
+	if (client->getHttpMethod()== "GET")
 		methodFlag = static_cast<int>(HttpMethod::GET);
-	else if (client->_httpMethod == "POST")
+	else if (client->getHttpMethod()== "POST")
 		methodFlag = static_cast<int>(HttpMethod::POST);
-	else if (client->_httpMethod == "DELETE")
+	else if (client->getHttpMethod()== "DELETE")
 		methodFlag = static_cast<int>(HttpMethod::DELETE);
 	else
 	{
-		std::cout << "DEBUG: Unknown method: " << client->_httpMethod << std::endl;
+		std::cout << "DEBUG: Unknown method: " << client->getHttpMethod()<< std::endl;
 		return false;
 	}
 
 	bool allowed = (matchedLocation->allowedMethods & methodFlag) != 0;
-	std::cout << "DEBUG: Method " << client->_httpMethod << " (flag: " << methodFlag << ") allowed: " << (allowed ? "YES" : "NO") << std::endl;
+	std::cout << "DEBUG: Method " << client->getHttpMethod()<< " (flag: " << methodFlag << ") allowed: " << (allowed ? "YES" : "NO") << std::endl;
 
 	return allowed;
 }

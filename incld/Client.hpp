@@ -53,12 +53,12 @@ class Client : public IEpollFdOwner
 		IpPort				&_ipPort;
 		ServerPtr			_ownerServer;
 
-	public:
 		std::string			_httpMethod;
 		std::string			_httpPath;
-
 		std::string			_query;
 		std::string			_httpVersion;
+	public:
+
 		size_t				_contentLen;
 		bool				_chunked;
 		bool				_keepAlive;

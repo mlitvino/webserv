@@ -32,18 +32,18 @@ void	Cgi::buildEnv()
 {
 	_envStorage.clear();
 
-	_envStorage.push_back("REQUEST_METHOD=" + _client._httpMethod);
+	_envStorage.push_back("REQUEST_METHOD=" + _client.getHttpMethod());
 	_envStorage.push_back(std::string("CONTENT_LENGTH=") + std::to_string(_client._fileSize));
-	_envStorage.push_back("SERVER_PROTOCOL=" + _client._httpVersion);
+	_envStorage.push_back("SERVER_PROTOCOL=" + _client.getHttpVersion());
 	_envStorage.push_back(std::string("SCRIPT_FILENAME=") + _script);
 	_envStorage.push_back("CONTENT_TYPE=" + _client._contentType);
-	_envStorage.push_back(std::string("REQUEST_URI=") + _client._httpPath);
+	_envStorage.push_back(std::string("REQUEST_URI=") + _client.getHttpPath());
 	_envStorage.push_back(std::string("PATH_INFO=") + _script);
 	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	_envStorage.push_back("REDIRECT_STATUS=200");
-	_envStorage.push_back("QUERY_STRING=" + _client._query);
+	_envStorage.push_back("QUERY_STRING=" + _client.getQuery());
 
-	if (_client._httpMethod == "POST")
+	if (_client.getHttpMethod() == "POST")
 		_envStorage.push_back(std::string("UPLOAD_DIR=") + _uploadDir);
 
 	_envp.clear();

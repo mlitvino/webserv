@@ -83,7 +83,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 					std::cout << "Continuing to read POST body..." << std::endl;
 					if (!client->readRequest())
 						return closeConnection(eventFd);
-					client->_postHandler.handlePostRequest(client, client->_httpPath);
+					client->_postHandler.handlePostRequest(client, client->getHttpPath());
 				}
 			}
 			catch (std::bad_alloc &e)
@@ -118,7 +118,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	std::cout << "---------" << std::endl;
 	//std::cout << "DEBUG: Buffer content: " << client->getBuffer() << std::endl;
 	parseHeaders(client);
-	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
+	std::cout << "Method: " << client->getHttpMethod() << ", Path: " << client->getHttpPath() << ", Version: " << client->getHttpVersion() << std::endl;
 	assignServerToClient(client);
 
 	client->getOwnerServer()->areHeadersValid(client);
@@ -126,15 +126,15 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	if (client->getState() == ClientState::SENDING_RESPONSE)
 		return;
 
-	if (client->_httpMethod == "GET")
+	if (client->getHttpMethod() == "GET")
 	{
 		handleGetRequest(client);
 	}
-	else if (client->_httpMethod == "POST")
+	else if (client->getHttpMethod() == "POST")
 	{
-		client->_postHandler.handlePostRequest(client, client->_httpPath);
+		client->_postHandler.handlePostRequest(client, client->getHttpPath());
 	}
-	else if (client->_httpMethod == "DELETE")
+	else if (client->getHttpMethod() == "DELETE")
 	{
 		handleDeleteRequest(client);
 	}
@@ -154,12 +154,12 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	std::getline(iss, line);
 	size_t firstSpace = line.find(' ');
 	size_t secondSpace = line.find(' ', firstSpace + 1);
-	client->_httpMethod = line.substr(0, firstSpace);
+	client->setHttpMethod(line.substr(0, firstSpace));
 
 	std::string	pathAndQuery = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
 	parseQuery(client, pathAndQuery);
-	client->_httpVersion = line.substr(secondSpace + 1);
-	if (client->_httpVersion.back() == '\r') client->_httpVersion.pop_back();
+	client->setHttpVersion(line.substr(secondSpace + 1));
+	if (client->getHttpVersion().back() == '\r') client->getHttpVersion().pop_back();
 
 	while (std::getline(iss, line))
 	{
@@ -218,18 +218,18 @@ void	IpPort::parseQuery(ClientPtr &client, const std::string &pathAndQuery)
 {
 	size_t	q = pathAndQuery.find_last_of('?');
 	std::string	query = pathAndQuery.substr(q + 1);
-	client->_httpPath = pathAndQuery;
+	client->setHttpPath(pathAndQuery);
 
 	if (query == "_method=DELETE")
 	{
-		client->_query = query;
-		client->_httpMethod = "DELETE";
-		client->_httpPath.erase(q);
+		client->setQuery(query);
+		client->setHttpMethod("DELETE");
+		client->getHttpPath().erase(q);
 	}
 	else if (query.find("_download_file=") != std::string::npos)
 	{
-		client->_query = query;
-		client->_httpPath.erase(q);
+		client->setQuery(query);
+		client->getHttpPath().erase(q);
 	}
 }
 
@@ -264,7 +264,7 @@ void	IpPort::handleDeleteRequest(ClientPtr &client)
 	if (std::remove(client->_resolvedPath.c_str()) == 0)
 	{
 		std::cout << "DEBUG: File deleted successfully, generating 303 response" << std::endl;
-		std::string dirPath = client->_httpPath.substr(0, client->_httpPath.find_last_of("/"));
+		std::string dirPath = client->getHttpPath().substr(0, client->getHttpPath().find_last_of("/"));
 		std::string	port = _addrPort.substr(_addrPort.find(":") + 1);
 		client->_redirectedUrl = LOCALHOST_URL + port + dirPath + "/";
 		generateResponse(client, "", 303);
@@ -331,7 +331,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 
 	if (client->_fileType == FileType::DIRECTORY)
 		contentType = "text/html";
-	else if (!filePath.empty() && client->_httpMethod == "GET")
+	else if (!filePath.empty() && client->getHttpMethod() == "GET")
 	{
 		size_t		lastSlash = filePath.find_last_of("/\\");
 		std::string	fileName = (lastSlash == std::string::npos) ? filePath : filePath.substr(lastSlash + 1);
@@ -410,11 +410,11 @@ bool	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	closedir(dir);
 	std::sort(entries.begin(), entries.end());
 	std::ostringstream	oss;
-	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->_httpPath << "</title></head>";
-	oss << "<body><h1>Index of " << client->_httpPath << "</h1><ul>";
+	oss << "<html><head><meta charset=\"utf-8\"><title>Index of " << client->getHttpPath() << "</title></head>";
+	oss << "<body><h1>Index of " << client->getHttpPath() << "</h1><ul>";
 	for (auto &name : entries)
 	{
-		std::string href = client->_httpPath;
+		std::string href = client->getHttpPath();
 		if (href.empty() || href.back() != '/')
 			href += '/';
 		href += name;

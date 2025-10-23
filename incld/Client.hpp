@@ -35,8 +35,6 @@ enum class FileType
 	CGI_SCRIPT,
 };
 
-#define TIMEOUT_MINUTES 5
-
 class Client : public IEpollFdOwner
 {
 	private:

@@ -11,6 +11,7 @@
 #define DEFAULT_CONF "conf/default.conf"
 #define MAX_EVENTS 10
 #define DEFAULT_EPOLL_SIZE 10
+#define TIMEOUT_SECONDS 360
 
 class Program
 {

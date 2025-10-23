@@ -10,13 +10,11 @@ void	Program::parseConfFile(char *conf_file)
 		if (conf_file) {
 			configParser.parseConfig(std::string(conf_file));
 		} else {
-			// Try default configuration file
 			configParser.parseConfig(std::string(DEFAULT_CONF));
 		}
 
 		configParser.createServersAndIpPortsFromConfig(*this);
 
-		// If no servers were created, create a default one
 		if (_servers.empty()) {
 			THROW("none of servers was created");
 		}
@@ -48,7 +46,7 @@ void	Program::initSockets()
 	_epollFd = epoll_create(DEFAULT_EPOLL_SIZE);
 	if (_epollFd == -1)
 		THROW_ERRNO("epoll_create");
-
+	utils::makeFdNoninheritable(_epollFd);
 	for (IpPortPtr &ipPort: _addrPortVec)
 	{
 		ipPort->OpenSocket(hints, _servInfo);
@@ -76,10 +74,16 @@ void	Program::waitEpollEvent()
 			timeoutMs = static_cast<int>(tempTime);
 		}
 
+		g_current_time = std::chrono::steady_clock::now();
+		if (g_current_time >= _nextTimeoutCheck)
+		{
+			checkTimeOut();
+			_nextTimeoutCheck = g_current_time + std::chrono::seconds(TIMEOUT_SECONDS);
+		}
+
 		int	nbr_events = epoll_wait(_epollFd, _events, MAX_EVENTS, timeoutMs);
 		if (nbr_events == -1)
 			THROW_ERRNO("epoll_wait");
-
 		for (int i = 0; i < nbr_events; ++i)
 		{
 			int		eventFd = _events[i].data.fd;
@@ -87,13 +91,6 @@ void	Program::waitEpollEvent()
 			if (fdHandlerPair == _handlersMap.end())
 				THROW("Unknown fd in map");
 			(*fdHandlerPair).second->handleEpollEvent(_events[i], _epollFd, eventFd);
-		}
-
-		g_current_time = std::chrono::steady_clock::now();
-		if (g_current_time >= _nextTimeoutCheck)
-		{
-			checkTimeOut();
-			_nextTimeoutCheck = g_current_time + std::chrono::minutes(1);
 		}
 	}
 }
@@ -108,8 +105,9 @@ void	Program::checkTimeOut()
 		{
 			int clientFd = fdClient.first;
 			const ClientPtr &client = fdClient.second;
-			auto time = std::chrono::duration_cast<std::chrono::minutes>(g_current_time - client->_lastActivity).count();
-			if (time >= TIMEOUT_MINUTES)
+			auto timeDiff = g_current_time - client->_lastActivity;
+			auto notActiveTime = std::chrono::duration_cast<std::chrono::seconds>(timeDiff).count();
+			if (notActiveTime >= TIMEOUT_SECONDS)
 				toClose.push_back(clientFd);
 		}
 		for (auto &clientFd : toClose)
@@ -156,7 +154,7 @@ ServerDeq &Program::getServers()
 Program::Program()
 	: _epollFd{-1}
 	, _servInfo{nullptr}
-	, _nextTimeoutCheck{g_current_time + std::chrono::minutes(1)}
+	, _nextTimeoutCheck{g_current_time + std::chrono::seconds(TIMEOUT_SECONDS)}
 {}
 
 Program::~Program()

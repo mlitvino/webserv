@@ -12,13 +12,8 @@ bool	Client::readRequest()
 		_lastActivity = g_current_time;
 		return true;
 	}
-	else if (bytesRead == 0)
+	else if (bytesRead == 0 || bytesRead == -1)
 		return false;
-	else if (bytesRead == -1)
-	{
-		THROW_ERRNO("read");
-	}
-
 	return true;
 }
 
@@ -65,13 +60,9 @@ void	Client::sendResponse()
 	{
 		_lastActivity = g_current_time;
 	}
-	else if (bytesSent == 0)
+	else if (bytesSent == 0 || bytesSent == -1)
 	{
 		_ipPort.closeConnection(_clientFd);
-	}
-	else if (bytesSent == -1)
-	{
-		THROW_ERRNO("send");
 	}
 }
 
@@ -364,6 +355,9 @@ FdClientMap&		Client::getClientsMap() { return _clientsMap; }
 FdEpollOwnerMap&	Client::getHandlersMap() { return _handlersMap; }
 IpPort&				Client::getIpPort() { return _ipPort; }
 
+bool			Client::isTimeout() { return _isTimeout; }
+void			Client::setTimeout(bool Timeout) { _isTimeout = Timeout; }
+
 // Constructors + Destructor
 
 Client::Client(int clientFd, IpPort &owner)
@@ -375,6 +369,7 @@ Client::Client(int clientFd, IpPort &owner)
 	, _clientsMap(owner.getClientsMap())
 	, _handlersMap(owner.getHandlersMap())
 	, _ipPort(owner)
+	, _ownerServer(nullptr)
 	, _chunked(false)
 	, _keepAlive(false)
 	, _hostHeader()
@@ -383,6 +378,7 @@ Client::Client(int clientFd, IpPort &owner)
 	, _fileOffset{0}
 	, _cgi{*this}
 	, _postHandler{_ipPort}
+	, _isTimeout(false)
 {}
 
 Client::~Client()

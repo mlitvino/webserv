@@ -76,6 +76,7 @@ class Client : public IEpollFdOwner
 
 		Cgi					_cgi;
 		PostRequestHandler	_postHandler;
+		bool				_isTimeout;
 	public:
 		Client(int clientFd, IpPort &owner);
 		~Client();
@@ -166,6 +167,9 @@ class Client : public IEpollFdOwner
 
 		int				getFileSize();
 		void			setFileSize(int sz);
+
+		bool			isTimeout();
+		void			setTimeout(bool Timeout);
 
 		Cgi&			getCgi();
 		PostRequestHandler&	getPostRequestHandler();

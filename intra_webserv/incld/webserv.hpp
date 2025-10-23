@@ -9,6 +9,7 @@
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
 #define LOCALHOST_URL "http://localhost:"
+#define DEFAULT_ERROR_DIR "web/www/errors/"
 
 class		Program;
 class		PostRequestHandler;

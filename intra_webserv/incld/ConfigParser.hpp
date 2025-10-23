@@ -56,6 +56,7 @@ private:
 	void parseLocationBlock(std::ifstream& file, Location& location);
 	void parseServerDirective(const std::string& line, ServerConfig& config);
 	void parseLocationDirective(const std::string& line, Location& location);
+	void fulfillDefaultErrorPages(ServerConfig& config);
 
 	std::string trim(const std::string& str);
 	std::vector<std::string> split(const std::string& str, char delimiter);

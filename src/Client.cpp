@@ -299,13 +299,8 @@ void	Client::resetRequestData()
 	_query.clear();
 	_redirectedUrl.clear();
 	_fileType = FileType::REGULAR;
-
-
-	if (_fileFd != -1)
-	{
-		close(_fileFd);
-		_fileFd = -1;
-	}
+	_cgiBuffer.clear();
+	closeFile();
 }
 
 // Getters + Setters

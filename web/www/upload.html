@@ -39,6 +39,18 @@
 		.nav a:hover {
 			background-color: #005a8c;
 		}
+		.button-link {
+			display: inline-block;
+			background-color: #007acc;
+			color: white;
+			padding: 10px 20px;
+			border-radius: 4px;
+			text-decoration: none;
+			font-size: 16px;
+		}
+		.button-link:hover {
+			background-color: #005a8c;
+		}
 		.upload-form {
 			background-color: #f8f9fa;
 			padding: 20px;
@@ -99,33 +111,12 @@
 			<a href="/">Home</a>
 			<a href="/cgi.html">CGI Scripts</a>
 			<a href="/upload.html">Upload</a>
-			<a href="/upload/">Uploaded Files</a>
 		</nav>
 
 		<h1>📁 File Upload Test</h1>
 
 		<div class="warning">
 			⚠️ Note: This form demonstrates HTML upload interface. Actual file upload functionality depends on server implementation of POST method handling.
-		</div>
-
-		<div class="upload-form">
-			<h2>🔐 User Login / Register</h2>
-			<form action="/upload" method="post" enctype="application/x-www-form-urlencoded">
-				<div class="form-group">
-					<label for="login">Login:</label>
-					<input type="text" id="login" name="login" required>
-				</div>
-
-				<div class="form-group">
-					<label for="password">Password:</label>
-					<input type="password" id="password" name="password" required>
-				</div>
-
-				<div class="form-group">
-					<button type="submit" name="action" value="register">Register New User</button>
-					<button type="submit" name="action" value="login">Log In</button>
-				</div>
-			</form>
 		</div>
 
 		<div class="upload-form">
@@ -138,6 +129,10 @@
 
 				<button type="submit">Upload File</button>
 			</form>
+
+			<div class="form-group" style="margin-top: 15px;">
+				<a class="button-link" href="/upload/">View Uploaded Files</a>
+			</div>
 		</div>
 
 		<p><a href="/">← Back to Home</a></p>

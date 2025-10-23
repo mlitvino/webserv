@@ -83,7 +83,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 					std::cout << "Continuing to read POST body..." << std::endl;
 					if (!client->readRequest())
 						return closeConnection(eventFd);
-					client->_postHandler.handlePostRequest(client, client->getHttpPath());
+					client->getPostRequestHandler().handlePostRequest(client, client->getHttpPath());
 				}
 			}
 			catch (std::bad_alloc &e)
@@ -132,7 +132,7 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	}
 	else if (client->getHttpMethod() == "POST")
 	{
-		client->_postHandler.handlePostRequest(client, client->getHttpPath());
+		client->getPostRequestHandler().handlePostRequest(client, client->getHttpPath());
 	}
 	else if (client->getHttpMethod() == "DELETE")
 	{
@@ -178,36 +178,34 @@ void	IpPort::parseHeaders(ClientPtr &client)
 
 		if (name == "Host")
 		{
-			client->_hostHeader = value;
+			client->setHostHeader(value);
 		}
 		else if (name == "Content-Length")
 		{
-			client->_contentLen = std::stoul(value);
+			client->setContentLen(std::stoul(value));
 		}
 		else if (name == "Content-Type")
 		{
-			client->_contentType = value;
+			client->setContentType(value);
 			if (value.find(CONTENT_TYPE_MULTIPART) != std::string::npos)
 			{
 				size_t bpos = value.find("boundary=");
 				if (bpos != std::string::npos)
 				{
 					size_t valpos = bpos + strlen("boundary=");
-					client->_multipartBoundary = value.substr(valpos);
+					client->setMultipartBoundary(value.substr(valpos));
 				}
 			}
 		}
 		else if (name == "Transfer-Encoding")
 		{
 			if (value.find("chunked") != std::string::npos)
-				client->_chunked = true;
+				client->setChunked(true);
 		}
 		else if (name == "Connection")
 		{
 			if (value.find("keep-alive") != std::string::npos)
-				client->_keepAlive = true;
-			else
-				client->_keepAlive = false;
+				client->setKeepAlive(true);
 		}
 	}
 
@@ -235,16 +233,16 @@ void	IpPort::parseQuery(ClientPtr &client, const std::string &pathAndQuery)
 
 void IpPort::handleGetRequest(ClientPtr &client)
 {
-	std::cout << "DEBUG: _resolvedPath returned: " << client->_resolvedPath << std::endl;
+	std::cout << "DEBUG: _resolvedPath returned: " << client->getResolvedPath() << std::endl;
 
-	if (client->_fileType == FileType::CGI_SCRIPT)
+	if (client->getFileType() == FileType::CGI_SCRIPT)
 	{
 		std::cout << "Handling get cgi..." << std::endl;
 
-		if (!client->_cgi.init())
+		if (!client->getCgi().init())
 			THROW_HTTP(500, "Failed to start CGI process");
 
-		int cgiIn = client->_cgi.getStdinFd();
+		int cgiIn = client->getCgi().getStdinFd();
 		if (cgiIn != -1)
 		{
 			epoll_ctl(_epollFd, EPOLL_CTL_DEL, cgiIn, 0);
@@ -254,19 +252,19 @@ void IpPort::handleGetRequest(ClientPtr &client)
 
 		return;
 	}
-	generateResponse(client, client->_resolvedPath, 200);
+	generateResponse(client, client->getResolvedPath(), 200);
 }
 
 void	IpPort::handleDeleteRequest(ClientPtr &client)
 {
-	std::cout << "DEBUG: _resolvedPath: " << client->_resolvedPath << std::endl;
+	std::cout << "DEBUG: _resolvedPath: " << client->getResolvedPath() << std::endl;
 
-	if (std::remove(client->_resolvedPath.c_str()) == 0)
+	if (std::remove(client->getResolvedPath().c_str()) == 0)
 	{
 		std::cout << "DEBUG: File deleted successfully, generating 303 response" << std::endl;
 		std::string dirPath = client->getHttpPath().substr(0, client->getHttpPath().find_last_of("/"));
 		std::string	port = _addrPort.substr(_addrPort.find(":") + 1);
-		client->_redirectedUrl = LOCALHOST_URL + port + dirPath + "/";
+		client->setRedirectedUrl(LOCALHOST_URL + port + dirPath + "/");
 		generateResponse(client, "", 303);
 	}
 	else
@@ -290,7 +288,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	{
 		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
 		int	success = true;
-		if (client->_fileType == FileType::DIRECTORY)
+		if (client->getFileType() == FileType::DIRECTORY)
 		{
 			success = listDirectory(client, listingBuffer);
 			contentLentgh = listingBuffer.size();
@@ -298,9 +296,9 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		else
 		{
 			client->openFile(filePath);
-			if (client->_fileFd < 0)
+			if (client->getFileFd() < 0)
 				success = false;
-			contentLentgh = client->_fileSize;
+			contentLentgh = client->getFileSize();
 		}
 		if (!success)
 		{
@@ -329,7 +327,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 	std::string	contentType;
 	std::string	hdrs;
 
-	if (client->_fileType == FileType::DIRECTORY)
+	if (client->getFileType() == FileType::DIRECTORY)
 		contentType = "text/html";
 	else if (!filePath.empty() && client->getHttpMethod() == "GET")
 	{
@@ -359,11 +357,11 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 		if (ext != "html" && ext != "htm" && ext != "cgi" && ext != "ico")
 			hdrs = "Content-Disposition: attachment; filename=\"" + fileName + "\"" + "\r\n";
 	}
-	if (!client->_redirectedUrl.empty())
-		hdrs += "Location: " + client->_redirectedUrl + "\r\n";
+	if (!client->getRedirectedUrl().empty())
+		hdrs += "Location: " + client->getRedirectedUrl() + "\r\n";
 	hdrs += "Content-Length: " + std::to_string(contentLength) + "\r\n";
 	hdrs += "Server: webserv/1.0\r\n";
-	hdrs += "Connection: " + std::string((client->_keepAlive ? "keep-alive" : "close")) + "\r\n";
+	hdrs += "Connection: " + std::string((client->isKeepAlive() ? "keep-alive" : "close")) + "\r\n";
 	hdrs += "Cache-Control: no-cache\r\n";
 	hdrs += "\r\n";
 	return hdrs;
@@ -373,7 +371,7 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 {
 	client->setOwnerServer(_servers.front());
 
-	std::string hostValue = client->_hostHeader;
+	std::string hostValue = client->getHostHeader();
 	if (!hostValue.empty())
 	{
 		size_t colon = hostValue.find(':');
@@ -393,7 +391,7 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 
 bool	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 {
-	std::string	dirPath = client->_resolvedPath;
+	std::string	dirPath = client->getResolvedPath();
 	DIR *dir = opendir(dirPath.c_str());
 	if (!dir)
 		return false;

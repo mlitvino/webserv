@@ -13,17 +13,17 @@ bool	Server::areHeadersValid(ClientPtr &client)
 
 	if (isRedirected(client, matchedLocation))
 	{
-		client->getIpPort().generateResponse(client, "",client->_redirectCode);
+		client->getIpPort().generateResponse(client, "", client->getRedirectCode());
 		return true;
 	}
 
 	if (client->getHttpPath().find("%") != std::string::npos)
 		THROW_HTTP(501, "Unsupported encoded request");
 
-	if (client->_contentLen > 0 && client->_chunked)
+	if (client->getContentLen() > 0 && client->isChunked())
 		THROW_HTTP(415, "Chunked body and content-length are presented");
 
-	if (client->_contentLen < 0)
+	if (client->getContentLen()< 0)
 		THROW_HTTP(400, "Invalid content-length");
 
 	if (!isMethodAllowed(client, matchedLocation))
@@ -32,34 +32,35 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (!isBodySizeValid(client))
 		THROW_HTTP(413, "Content too large");
 
-	if (client->_contentType.find(CONTENT_TYPE_MULTIPART) != std::string::npos
-		&& client->_multipartBoundary.empty())
+	if (client->getContentType().find(CONTENT_TYPE_MULTIPART) != std::string::npos
+		&& client->getMultipartBoundary().empty())
 	{
 		THROW_HTTP(400, "Multipart boundary missing");
 	}
 
 	if (client->getHttpMethod()== "POST"
-		&& client->_contentType.find(CONTENT_TYPE_MULTIPART) == std::string::npos
-		&& client->_contentType.find(CONTENT_TYPE_APP_FORM) == std::string::npos)
+		&& client->getContentType().find(CONTENT_TYPE_MULTIPART) == std::string::npos
+		&& client->getContentType().find(CONTENT_TYPE_APP_FORM) == std::string::npos)
 	{
 		THROW_HTTP(415, "Unsupported media type");
 	}
 
-	client->_resolvedPath = findFile(client, client->getHttpPath(), matchedLocation);
+	std::string	path = findFile(client, client->getHttpPath(), matchedLocation);
+	client->setResolvedPath(path);
 
-	std::cout << "DEBUG: type file: " << (client->_fileType == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
+	std::cout << "DEBUG: type file: " << (client->getFileType() == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
 
-	if (client->_resolvedPath.empty())
+	if (client->getResolvedPath().empty())
 		THROW_HTTP(404, "Not Found");
 
-	if (client->_fileType == FileType::CGI_SCRIPT)
+	if (client->getFileType() == FileType::CGI_SCRIPT)
 	{
-		size_t		dot = client->_resolvedPath.find_last_of(".");
-		std::string	ext = client->_resolvedPath.substr(dot);
+		size_t		dot = client->getResolvedPath().find_last_of(".");
+		std::string	ext = client->getResolvedPath().substr(dot);
 
 		if (ext != PYTHON_EXT && ext != PHP_EXT)
 			THROW_HTTP(400, "Unsupported cgi");
-		client->_cgi.setUploadDir(matchedLocation->uploadDir);
+		client->getCgi().setUploadDir(matchedLocation->uploadDir);
 	}
 
 	std::cout << "Validating headers is done" << std::endl;
@@ -74,8 +75,8 @@ bool	Server::isRedirected(ClientPtr &client, const Location* matchedLocation)
 	if (code == 0 || url.empty())
 		return false;
 
-	client->_redirectedUrl = matchedLocation->redirectUrl;
-	client->_redirectCode = matchedLocation->redirectCode;
+	client->setRedirectedUrl(matchedLocation->redirectUrl);
+	client->setRedirectCode(matchedLocation->redirectCode);
 	return true;
 }
 
@@ -142,7 +143,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 			{
 				if (matched->isCgi == true)
 				{
-					client->_fileType = FileType::CGI_SCRIPT;
+					client->setFileType(FileType::CGI_SCRIPT);
 				}
 				return fsPath;
 			}
@@ -190,7 +191,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 	if (matched->autoindex)
 	{
-		client->_fileType = FileType::DIRECTORY;
+		client->setFileType(FileType::DIRECTORY);
 		return fsDir;
 	}
 
@@ -199,7 +200,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 
 bool	Server::isBodySizeValid(ClientPtr &client)
 {
-	return client->_contentLen <= getClientBodySize();
+	return client->getContentLen()<= getClientBodySize();
 }
 
 bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)

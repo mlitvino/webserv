@@ -57,13 +57,10 @@ class Client : public IEpollFdOwner
 		std::string			_httpPath;
 		std::string			_query;
 		std::string			_httpVersion;
-	public:
-
 		size_t				_contentLen;
 		bool				_chunked;
 		bool				_keepAlive;
 		std::string			_hostHeader;
-
 		std::string			_contentType;
 		std::string			_multipartBoundary;
 
@@ -79,7 +76,7 @@ class Client : public IEpollFdOwner
 
 		Cgi					_cgi;
 		PostRequestHandler	_postHandler;
-
+	public:
 		Client(int clientFd, IpPort &owner);
 		~Client();
 
@@ -134,10 +131,10 @@ class Client : public IEpollFdOwner
 		size_t			getContentLen();
 		void			setContentLen(size_t v);
 
-		bool			getChunked();
+		bool			isChunked();
 		void			setChunked(bool v);
 
-		bool			getKeepAlive();
+		bool			isKeepAlive();
 		void			setKeepAlive(bool v);
 
 		std::string&	getHostHeader();

@@ -8,7 +8,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	{
 		_bodyProcessingInitialized = true;
 		client->setState(ClientState::GETTING_BODY);
-		if (client->_chunked)
+		if (client->isChunked())
 		{
 			_readingChunkSize = true;
 			_parsingChunkTrailers = false;
@@ -16,26 +16,26 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 		}
 		else
 		{
-			_bodyBytesExpected = client->_contentLen;
+			_bodyBytesExpected = client->getContentLen();
 		}
 	}
 
-	BodyReadStatus status = client->_chunked ? getChunkedBody(client) : getContentLengthBody(client);
+	BodyReadStatus status = client->isChunked() ? getChunkedBody(client) : getContentLengthBody(client);
 	bool	isBodyFinished;
-	if (client->_fileType == FileType::CGI_SCRIPT)
+	if (client->getFileType() == FileType::CGI_SCRIPT)
 	{
 		processPostCgi(client, status);
 		return;
 	}
 	else
 	{
-		if (client->_contentType.find(CONTENT_TYPE_MULTIPART) != std::string::npos)
+		if (client->getContentType().find(CONTENT_TYPE_MULTIPART) != std::string::npos)
 		{
 			isBodyFinished = getMultiPart(client);
 			if (isBodyFinished)
 				writeBodyPart(client);
 		}
-		else if (client->_contentType.find(CONTENT_TYPE_APP_FORM) != std::string::npos)
+		else if (client->getContentType().find(CONTENT_TYPE_APP_FORM) != std::string::npos)
 			isBodyFinished = getFormPart(client);
 
 		if (status == BodyReadStatus::NEED_MORE || !isBodyFinished)
@@ -44,10 +44,11 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 			THROW_HTTP(400, "No more content and part not finished");
 	}
 	resetBodyState();
-	std::cout << "DEBUG: File uploaded successfully to: " << client->_resolvedPath + _uploadFilename << std::endl;
+	std::cout << "DEBUG: File uploaded successfully to: " << client->getResolvedPath() + _uploadFilename << std::endl;
 	std::string	addrPort = client->getIpPort().getAddrPort();
 	std::string	port = addrPort.substr(addrPort.find(":") + 1);
-	client->_redirectedUrl = LOCALHOST_URL + port + "/" + client->getHttpPath() + ".html";
+
+	client->setRedirectedUrl(LOCALHOST_URL + port + "/" + client->getHttpPath() + ".html");
 	_ipPort.generateResponse(client, "", 303);
 }
 
@@ -227,9 +228,9 @@ bool	PostRequestHandler::extractFilename(ClientPtr &client, std::string &dashBou
 
 std::string	PostRequestHandler::composeUploadPath(ClientPtr &client)
 {
-	if (client->_resolvedPath.back() != '/')
-		client->_resolvedPath += "/";
-	return client->_resolvedPath + _uploadFilename;
+	if (client->getResolvedPath().back() != '/')
+		client->getResolvedPath() += "/";
+	return client->getResolvedPath() + _uploadFilename;
 }
 
 void	PostRequestHandler::getLastBoundary(ClientPtr &client, std::string &boundaryMarker)
@@ -245,7 +246,7 @@ void	PostRequestHandler::getLastBoundary(ClientPtr &client, std::string &boundar
 
 bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 {
-	std::string dashBoundary = "--" + client->_multipartBoundary;
+	std::string dashBoundary = "--" + client->getMultipartBoundary();
 	std::string boundaryMarker = "\r\n" + dashBoundary;
 	if (_uploadFilename.empty())
 	{
@@ -291,9 +292,9 @@ std::string	PostRequestHandler::getParam(std::string body, std::string key)
 
 bool	PostRequestHandler::getFormPart(ClientPtr &client)
 {
-	bool bodyComplete = (!client->_chunked
+	bool bodyComplete = (!client->isChunked()
 						&& _bodyBytesReceived >= _bodyBytesExpected)
-						|| (client->_chunked && _chunkedFinished);
+						|| (client->isChunked() && _chunkedFinished);
 	if (!bodyComplete)
 		return false;
 
@@ -311,31 +312,32 @@ bool	PostRequestHandler::getFormPart(ClientPtr &client)
 
 void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status)
 {
-	if (client->_fileFd == -1)
+	if (client->getFileFd() == -1)
 	{
 		char tmpl[] = "/tmp/webserv_cgi_XXXXXX";
-		client->_fileFd = mkstemp(tmpl);
-		if (client->_fileFd == -1)
+		client->setFileFd(mkstemp(tmpl));
+		if (client->getFileFd() == -1)
 			THROW_HTTP(500, "mkstemp failed for CGI body temp file");
 		unlink(tmpl);
 	}
 
 	if (!_bodyBuffer.empty())
 	{
-		size_t	len = write(client->_fileFd, _bodyBuffer.data(), _bodyBuffer.size());
+		size_t	len = write(client->getFileFd(), _bodyBuffer.data(), _bodyBuffer.size());
 		if (len < 0 || len != _bodyBuffer.size())
 			THROW_HTTP(500, "Failed writing to CGI temp body file");
-		client->_fileSize += len;
+		int tempSize = client->getFileSize() + len;
+		client->setFileSize(tempSize);
 		_bodyBuffer.clear();
 	}
 
 	if (status == BodyReadStatus::NEED_MORE)
 		return;
 
-	if (lseek(client->_fileFd, 0, SEEK_SET) == -1)
+	if (lseek(client->getFileFd(), 0, SEEK_SET) == -1)
 		THROW_HTTP(500, "Failed to rewind CGI temp body file");
 
-	if (!client->_cgi.init())
+	if (!client->getCgi().init())
 		THROW_HTTP(500, "Failed to start CGI process");
 	client->setState(ClientState::WRITING_CGI_INPUT);
 }

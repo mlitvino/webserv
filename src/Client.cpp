@@ -300,6 +300,7 @@ void	Client::resetRequestData()
 	_redirectedUrl.clear();
 	_fileType = FileType::REGULAR;
 	_cgiBuffer.clear();
+	_keepAlive = false;
 	closeFile();
 }
 
@@ -340,10 +341,10 @@ void			Client::setHttpVersion(const std::string &v) { _httpVersion = v; }
 size_t			Client::getContentLen() { return _contentLen; }
 void			Client::setContentLen(size_t v) { _contentLen = v; }
 
-bool			Client::getChunked() { return _chunked; }
+bool			Client::isChunked() { return _chunked; }
 void			Client::setChunked(bool v) { _chunked = v; }
 
-bool			Client::getKeepAlive() { return _keepAlive; }
+bool			Client::isKeepAlive() { return _keepAlive; }
 void			Client::setKeepAlive(bool v) { _keepAlive = v; }
 
 std::string&	Client::getHostHeader() { return _hostHeader; }

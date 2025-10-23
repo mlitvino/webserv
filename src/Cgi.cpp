@@ -5,7 +5,7 @@ void	Cgi::buildArgv()
 {
 	_argv.clear();
 
-	_script = _client._resolvedPath;
+	_script = _client.getResolvedPath();
 	size_t		dot = _script.find_last_of(".");
 	std::string	ext = _script.substr(dot);
 
@@ -33,10 +33,10 @@ void	Cgi::buildEnv()
 	_envStorage.clear();
 
 	_envStorage.push_back("REQUEST_METHOD=" + _client.getHttpMethod());
-	_envStorage.push_back(std::string("CONTENT_LENGTH=") + std::to_string(_client._fileSize));
+	_envStorage.push_back(std::string("CONTENT_LENGTH=") + std::to_string(_client.getFileSize()));
 	_envStorage.push_back("SERVER_PROTOCOL=" + _client.getHttpVersion());
 	_envStorage.push_back(std::string("SCRIPT_FILENAME=") + _script);
-	_envStorage.push_back("CONTENT_TYPE=" + _client._contentType);
+	_envStorage.push_back("CONTENT_TYPE=" + _client.getContentType());
 	_envStorage.push_back(std::string("REQUEST_URI=") + _client.getHttpPath());
 	_envStorage.push_back(std::string("PATH_INFO=") + _script);
 	_envStorage.push_back("GATEWAY_INTERFACE=CGI/1.1");

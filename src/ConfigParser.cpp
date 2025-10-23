@@ -119,6 +119,8 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 			listen.host = "0.0.0.0";
 			listen.port = std::stoi(listenValue);
 		}
+		if (listen.port <= 0)
+			throw std::runtime_error("Invalid port");
 		config.listens.push_back(listen);
 	} else if (directive == "server_name") {
 		iss >> config.serverName;
@@ -127,8 +129,8 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 	} else if (directive == "client_max_body_size") {
 		long long temp;
 		iss >> temp;
-		if (temp < 0)
-			std::runtime_error("Negative value in body size");
+		if (temp <= 0)
+			throw std::runtime_error("Invalid body size");
 		config.clientMaxBodySize = temp;
 	} else if (directive == "error_page") {
 		int code;

@@ -1,11 +1,6 @@
 #include "IpPort.hpp"
 #include "Cgi.hpp"
 #include "PostRequestHandler.hpp"
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sstream>
-#include <algorithm>
-#include <cctype>
 
 void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 {

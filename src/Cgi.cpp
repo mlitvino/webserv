@@ -1,7 +1,4 @@
 #include "Cgi.hpp"
-
-#include "webserv.hpp"
-#include "utils.hpp"
 #include "ConfigParser.hpp"
 
 void	Cgi::buildArgv()

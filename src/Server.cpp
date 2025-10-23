@@ -1,7 +1,4 @@
 #include "Server.hpp"
-#include <sstream>
-#include <sys/stat.h>
-#include <fstream>
 
 bool	Server::areHeadersValid(ClientPtr &client)
 {

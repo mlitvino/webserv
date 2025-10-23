@@ -10,6 +10,9 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+#include "webserv.hpp"
+#include "utils.hpp"
+
 #define PYTHON_PATH "/usr/bin/python3"
 #define PYTHON_EXT ".py"
 #define PHP_PATH "/usr/bin/php-cgi"

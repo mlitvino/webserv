@@ -1,7 +1,12 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
 
+#include <dirent.h>
+#include <sys/stat.h>
 #include <netdb.h>
 
 #include "webserv.hpp"

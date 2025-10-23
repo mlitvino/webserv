@@ -4,6 +4,10 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <sstream>
+#include <fstream>
+
+#include <sys/stat.h>
 
 #include "webserv.hpp"
 #include "HttpException.hpp"

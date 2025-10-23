@@ -5,20 +5,17 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::cout << "Validating headers..." << std::endl;
 	const Location	*matchedLocation = findLocationForPath(client->getHttpPath());
 
-	if (client->getHttpVersion() != HTTP_VERSION)
-		THROW_HTTP(505, "Not supported HTTP vesion");
-
 	if (!matchedLocation)
 		THROW_HTTP(400, "No matched location");
+
+	if (client->getHttpVersion() != HTTP_VERSION)
+		THROW_HTTP(505, "HTTP Version Not Supported");
 
 	if (isRedirected(client, matchedLocation))
 	{
 		client->getIpPort().generateResponse(client, "", client->getRedirectCode());
 		return true;
 	}
-
-	if (client->getHttpPath().find("%") != std::string::npos)
-		THROW_HTTP(501, "Unsupported encoded request");
 
 	if (client->getContentLen() > 0 && client->isChunked())
 		THROW_HTTP(415, "Chunked body and content-length are presented");
@@ -48,6 +45,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::string	path = findFile(client, client->getHttpPath(), matchedLocation);
 	client->setResolvedPath(path);
 
+	std::cout << "CONETENT TYPE: " <<  client->getContentType() << std::endl;
 	std::cout << "DEBUG: type file: " << (client->getFileType() == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
 
 	if (client->getResolvedPath().empty())

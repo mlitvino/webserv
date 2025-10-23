@@ -23,7 +23,7 @@ struct Location {
 	std::string root;
 	std::string uploadDir;
 	std::string index;
-	int allowedMethods = static_cast<int>(HttpMethod::GET);
+	int allowedMethods = 0;
 	bool autoindex = false;
 	int redirectCode = 0;
 	std::string redirectUrl;

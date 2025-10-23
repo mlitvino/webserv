@@ -20,6 +20,7 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo **_servInfo)
 
 	int opt = 1;
 	utils::makeFdNoninheritable(_sockFd);
+	utils::makeFdNonBlocking(_sockFd);
 	err = setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if (err == -1)
 		THROW_ERRNO("setsockopt(SO_REUSEADDR)");
@@ -61,7 +62,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int eventFd)
 {
 	if (eventFd == getSockFd() && ev.events & EPOLLIN)
 	{
-			acceptConnection();
+		acceptConnection();
 	}
 	else if (ev.events & EPOLLIN)
 	{
@@ -169,7 +170,15 @@ void	IpPort::parseHeaders(ClientPtr &client)
 		}
 		else if (name == "Content-Length")
 		{
-			client->setContentLen(std::stoul(value));
+			try {
+				auto temp = std::stoll(value);
+				if (temp < 0)
+					THROW_HTTP(400, "Invalid body size");
+				client->setContentLen(temp);
+			}
+			catch(std::exception& e) {
+				THROW_HTTP(400, "Invalid body size");
+			}
 		}
 		else if (name == "Content-Type")
 		{

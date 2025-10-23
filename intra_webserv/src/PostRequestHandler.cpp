@@ -301,8 +301,8 @@ void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status
 
 	if (!_bodyBuffer.empty())
 	{
-		size_t	len = write(client->getFileFd(), _bodyBuffer.data(), _bodyBuffer.size());
-		if (len < 0 || len != _bodyBuffer.size())
+		long long	len = write(client->getFileFd(), _bodyBuffer.data(), _bodyBuffer.size());
+		if (len < 0 || len != static_cast<long long>(_bodyBuffer.size()))
 			THROW_HTTP(500, "Failed writing to CGI temp body file");
 		int tempSize = client->getFileSize() + len;
 		client->setFileSize(tempSize);

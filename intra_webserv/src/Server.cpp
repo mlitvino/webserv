@@ -19,9 +19,6 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (client->getContentLen() > 0 && client->isChunked())
 		THROW_HTTP(415, "Chunked body and content-length are presented");
 
-	if (client->getContentLen()< 0)
-		THROW_HTTP(400, "Invalid content-length");
-
 	if (!isMethodAllowed(client, matchedLocation))
 		THROW_HTTP(405, "Method not allowed");
 
@@ -102,9 +99,7 @@ const Location* Server::findLocationForPath(std::string& path)
 std::string	Server::findFile(ClientPtr &client, const std::string& path, const Location* matched)
 {
 	std::string	docRoot = matched->root;
-	if (docRoot.empty())
-		docRoot = "web/www";
-	while (!docRoot.empty() && (docRoot.back() == '/' || docRoot.back() == '\\'))
+	while (docRoot.back() == '/' || docRoot.back() == '\\')
 		docRoot.pop_back();
 
 	std::string suffix = path.substr(matched->path.size());

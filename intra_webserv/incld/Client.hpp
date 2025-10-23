@@ -57,7 +57,7 @@ class Client : public IEpollFdOwner
 		std::string			_httpPath;
 		std::string			_query;
 		std::string			_httpVersion;
-		size_t				_contentLen;
+		long				_contentLen;
 		bool				_chunked;
 		bool				_keepAlive;
 		std::string			_hostHeader;

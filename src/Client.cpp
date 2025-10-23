@@ -104,7 +104,7 @@ void	Client::openFile(std::string &filePath)
 	_fileFd = open(filePath.c_str(), O_RDWR | O_NONBLOCK, 667);
 	if (_fileFd < 0)
 		return ;
-
+	utils::makeFdNoninheritable(_fileFd);
 	err = fstat(_fileFd, &fileInfo);
 	if (err == -1)
 	{

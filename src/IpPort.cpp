@@ -19,7 +19,7 @@ void	IpPort::OpenSocket(addrinfo &hints, addrinfo *_servInfo)
 		THROW_ERRNO("socket");
 
 	int opt = 1;
-
+	utils::makeFdNoninheritable(_sockFd);
 	err = setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if (err == -1)
 		THROW_ERRNO("setsockopt(SO_REUSEADDR)");
@@ -446,6 +446,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 		clientFd = accept(_sockFd, (sockaddr *)&clientAddr, &clientAddrLen);
 		if (clientFd == -1)
 			THROW_ERRNO("accept");
+		utils::makeFdNoninheritable(clientFd);
 		utils::makeFdNonBlocking(clientFd);
 		ClientPtr	newClient = std::make_shared<Client>(clientAddr, clientAddrLen, clientFd, *this);
 		_clientsMap.emplace(clientFd, newClient);

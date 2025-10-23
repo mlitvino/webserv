@@ -18,6 +18,15 @@ inline void	makeFdNonBlocking(int fd)
 		THROW_ERRNO("fcntl(F_SETFL)");
 }
 
+inline void	makeFdNoninheritable(int fd)
+{
+	int	flags = fcntl(fd, F_GETFD, 0);
+	if (flags == -1)
+		THROW_ERRNO("fcntl(F_GETFD)");
+	if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
+		THROW_ERRNO("fcntl(F_SETFD)");
+}
+
 inline void	changeEpollHandler(FdEpollOwnerMap &map, int fd, IEpollFdOwner *newHandler)
 {
 	auto elem = map.find(fd);

@@ -35,14 +35,7 @@ void	Program::initSockets()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-
-	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGPIPE, &sa, NULL);
-
-
+	signal(SIGPIPE, SIG_IGN);
 	_epollFd = epoll_create(DEFAULT_EPOLL_SIZE);
 	if (_epollFd == -1)
 		THROW_ERRNO("epoll_create");

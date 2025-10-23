@@ -249,7 +249,7 @@ void	IpPort::handleDeleteRequest(ClientPtr &client)
 	}
 	else
 	{
-		THROW_HTTP(505, "Failed to delete file");
+		THROW_HTTP(500, "Failed to delete file");
 	}
 }
 

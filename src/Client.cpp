@@ -159,11 +159,11 @@ void	Client::handleCgiStdoutEvent()
 	std::cout << "Client: cgi stdout" << std::endl;
 	char	buf[IO_BUFFER_SIZE];
 
-	ssize_t n = read(_cgi.getStdoutFd(), buf, sizeof(buf));
-	if (n > 0)
+	int readBytes = read(_cgi.getStdoutFd(), buf, sizeof(buf));
+	if (readBytes > 0)
 	{
-		std::cout << "Client Cgi   Out, n>0" << std::endl;
-		_cgiBuffer.append(buf, static_cast<size_t>(n));
+		std::cout << "Client Cgi   Out, readBytes>0" << std::endl;
+		_cgiBuffer.append(buf, readBytes);
 		_lastActivity = g_current_time;
 	}
 	else
@@ -171,9 +171,9 @@ void	Client::handleCgiStdoutEvent()
 		epoll_ctl(_ipPort.getEpollFd(), EPOLL_CTL_DEL, _cgi.getStdoutFd(), 0);
 		close(_cgi.getStdoutFd());
 		_handlersMap.erase(_cgi.getStdoutFd());
-		if (n == 0)
+		if (readBytes == 0)
 		{
-			std::cout << "Client Cgi   Out, n=0" << std::endl;
+			std::cout << "Client Cgi   Out, readBytes=0" << std::endl;
 			int status = _cgi.reapChild();
 			if (status != 0)
 			{
@@ -197,19 +197,19 @@ void	Client::handleCgiStdinEvent()
 	std::cout << "Client: cgi stdin" << std::endl;
 	char buf[IO_BUFFER_SIZE];
 
-	ssize_t	n = read(_fileFd, buf, sizeof(buf));
-	if (n > 0)
+	int	readBytes = read(_fileFd, buf, sizeof(buf));
+	if (readBytes > 0)
 	{
-		std::cout << "Client Cgi   In, n>0" << std::endl;
-		ssize_t	wr = write(_cgi.getStdinFd(), buf, static_cast<size_t>(n));
-		if (wr == -1)
+		std::cout << "Client Cgi   In, readBytes>0" << std::endl;
+		int	wroteBytes = write(_cgi.getStdinFd(), buf, readBytes);
+		if (wroteBytes == -1)
 		{
 			THROW_HTTP(500, "write failed in CGI");
 		}
-		else if (wr < n)
+		else if (wroteBytes < readBytes)
 		{
-			std::cout << "Client Cgi   In, n<0" << std::endl;
-			lseek(_fileFd, static_cast<off_t>(wr - n), SEEK_CUR);
+			std::cout << "Client Cgi   In, readBytes<0" << std::endl;
+			lseek(_fileFd, static_cast<off_t>(wroteBytes - readBytes), SEEK_CUR);
 			return;
 		}
 		_lastActivity = g_current_time;
@@ -219,9 +219,9 @@ void	Client::handleCgiStdinEvent()
 		epoll_ctl(_ipPort.getEpollFd(), EPOLL_CTL_DEL, _cgi.getStdinFd(), 0);
 		close(_cgi.getStdinFd());
 		_handlersMap.erase(_cgi.getStdinFd());
-		if (n == 0)
+		if (readBytes == 0)
 		{
-			std::cout << "Client Cgi   In, n=0" << std::endl;
+			std::cout << "Client Cgi   In, readBytes=0" << std::endl;
 			closeFile();
 			_state = ClientState::READING_CGI_OUTPUT;
 			return;

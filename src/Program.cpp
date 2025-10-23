@@ -105,7 +105,7 @@ void	Program::checkTimeOut()
 		{
 			int clientFd = fdClient.first;
 			const ClientPtr &client = fdClient.second;
-			auto timeDiff = g_current_time - client->_lastActivity;
+			auto timeDiff = g_current_time - client->getLastActivity();
 			auto notActiveTime = std::chrono::duration_cast<std::chrono::seconds>(timeDiff).count();
 			if (notActiveTime >= TIMEOUT_SECONDS)
 				toClose.push_back(clientFd);

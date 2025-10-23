@@ -385,10 +385,8 @@ IpPort&				Client::getIpPort() { return _ipPort; }
 
 // Constructors + Destructor
 
-Client::Client(sockaddr_storage clientAddr, socklen_t	clientAddrLen, int	clientFd, IpPort &owner)
+Client::Client(int clientFd, IpPort &owner)
 	: _clientFd{clientFd}
-	, _clientAddr{clientAddr}
-	, _clientAddrLen{clientAddrLen}
 	, _lastActivity{g_current_time}
 	, _buffer()
 	, _responseOffset{0}

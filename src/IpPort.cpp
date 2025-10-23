@@ -72,13 +72,13 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 		{
 			try
 			{
-				if (client->_state == ClientState::READING_REQUEST)
+				if (client->getState() == ClientState::READING_REQUEST)
 				{
 					if (!client->readRequest())
 						return closeConnection(eventFd);
 					parseRequest(ev, epollFd, eventFd);
 				}
-				else if (client->_state == ClientState::GETTING_BODY)
+				else if (client->getState() == ClientState::GETTING_BODY)
 				{
 					std::cout << "Continuing to read POST body..." << std::endl;
 					if (!client->readRequest())
@@ -94,7 +94,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			catch (HttpException &e)
 			{
 				client->resetRequestData();
-				client->_buffer.clear();
+				client->getBuffer().clear();
 				std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
 				generateResponse(client, "", e.getStatusCode());
 			}
@@ -116,14 +116,14 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
 
 	std::cout << "---------" << std::endl;
-	//std::cout << "DEBUG: Buffer content: " << client->_buffer << std::endl;
+	//std::cout << "DEBUG: Buffer content: " << client->getBuffer() << std::endl;
 	parseHeaders(client);
 	std::cout << "Method: " << client->_httpMethod << ", Path: " << client->_httpPath << ", Version: " << client->_httpVersion << std::endl;
 	assignServerToClient(client);
 
-	client->_ownerServer->areHeadersValid(client);
+	client->getOwnerServer()->areHeadersValid(client);
 
-	if (client->_state == ClientState::SENDING_RESPONSE)
+	if (client->getState() == ClientState::SENDING_RESPONSE)
 		return;
 
 	if (client->_httpMethod == "GET")
@@ -142,12 +142,12 @@ void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
 
 void	IpPort::parseHeaders(ClientPtr &client)
 {
-	size_t	headersEnd = client->_buffer.find("\r\n\r\n");
+	size_t	headersEnd = client->getBuffer().find("\r\n\r\n");
 	if (headersEnd == std::string::npos)
 		return;
 
 	client->resetRequestData();
-	std::string			headers = client->_buffer.substr(0, headersEnd);
+	std::string			headers = client->getBuffer().substr(0, headersEnd);
 	std::istringstream	iss(headers);
 	std::string			line;
 
@@ -211,7 +211,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 		}
 	}
 
-	client->_buffer.erase(0, headersEnd + 4);
+	client->getBuffer().erase(0, headersEnd + 4);
 }
 
 void	IpPort::parseQuery(ClientPtr &client, const std::string &pathAndQuery)
@@ -282,7 +282,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	statusText = getStatusText(statusCode);
 
 	if (statusCode >= 400)
-		filePath = client->_ownerServer->getCustomErrorPage(statusCode);
+		filePath = client->getOwnerServer()->getCustomErrorPage(statusCode);
 
 	std::string	listingBuffer;
 	size_t		contentLentgh = 0;
@@ -316,12 +316,12 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	if (!listingBuffer.empty())
 		response += listingBuffer;
 
-	client->_state = ClientState::SENDING_RESPONSE;
+	client->setState(ClientState::SENDING_RESPONSE);
 	utils::changeEpollHandler(_handlersMap, client->getFd(), client.get());
-	client->_responseBuffer = std::move(response);
+	client->setResponseBuffer(std::move(response));
 
-	std::cout << "DEBUG: Response buffer size after generation: " << client->_responseBuffer.size() << std::endl;
-	std::cout << "DEBUG: Response buffer: " << client->_responseBuffer << std::endl;
+	std::cout << "DEBUG: Response buffer size after generation: " << client->getResponseBuffer().size() << std::endl;
+	std::cout << "DEBUG: Response buffer: " << client->getResponseBuffer() << std::endl;
 }
 
 std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode)
@@ -371,7 +371,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 
 void	IpPort::assignServerToClient(ClientPtr &client)
 {
-	client->_ownerServer = _servers.front();
+	client->setOwnerServer(_servers.front());
 
 	std::string hostValue = client->_hostHeader;
 	if (!hostValue.empty())
@@ -384,7 +384,7 @@ void	IpPort::assignServerToClient(ClientPtr &client)
 		{
 			if (server->getServerName() == hostValue)
 			{
-				client->_ownerServer = server;
+				client->setOwnerServer(server);
 				return ;
 			}
 		}
@@ -443,7 +443,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 			THROW_ERRNO("accept");
 		utils::makeFdNoninheritable(clientFd);
 		utils::makeFdNonBlocking(clientFd);
-		ClientPtr	newClient = std::make_shared<Client>(clientAddr, clientAddrLen, clientFd, *this);
+		ClientPtr	newClient = std::make_shared<Client>(clientFd, *this);
 		_clientsMap.emplace(clientFd, newClient);
 		_handlersMap.emplace(clientFd, this);
 		newEv.events = EPOLLIN | EPOLLOUT;

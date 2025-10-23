@@ -7,7 +7,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	if (!_bodyProcessingInitialized)
 	{
 		_bodyProcessingInitialized = true;
-		client->_state = ClientState::GETTING_BODY;
+		client->setState(ClientState::GETTING_BODY);
 		if (client->_chunked)
 		{
 			_readingChunkSize = true;
@@ -45,7 +45,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 	}
 	resetBodyState();
 	std::cout << "DEBUG: File uploaded successfully to: " << client->_resolvedPath + _uploadFilename << std::endl;
-	std::string	addrPort = client->_ipPort.getAddrPort();
+	std::string	addrPort = client->getIpPort().getAddrPort();
 	std::string	port = addrPort.substr(addrPort.find(":") + 1);
 	client->_redirectedUrl = LOCALHOST_URL + port + "/" + client->_httpPath + ".html";
 	_ipPort.generateResponse(client, "", 303);
@@ -68,15 +68,15 @@ BodyReadStatus	PostRequestHandler::getContentLengthBody(ClientPtr &client)
 	if (_bodyBytesExpected == 0)
 		return BodyReadStatus::COMPLETE;
 
-	while (!client->_buffer.empty() && _bodyBytesReceived < _bodyBytesExpected)
+	while (!client->getBuffer().empty() && _bodyBytesReceived < _bodyBytesExpected)
 	{
 		size_t	remaining = _bodyBytesExpected - _bodyBytesReceived;
-		size_t	toCopy = std::min(remaining, client->_buffer.size());
-		size_t	serverMax = client->_ownerServer->getClientBodySize();
+		size_t	toCopy = std::min(remaining, client->getBuffer().size());
+		size_t	serverMax = client->getOwnerServer()->getClientBodySize();
 		if (_bodyBytesReceived + toCopy > serverMax)
 			THROW_HTTP(413, "Content too large");
-		_bodyBuffer.append(client->_buffer, 0, toCopy);
-		client->_buffer.erase(0, toCopy);
+		_bodyBuffer.append(client->getBuffer(), 0, toCopy);
+		client->getBuffer().erase(0, toCopy);
 		_bodyBytesReceived += toCopy;
 	}
 
@@ -92,15 +92,15 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 	{
 		if (_readingChunkSize)
 		{
-			size_t lineEnd = client->_buffer.find("\r\n");
+			size_t lineEnd = client->getBuffer().find("\r\n");
 			if (lineEnd == std::string::npos)
 			{
-				if (client->_buffer.size() > MAX_CHUNK_SIZE)
+				if (client->getBuffer().size() > MAX_CHUNK_SIZE)
 					THROW_HTTP(413, "Content too large");
 				return BodyReadStatus::NEED_MORE;
 			}
-			std::string sizeLine = client->_buffer.substr(0, lineEnd);
-			client->_buffer.erase(0, lineEnd + 2);
+			std::string sizeLine = client->getBuffer().substr(0, lineEnd);
+			client->getBuffer().erase(0, lineEnd + 2);
 			if (sizeLine.empty())
 				THROW_HTTP(400, "Chunk size line is empty");
 			unsigned long chunkSize = 0;
@@ -108,7 +108,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 			iss >> std::hex >> chunkSize;
 			if (iss.fail())
 				THROW_HTTP(400, "Bad request");
-			size_t	serverMax = client->_ownerServer->getClientBodySize();
+			size_t	serverMax = client->getOwnerServer()->getClientBodySize();
 			if (chunkSize > MAX_CHUNK_SIZE || _bodyBytesReceived + chunkSize > serverMax)
 				THROW_HTTP(413, "Content too large");
 			_currentChunkSize = static_cast<size_t>(chunkSize);
@@ -121,21 +121,21 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 
 		if (_parsingChunkTrailers)
 		{
-			if (client->_buffer.size() >= 2 && client->_buffer.substr(0, 2) == "\r\n")
+			if (client->getBuffer().size() >= 2 && client->getBuffer().substr(0, 2) == "\r\n")
 			{
-				client->_buffer.erase(0, 2);
+				client->getBuffer().erase(0, 2);
 				_chunkedFinished = true;
 				_parsingChunkTrailers = false;
 				return BodyReadStatus::COMPLETE;
 			}
-			size_t trailerEnd = client->_buffer.find("\r\n\r\n");
+			size_t trailerEnd = client->getBuffer().find("\r\n\r\n");
 			if (trailerEnd == std::string::npos)
 			{
-				if (client->_buffer.size() > MAX_CHUNK_SIZE)
+				if (client->getBuffer().size() > MAX_CHUNK_SIZE)
 					THROW_HTTP(413, "Content too large");
 				return BodyReadStatus::NEED_MORE;
 			}
-			client->_buffer.erase(0, trailerEnd + 4);
+			client->getBuffer().erase(0, trailerEnd + 4);
 			_chunkedFinished = true;
 			_parsingChunkTrailers = false;
 			return BodyReadStatus::COMPLETE;
@@ -143,23 +143,23 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 
 		if (_currentChunkSize > 0)
 		{
-			if (client->_buffer.empty())
+			if (client->getBuffer().empty())
 				return BodyReadStatus::NEED_MORE;
 			size_t remaining = _currentChunkSize - _currentChunkRead;
-			size_t toCopy = std::min(remaining, client->_buffer.size());
-			_bodyBuffer.append(client->_buffer, 0, toCopy);
-			client->_buffer.erase(0, toCopy);
+			size_t toCopy = std::min(remaining, client->getBuffer().size());
+			_bodyBuffer.append(client->getBuffer(), 0, toCopy);
+			client->getBuffer().erase(0, toCopy);
 			_currentChunkRead += toCopy;
 			_bodyBytesReceived += toCopy;
 			if (_currentChunkRead < _currentChunkSize)
 				return BodyReadStatus::NEED_MORE;
 		}
 
-		if (client->_buffer.size() < 2)
+		if (client->getBuffer().size() < 2)
 			return BodyReadStatus::NEED_MORE;
-		if (client->_buffer[0] != '\r' || client->_buffer[1] != '\n')
+		if (client->getBuffer()[0] != '\r' || client->getBuffer()[1] != '\n')
 			THROW_HTTP(400, "Bad request");
-		client->_buffer.erase(0, 2);
+		client->getBuffer().erase(0, 2);
 
 		if (_parsingChunkTrailers)
 			continue;
@@ -337,7 +337,7 @@ void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status
 
 	if (!client->_cgi.init())
 		THROW_HTTP(500, "Failed to start CGI process");
-	client->_state = ClientState::WRITING_CGI_INPUT;
+	client->setState(ClientState::WRITING_CGI_INPUT);
 }
 
 void	PostRequestHandler::resetBodyState()

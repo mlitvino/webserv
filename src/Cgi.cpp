@@ -92,23 +92,23 @@ bool	Cgi::registerWithEpoll()
 	epoll_event evIn = {0};
 	evIn.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evIn.data.fd = _stdoutFd;
-	if (epoll_ctl(_client._ipPort.getEpollFd(), EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
+	if (epoll_ctl(_client.getIpPort().getEpollFd(), EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
 	{
 		cleanupCgiFds();
 		return false;
 	}
-	_client._handlersMap.emplace(_stdoutFd, &_client);
+	_client.getHandlersMap().emplace(_stdoutFd, &_client);
 
 	epoll_event evOut = {0};
 	evOut.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evOut.data.fd = _stdinFd;
-	if (epoll_ctl(_client._ipPort.getEpollFd(), EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
+	if (epoll_ctl(_client.getIpPort().getEpollFd(), EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)
 	{
-		_client._handlersMap.erase(_stdoutFd);
+		_client.getHandlersMap().erase(_stdoutFd);
 		cleanupCgiFds();
 		return false;
 	}
-	_client._handlersMap.emplace(_stdinFd, &_client);
+	_client.getHandlersMap().emplace(_stdinFd, &_client);
 	return true;
 }
 
@@ -159,8 +159,7 @@ bool	Cgi::init()
 		_pid = -1;
 		return false;
 	}
-
-	_client._state = ClientState::READING_CGI_OUTPUT;
+	_client.setState(ClientState::READING_CGI_OUTPUT);
 	std::cout << "Client in cgi init was changed" << std::endl;
 	return true;
 }
@@ -169,6 +168,7 @@ int	Cgi::reapChild()
 {
 	int	status;
 	waitpid(_pid, &status, 0);
+	_pid = -1;
 	return status;
 }
 
@@ -180,6 +180,7 @@ int	Cgi::killChild()
 		kill(_pid, SIGKILL);
 		waitpid(_pid, &status, 0);
 	}
+	_pid = -1;
 	return status;
 }
 

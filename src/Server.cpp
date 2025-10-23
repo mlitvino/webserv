@@ -13,7 +13,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 
 	if (isRedirected(client, matchedLocation))
 	{
-		client->_ipPort.generateResponse(client, "",client->_redirectCode);
+		client->getIpPort().generateResponse(client, "",client->_redirectCode);
 		return true;
 	}
 

@@ -39,26 +39,24 @@ class Client : public IEpollFdOwner
 {
 	private:
 		int					_clientFd;
-		sockaddr_storage	_clientAddr;
-		socklen_t			_clientAddrLen;
-	public:
-		std::string			_cgiBuffer;
-		size_t				_cgiHeaderEndPos;
 
+		std::string			_cgiBuffer;
 		Time				_lastActivity;
 		std::string			_buffer;
 
 		std::string			_responseBuffer;
 		size_t				_responseOffset;
-
 		ClientState			_state;
+
 		FdClientMap			&_clientsMap;
 		FdEpollOwnerMap		&_handlersMap;
 		IpPort				&_ipPort;
 		ServerPtr			_ownerServer;
 
+	public:
 		std::string			_httpMethod;
 		std::string			_httpPath;
+
 		std::string			_query;
 		std::string			_httpVersion;
 		size_t				_contentLen;
@@ -82,7 +80,7 @@ class Client : public IEpollFdOwner
 		Cgi					_cgi;
 		PostRequestHandler	_postHandler;
 
-		Client(sockaddr_storage clientAddr, socklen_t clientAddrLen, int clientFd, IpPort &owner);
+		Client(int clientFd, IpPort &owner);
 		~Client();
 
 		int		getFd();

@@ -312,6 +312,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	if (!listingBuffer.empty())
 		response += listingBuffer;
 
+	std::cout << "HTTP code for client: " << statusCode << std::endl;
 	client->setState(ClientState::SENDING_RESPONSE);
 	utils::changeEpollHandler(_handlersMap, client->getFd(), client.get());
 	client->setResponseBuffer(std::move(response));

@@ -175,6 +175,7 @@ void ConfigParser::parseServerBlock(std::ifstream& file, ServerConfig& config) {
 			parseLocationBlock(file, location);
 			config.locations.push_back(location);
 		} else {
+			fulfillDefaultErrorPages(config);
 			parseServerDirective(line, config);
 		}
 	}
@@ -241,6 +242,15 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 			ipPortMap[addrPort]->getServers().push_back(server);
 		}
 		program.getServers().push_back(server);
+	}
+}
+
+void ConfigParser::fulfillDefaultErrorPages(ServerConfig& config) {
+	static const int codes[] = {400, 404, 405, 408, 413, 415, 500, 501, 505};
+	for (int code : codes) {
+		if (config.errorPages.find(code) == config.errorPages.end()) {
+			config.errorPages[code] = DEFAULT_ERROR_DIR + std::to_string(code) + ".html";
+		}
 	}
 }
 

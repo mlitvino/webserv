@@ -364,6 +364,9 @@ FdClientMap&		Client::getClientsMap() { return _clientsMap; }
 FdEpollOwnerMap&	Client::getHandlersMap() { return _handlersMap; }
 IpPort&				Client::getIpPort() { return _ipPort; }
 
+bool			Client::isTimeout() { return _isTimeout; }
+void			Client::setTimeout(bool Timeout) { _isTimeout = Timeout; }
+
 // Constructors + Destructor
 
 Client::Client(int clientFd, IpPort &owner)
@@ -375,6 +378,7 @@ Client::Client(int clientFd, IpPort &owner)
 	, _clientsMap(owner.getClientsMap())
 	, _handlersMap(owner.getHandlersMap())
 	, _ipPort(owner)
+	, _ownerServer(nullptr)
 	, _chunked(false)
 	, _keepAlive(false)
 	, _hostHeader()
@@ -383,6 +387,7 @@ Client::Client(int clientFd, IpPort &owner)
 	, _fileOffset{0}
 	, _cgi{*this}
 	, _postHandler{_ipPort}
+	, _isTimeout(false)
 {}
 
 Client::~Client()

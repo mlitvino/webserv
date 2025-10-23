@@ -97,16 +97,33 @@ void	Program::checkTimeOut()
 		for (auto &fdClient : _clientsMap)
 		{
 			int clientFd = fdClient.first;
-			const ClientPtr &client = fdClient.second;
+			ClientPtr &client = fdClient.second;
 			auto timeDiff = g_current_time - client->getLastActivity();
 			auto notActiveTime = std::chrono::duration_cast<std::chrono::seconds>(timeDiff).count();
 			if (notActiveTime >= TIMEOUT_SECONDS)
-				toClose.push_back(clientFd);
+			{
+				if (client->isTimeout())
+					toClose.push_back(clientFd);
+				else
+				{
+					client->setTimeout(true);
+					client->setLastActivity(g_current_time);
+				}
+			}
 		}
 		for (auto &clientFd : toClose)
 		{
-			if (_clientsMap.find(clientFd) != _clientsMap.end())
-				_addrPortVec.front()->closeConnection(clientFd);
+			auto fdClient = _clientsMap.find(clientFd);
+			if (fdClient != _clientsMap.end())
+			{
+				try {
+					fdClient->second->setKeepAlive(false);
+					fdClient->second->getIpPort().generateResponse(fdClient->second, "", 408);
+				}
+				catch (std::exception& e) {
+					_addrPortVec.front()->closeConnection(clientFd);
+				}
+			}
 		}
 	}
 	catch (std::exception &e)

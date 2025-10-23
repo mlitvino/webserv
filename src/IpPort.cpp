@@ -48,6 +48,7 @@ std::string	IpPort::getStatusText(int statusCode)
 		case 400: return "Bad Request";
 		case 404: return "Not Found";
 		case 405: return "Method Not Allowed";
+		case 408: return "Request Timeout";
 		case 413: return "Payload Too Large";
 		case 415: return "Unsupported Media Type";
 
@@ -269,7 +270,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	statusText = getStatusText(statusCode);
 
 	if (statusCode >= 400)
-		filePath = client->getOwnerServer()->getCustomErrorPage(statusCode);
+		filePath = getErrorPagePath(client, statusCode);
 
 	std::string	listingBuffer;
 	size_t		contentLentgh = 0;
@@ -340,7 +341,7 @@ std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t
 			hdrs += "Content-Type: " + contentType + "\r\n";
 
 		if (ext != "html" && ext != "htm" && ext != "cgi" && ext != "ico")
-			hdrs = "Content-Disposition: attachment; filename=\"" + fileName + "\"" + "\r\n";
+			hdrs += "Content-Disposition: attachment; filename=\"" + fileName + "\"" + "\r\n";
 	}
 	if (!client->getRedirectedUrl().empty())
 		hdrs += "Location: " + client->getRedirectedUrl() + "\r\n";
@@ -409,6 +410,16 @@ bool	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	oss << "</ul><hr><address>webserv/1.0</address></body></html>";
 	listingBuffer = oss.str();
 	return true;
+}
+
+
+std::string	IpPort::getErrorPagePath(ClientPtr &client, int statusCode)
+{
+	auto server = client->getOwnerServer();
+	if (server)
+		return server->getCustomErrorPage(statusCode);
+	else
+		return DEFAULT_ERROR_DIR + std::to_string(statusCode) + ".html";
 }
 
 void	IpPort::acceptConnection()

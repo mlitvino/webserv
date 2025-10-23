@@ -159,6 +159,7 @@ void	IpPort::parseHeaders(ClientPtr &client)
 	std::string	pathAndQuery = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
 	parseQuery(client, pathAndQuery);
 	client->_httpVersion = line.substr(secondSpace + 1);
+	if (client->_httpVersion.back() == '\r') client->_httpVersion.pop_back();
 
 	while (std::getline(iss, line))
 	{

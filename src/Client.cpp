@@ -221,7 +221,7 @@ bool	Client::parseCgiOutput()
 	std::string::size_type	pos = _cgiBuffer.find("\r\n\r\n");
 	std::string				headers;
 	std::string				body;
-	int						code;
+	int						code = 200;
 	if (pos != std::string::npos)
 	{
 		headers = _cgiBuffer.substr(0, pos);

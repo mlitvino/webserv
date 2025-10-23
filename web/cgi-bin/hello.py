@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+import sys
+
 # PHP is not installed, so this is a Python version
-print("Content-Type: text/html")
-print()  # Empty line required between headers and body
-print("""<html>
+sys.stdout.write("Content-Type: text/html\r\n")
+sys.stdout.write("\r\n")  # Empty line with CRLF required between headers and body
+sys.stdout.write("""<html>
 <head><title>Hello CGI (PHP converted to Python)</title></head>
 <body>
 <h2>Hello from Python CGI! (hello.php converted)</h2>

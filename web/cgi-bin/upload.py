@@ -41,7 +41,7 @@ print("""<!DOCTYPE html>
     <div class="container">
         <nav class="nav">
             <a href="/">Home</a>
-            <a href="/cgi-bin/demo.py">CGI Demo</a>
+            <a href="/cgi.html">CGI Demo</a>
             <a href="/cgi-bin/upload.py">File Upload</a>
             <a href="/upload.html">Upload</a>
         </nav>

@@ -3,7 +3,47 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>CGI Scripts - Webserv</title>
+	<title>CGI Sc			<div class="cgi-card">
+				<h3>🐍 Hello World (Python)</h3>
+				<p>Simple Python CGI script showing basic Python CGI functionality and HTTP response handling. (Converted from PHP due to missing PHP-CGI)</p>
+				<ul>
+					<li>Python CGI execution</li>
+					<li>Header management</li>
+					<li>HTML output generation</li>
+					<li>Python CGI interface</li>
+				</ul>
+				<div class="execution-controls">
+					<a href="/cgi-bin/hello.py" target="_blank" class="execute-btn">👋 Run Hello Script</a>
+					<form action="/cgi-bin/hello.py" method="POST" style="display:inline-block; margin-left:10px;">
+						<input type="text" name="greeting" placeholder="Custom greeting" style="padding:5px;">
+						<input type="submit" value="Custom Hello" class="execute-btn" style="padding:5px 10px;">
+					</form>
+				</div>
+			</div>
+		</div>
+
+		<div class="interactive-section">
+			<h2>🎮 Interactive CGI Testing</h2>
+			<div class="test-forms">
+				<div class="test-form">
+					<h3>GET Request Test</h3>
+					<form action="/cgi-bin/test.py" method="GET" target="_blank">
+						<label>Parameter 1: <input type="text" name="param1" placeholder="value1"></label><br>
+						<label>Parameter 2: <input type="text" name="param2" placeholder="value2"></label><br>
+						<label>User Agent: <input type="text" name="user_agent" placeholder="Custom UA"></label><br>
+						<input type="submit" value="Send GET Request" class="execute-btn">
+					</form>
+				</div>
+				<div class="test-form">
+					<h3>POST Request Test</h3>
+					<form action="/cgi-bin/demo.py" method="POST" target="_blank">
+						<label>Data Field: <input type="text" name="data" placeholder="test data"></label><br>
+						<label>Message: <textarea name="message" placeholder="Enter your message"></textarea></label><br>
+						<input type="submit" value="Send POST Request" class="execute-btn">
+					</form>
+				</div>
+			</div>
+		</div>erv</title>
 	<style>
 		body {
 			font-family: Arial, sans-serif;
@@ -80,6 +120,75 @@
 			border-radius: 5px;
 			margin: 20px 0;
 		}
+		.execute-btn {
+			background-color: #007acc;
+			color: white;
+			text-decoration: none;
+			padding: 10px 20px;
+			border-radius: 5px;
+			margin: 5px;
+			border: none;
+			cursor: pointer;
+			display: inline-block;
+			font-size: 14px;
+		}
+		.execute-btn:hover {
+			background-color: #005a8c;
+			transform: translateY(-1px);
+		}
+		.execution-controls {
+			margin-top: 15px;
+			padding: 15px;
+			background-color: #f0f8ff;
+			border-radius: 8px;
+			border: 1px solid #d0e7ff;
+		}
+		.interactive-section {
+			background-color: #e8f4fd;
+			padding: 25px;
+			border-radius: 10px;
+			margin: 30px 0;
+			border: 2px solid #007acc;
+		}
+		.test-forms {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 30px;
+			margin-top: 20px;
+		}
+		.test-form {
+			background-color: white;
+			padding: 20px;
+			border-radius: 8px;
+			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		}
+		.test-form h3 {
+			color: #007acc;
+			margin-top: 0;
+		}
+		.test-form label {
+			display: block;
+			margin: 10px 0;
+			font-weight: bold;
+			color: #333;
+		}
+		.test-form input, .test-form textarea {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			margin-top: 5px;
+			box-sizing: border-box;
+		}
+		.test-form textarea {
+			height: 60px;
+			resize: vertical;
+		}
+		@media (max-width: 768px) {
+			.test-forms {
+				grid-template-columns: 1fr;
+			}
+		}
 	</style>
 </head>
 <body>
@@ -102,31 +211,44 @@
 					<li>POST data handling</li>
 					<li>Dynamic content generation</li>
 				</ul>
-				<a href="/cgi-bin/demo.py">Run Demo Script</a>
+				<div class="execution-controls">
+					<a href="/cgi-bin/demo.py" target="_blank" class="execute-btn">🚀 Execute Demo Script</a>
+					<form action="/cgi-bin/demo.py" method="GET" style="display:inline-block; margin-left:10px;">
+						
+						
+					</form>
+				</div>
 			</div>
+
+			
 
 			<div class="cgi-card">
 				<h3>📁 File Upload Handler</h3>
-				<p>Advanced CGI script for handling file uploads with multipart/form-data parsing. Saves files to the upload directory with unique names.</p>
+				<p>Advanced CGI script for handling file uploads with multipart/form-data parsing. Upload files and manage server content.</p>
 				<ul>
 					<li>Multipart form data parsing</li>
 					<li>File upload processing</li>
 					<li>Content type detection</li>
 					<li>File preview for text files</li>
 				</ul>
-				<a href="/cgi-bin/upload.py">File Upload CGI</a>
+				<div class="execution-controls">
+					<a href="/cgi-bin/upload.py" target="_blank" class="execute-btn">📤 Open Upload Interface</a>
+					<form action="/cgi-bin/upload.py" method="POST" enctype="multipart/form-data" style="margin-top:10px;">
+						
+					</form>
+				</div>
 			</div>
 
 			<div class="cgi-card">
-				<h3>🐘 Hello World (PHP)</h3>
-				<p>Simple PHP CGI script showing basic PHP CGI functionality and HTTP response handling.</p>
+				<h3>� Hello World (Python)</h3>
+				<p>Simple Python CGI script showing basic Python CGI functionality and HTTP response handling. (Converted from PHP due to missing PHP-CGI)</p>
 				<ul>
-					<li>PHP CGI execution</li>
+					<li>Python CGI execution</li>
 					<li>Header management</li>
 					<li>HTML output generation</li>
-					<li>PHP-CGI interface</li>
+					<li>Python CGI interface</li>
 				</ul>
-				<a href="/cgi-bin/hello.php">Run Hello PHP</a>
+				<a href="/cgi-bin/hello.py">Run Hello Python</a>
 			</div>
 		</div>
 

@@ -8,8 +8,8 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::cout << "Validating headers..." << std::endl;
 	const Location	*matchedLocation = findLocationForPath(client->_httpPath);
 
-	if (client->_httpVersion != HTTP_VERSION)
-		THROW_HTTP(505, "Not supported HTTP vesion");
+	//if (client->_httpVersion != HTTP_VERSION)
+	//	THROW_HTTP(505, "Not supported HTTP vesion");
 
 	if (!matchedLocation)
 		THROW_HTTP(400, "No matched location");

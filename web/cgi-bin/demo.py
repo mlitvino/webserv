@@ -193,23 +193,7 @@ if query_string:
         </div>""")
 
 print("""
-        <div class="section">
-            <h2>🧪 Test CGI Functionality</h2>
-            <p>Test different CGI features:</p>
-
-            <h3>GET Request with Parameters</h3>
-            <form method="GET" action="/cgi-bin/demo.py">
-                <input type="text" name="_download_file" placeholder="Enter filename (from UPLOAD_DIR)" />
-                <input type="submit" value="Send GET Request" />
-            </form>
-
-            <h3>POST Request with Data</h3>
-            <form method="POST" action="/cgi-bin/demo.py">
-                <textarea name="post_data" placeholder="Enter POST data here..." rows="3" cols="50"></textarea><br>
-                <input type="text" name="name" placeholder="Your name" />
-                <input type="submit" value="Send POST Request" />
-            </form>
-        </div>
+        
 
         <div class="section">
             <h2>📋 CGI Technical Information</h2>

@@ -8,6 +8,7 @@
 #define IO_BUFFER_SIZE 1024
 #define CONTENT_TYPE_MULTIPART "multipart/form-data"
 #define CONTENT_TYPE_APP_FORM "application/x-www-form-urlencoded"
+#define LOCALHOST_URL "http://localhost:"
 
 class		Program;
 class		PostRequestHandler;

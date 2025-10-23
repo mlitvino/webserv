@@ -36,7 +36,7 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 				writeBodyPart(client);
 		}
 		else if (client->getContentType().find(CONTENT_TYPE_APP_FORM) != std::string::npos)
-			isBodyFinished = getFormPart(client);
+			THROW_HTTP(501, "No implemented for Post");
 
 		if (status == BodyReadStatus::NEED_MORE || !isBodyFinished)
 			return;
@@ -288,26 +288,6 @@ std::string	PostRequestHandler::getParam(std::string body, std::string key)
 	if (amp == std::string::npos)
 		return body.substr(pos);
 	return body.substr(pos, amp - pos);
-}
-
-bool	PostRequestHandler::getFormPart(ClientPtr &client)
-{
-	bool bodyComplete = (!client->isChunked()
-						&& _bodyBytesReceived >= _bodyBytesExpected)
-						|| (client->isChunked() && _chunkedFinished);
-	if (!bodyComplete)
-		return false;
-
-	std::string	&body = _bodyBuffer;
-	std::string	login = getParam(body, "login");
-	std::string	pass = getParam(body, "password");
-	if (!login.empty() || !pass.empty())
-	{
-		std::cout << "DEBUG: Received credentials login='" << login << "' password length=" << pass.size() << std::endl;
-		return true;
-	}
-
-	return true;
 }
 
 void	PostRequestHandler::processPostCgi(ClientPtr &client, BodyReadStatus status)

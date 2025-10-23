@@ -17,8 +17,7 @@ SRC_FILES =	main.cpp \
 
 SRCS = $(foreach file,$(SRC_FILES),$(shell find $(SRC_DIR) -name "$(file)" -type f))
 OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
-CPPFLAGS = -I$(INC_DIR) -MMD -MP -Wall -std=c++20
-# -Wall -Wextra -Werror
+CPPFLAGS = -I$(INC_DIR) -MMD -MP -Wall -std=c++20 -Wall -Wextra -Werror
 DEPS = $(OBJS:.o=.d)
 
 all: $(NAME)

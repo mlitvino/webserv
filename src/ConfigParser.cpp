@@ -72,8 +72,10 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 			if (code >= 300 && code < 400 && !url.empty()) {
 				location.redirectCode = code;
 				location.redirectUrl = url;
+				location.isRedirected = true;
 			}
 		} catch (...) {
+				throw std::runtime_error("Invalid redirection");
 		}
 	} else if (directive == "cgi") {
 		std::string token = getFirstToken(rest);

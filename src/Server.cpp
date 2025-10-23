@@ -70,8 +70,11 @@ bool	Server::isRedirected(ClientPtr &client, const Location* matchedLocation)
 	int					code = matchedLocation->redirectCode;
 	const std::string	&url = matchedLocation->redirectUrl;
 
-	if (code == 0 || url.empty())
+	if (!matchedLocation->isRedirected)
 		return false;
+
+	if (code <= 300 || code > 307 || url.empty())
+		THROW_HTTP(400, "Bad redirection");
 
 	client->setRedirectedUrl(matchedLocation->redirectUrl);
 	client->setRedirectCode(matchedLocation->redirectCode);

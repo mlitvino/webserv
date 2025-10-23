@@ -27,6 +27,7 @@ struct Location {
 	bool autoindex = false;
 	int redirectCode = 0;
 	std::string redirectUrl;
+	bool		isRedirected = false;
 	bool		isCgi = false;
 };
 

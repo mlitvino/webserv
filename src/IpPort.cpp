@@ -57,12 +57,12 @@ std::string	IpPort::getStatusText(int statusCode)
 	}
 }
 
-void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
+void	IpPort::handleEpollEvent(epoll_event &ev, int eventFd)
 {
 	if (eventFd == getSockFd())
 	{
 		std::cout << "Accepting new connection..." << std::endl;
-		acceptConnection(ev, epollFd, eventFd);
+		acceptConnection();
 		std::cout << "Connection was accepted" << std::endl;
 	}
 	else
@@ -76,7 +76,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 				{
 					if (!client->readRequest())
 						return closeConnection(eventFd);
-					parseRequest(ev, epollFd, eventFd);
+					parseRequest(client);
 				}
 				else if (client->getState() == ClientState::GETTING_BODY)
 				{
@@ -111,10 +111,8 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 	}
 }
 
-void	IpPort::parseRequest(epoll_event &ev, int epollFd, int eventFd)
+void	IpPort::parseRequest(ClientPtr &client)
 {
-	ClientPtr	client = (*_clientsMap.find(eventFd)).second;
-
 	std::cout << "---------" << std::endl;
 	//std::cout << "DEBUG: Buffer content: " << client->getBuffer() << std::endl;
 	parseHeaders(client);
@@ -309,7 +307,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	}
 
 	response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n";
-	response += formHeaders(client, filePath, contentLentgh, statusCode);
+	response += formHeaders(client, filePath, contentLentgh);
 
 	if (!listingBuffer.empty())
 		response += listingBuffer;
@@ -317,12 +315,12 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	client->setState(ClientState::SENDING_RESPONSE);
 	utils::changeEpollHandler(_handlersMap, client->getFd(), client.get());
 	client->setResponseBuffer(std::move(response));
-	
+
 	std::cout << "DEBUG: Response buffer size after generation: " << client->getResponseBuffer().size() << std::endl;
 	std::cout << "DEBUG: Response buffer: " << client->getResponseBuffer() << std::endl;
 }
 
-std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode)
+std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength)
 {
 	std::string	contentType;
 	std::string	hdrs;
@@ -426,7 +424,7 @@ bool	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 	return true;
 }
 
-void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
+void	IpPort::acceptConnection()
 {
 	int					err;
 	epoll_event			newEv;
@@ -446,7 +444,7 @@ void	IpPort::acceptConnection(epoll_event &ev, int epollFd, int eventFd)
 		_handlersMap.emplace(clientFd, this);
 		newEv.events = EPOLLIN | EPOLLOUT;
 		newEv.data.fd = clientFd;
-		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &newEv);
+		err = epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientFd, &newEv);
 		if (err)
 		{
 			closeConnection(clientFd);

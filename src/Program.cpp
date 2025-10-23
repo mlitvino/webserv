@@ -83,7 +83,7 @@ void	Program::waitEpollEvent()
 			auto	fdHandlerPair = _handlersMap.find(eventFd);
 			if (fdHandlerPair == _handlersMap.end())
 				THROW("Unknown fd in map");
-			(*fdHandlerPair).second->handleEpollEvent(_events[i], _epollFd, eventFd);
+			(*fdHandlerPair).second->handleEpollEvent(_events[i], eventFd);
 		}
 	}
 }

@@ -41,10 +41,10 @@ class PostRequestHandler
 		bool			getFormPart(ClientPtr &client);
 		std::string		getParam(std::string body, std::string key);
 
-		bool			extractFilename(ClientPtr &client, std::string &dashBoundary);
+		bool			extractFilename(std::string &dashBoundary);
 		std::string		composeUploadPath(ClientPtr &client);
 		void			writeBodyPart(ClientPtr &client);
-		void			getLastBoundary(ClientPtr &client, std::string &boundaryMarker);
+		void			getLastBoundary(std::string &boundaryMarker);
 		void			processPostCgi(ClientPtr &client, BodyReadStatus status);
 	public:
 		PostRequestHandler(IpPort &owner);

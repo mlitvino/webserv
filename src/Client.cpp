@@ -115,7 +115,7 @@ void	Client::openFile(std::string &filePath)
 	_fileOffset = 0;
 }
 
-void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
+void	Client::handleEpollEvent(epoll_event &ev, int eventFd)
 {
 	try
 	{
@@ -123,7 +123,7 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 		{
 			if (eventFd == _cgi.getStdoutFd()  && _state == ClientState::READING_CGI_OUTPUT)
 			{
-				handleCgiStdoutEvent(ev);
+				handleCgiStdoutEvent();
 				return;
 			}
 		}
@@ -135,7 +135,7 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 			}
 			else if (eventFd == _cgi.getStdinFd() && _state == ClientState::WRITING_CGI_INPUT)
 			{
-				handleCgiStdinEvent(ev);
+				handleCgiStdinEvent();
 			}
 		}
 	}
@@ -154,7 +154,7 @@ void	Client::handleEpollEvent(epoll_event &ev, int epollFd, int eventFd)
 	}
 }
 
-void	Client::handleCgiStdoutEvent(epoll_event &ev)
+void	Client::handleCgiStdoutEvent()
 {
 	std::cout << "Client: cgi stdout" << std::endl;
 	char	buf[IO_BUFFER_SIZE];
@@ -192,7 +192,7 @@ void	Client::handleCgiStdoutEvent(epoll_event &ev)
 	}
 }
 
-void	Client::handleCgiStdinEvent(epoll_event &ev)
+void	Client::handleCgiStdinEvent()
 {
 	std::cout << "Client: cgi stdin" << std::endl;
 	char buf[IO_BUFFER_SIZE];

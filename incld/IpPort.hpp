@@ -30,7 +30,7 @@ class IpPort : public IEpollFdOwner
 		int				_sockFd;
 		int				&_epollFd;
 
-		void		parseRequest(epoll_event &ev, int epollFd, int eventFd);
+		void		parseRequest(ClientPtr &client);
 		void		parseHeaders(ClientPtr &client);
 		void		parseQuery(ClientPtr &client, const std::string &pathAndQuery);
 		void		assignServerToClient(ClientPtr &client);
@@ -38,14 +38,14 @@ class IpPort : public IEpollFdOwner
 		void		handleGetRequest(ClientPtr &client);
 		void		handleDeleteRequest(ClientPtr &client);
 		bool		listDirectory(ClientPtr &client, std::string &listingBuffer);
-		std::string	formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int statusCode);
+		std::string	formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength);
 	public:
 		~IpPort();
 		IpPort(Program &program);
 
 		void			OpenSocket(addrinfo &hints, addrinfo **_servInfo);
-		void			handleEpollEvent(epoll_event &ev, int epoll_fd, int eventFd);
-		void			acceptConnection(epoll_event &ev, int epollFd, int eventFd);
+		void			handleEpollEvent(epoll_event &ev, int eventFd);
+		void			acceptConnection();
 		void			closeConnection(int &clientFd);
 		std::string		getStatusText(int statusCode);
 		void			generateResponse(ClientPtr &client, std::string path, int statusCode);

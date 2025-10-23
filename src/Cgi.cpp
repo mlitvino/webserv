@@ -89,7 +89,7 @@ void	Cgi::cleanupCgiFds()
 
 bool	Cgi::registerWithEpoll()
 {
-	epoll_event evIn = {0};
+	epoll_event evIn;
 	evIn.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evIn.data.fd = _stdoutFd;
 	if (epoll_ctl(_client.getIpPort().getEpollFd(), EPOLL_CTL_ADD, _stdoutFd, &evIn) == -1)
@@ -99,7 +99,7 @@ bool	Cgi::registerWithEpoll()
 	}
 	_client.getHandlersMap().emplace(_stdoutFd, &_client);
 
-	epoll_event evOut = {0};
+	epoll_event evOut;
 	evOut.events = EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR;
 	evOut.data.fd = _stdinFd;
 	if (epoll_ctl(_client.getIpPort().getEpollFd(), EPOLL_CTL_ADD, _stdinFd, &evOut) == -1)

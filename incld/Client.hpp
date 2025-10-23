@@ -81,7 +81,7 @@ class Client : public IEpollFdOwner
 		~Client();
 
 		int		getFd();
-		void	handleEpollEvent(epoll_event &ev, int epollFd, int eventFd);
+		void	handleEpollEvent(epoll_event &ev, int eventFd);
 
 		void	sendResponse();
 		bool	readRequest();
@@ -89,8 +89,8 @@ class Client : public IEpollFdOwner
 		void	closeFile();
 		void	openFile(std::string &filePath);
 
-		void	handleCgiStdoutEvent(epoll_event &ev);
-		void	handleCgiStdinEvent(epoll_event &ev);
+		void	handleCgiStdoutEvent();
+		void	handleCgiStdinEvent();
 		bool	parseCgiOutput();
 		void	resetRequestData();
 

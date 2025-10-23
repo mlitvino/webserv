@@ -173,7 +173,7 @@ BodyReadStatus	PostRequestHandler::getChunkedBody(ClientPtr &client)
 	return BodyReadStatus::NEED_MORE;
 }
 
-bool	PostRequestHandler::extractFilename(ClientPtr &client, std::string &dashBoundary)
+bool	PostRequestHandler::extractFilename(std::string &dashBoundary)
 {
 	size_t bpos = _bodyBuffer.find(dashBoundary);
 	if (bpos == std::string::npos)
@@ -233,7 +233,7 @@ std::string	PostRequestHandler::composeUploadPath(ClientPtr &client)
 	return client->getResolvedPath() + _uploadFilename;
 }
 
-void	PostRequestHandler::getLastBoundary(ClientPtr &client, std::string &boundaryMarker)
+void	PostRequestHandler::getLastBoundary(std::string &boundaryMarker)
 {
 	if (_bodyBuffer.compare(0, boundaryMarker.size(), boundaryMarker) != 0)
 		THROW_HTTP(400, "Body boundary missing");
@@ -250,7 +250,7 @@ bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 	std::string boundaryMarker = "\r\n" + dashBoundary;
 	if (_uploadFilename.empty())
 	{
-		extractFilename(client, dashBoundary);
+		extractFilename(dashBoundary);
 		if (_uploadFilename.empty())
 			return false;
 		if (_uploadFilename.find("#") != std::string::npos ||_uploadFilename.find(" ") != std::string::npos )
@@ -273,7 +273,7 @@ bool	PostRequestHandler::getMultiPart(ClientPtr &client)
 		_decodedBuffer.append(_bodyBuffer.data(), markerPos);
 	}
 	_bodyBuffer.erase(0, markerPos);
-	getLastBoundary(client, boundaryMarker);
+	getLastBoundary(boundaryMarker);
 	return true;
 }
 

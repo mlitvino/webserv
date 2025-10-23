@@ -52,6 +52,8 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 
 	if (directive == "root") {
 		location.root = getFirstToken(rest);
+		if (location.root.empty())
+			throw std::runtime_error("Empty root");
 	} else if (directive == "upload_dir") {
 		location.uploadDir = getFirstToken(rest);
 		if (location.uploadDir.empty())

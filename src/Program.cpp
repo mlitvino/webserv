@@ -153,6 +153,7 @@ Program::Program()
 Program::~Program()
 {
 	freeaddrinfo(_servInfo);
-	close(_epollFd);
+	if (_epollFd != -1)
+		close(_epollFd);
 }
 

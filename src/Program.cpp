@@ -43,7 +43,7 @@ void	Program::initSockets()
 	for (IpPortPtr &ipPort: _addrPortVec)
 	{
 		ipPort->OpenSocket(hints, &_servInfo);
-		ev.events = EPOLLIN;
+		ev.events = EPOLLIN | EPOLLOUT;
 		ev.data.fd = ipPort->getSockFd();
 		_handlersMap.emplace(ipPort->getSockFd(), ipPort.get());
 		err = epoll_ctl(_epollFd, EPOLL_CTL_ADD, ipPort->getSockFd(), &ev);

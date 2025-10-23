@@ -2,7 +2,6 @@
 
 bool	Server::areHeadersValid(ClientPtr &client)
 {
-	std::cout << "Validating headers..." << std::endl;
 	const Location	*matchedLocation = findLocationForPath(client->getHttpPath());
 
 	if (!matchedLocation)
@@ -45,9 +44,6 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	std::string	path = findFile(client, client->getHttpPath(), matchedLocation);
 	client->setResolvedPath(path);
 
-	std::cout << "CONETENT TYPE: " <<  client->getContentType() << std::endl;
-	std::cout << "DEBUG: type file: " << (client->getFileType() == FileType::CGI_SCRIPT ? "Cgi" : "not cgi") << std::endl;
-
 	if (client->getResolvedPath().empty())
 		THROW_HTTP(404, "Not Found");
 
@@ -60,8 +56,6 @@ bool	Server::areHeadersValid(ClientPtr &client)
 			THROW_HTTP(400, "Unsupported cgi");
 		client->getCgi().setUploadDir(matchedLocation->uploadDir);
 	}
-
-	std::cout << "Validating headers is done" << std::endl;
 	return true;
 }
 
@@ -113,9 +107,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 	while (!docRoot.empty() && (docRoot.back() == '/' || docRoot.back() == '\\'))
 		docRoot.pop_back();
 
-	std::cout << "FindFile: path " << path << std::endl;
-	std::cout << "FindFile: matched path " << matched->path << std::endl;
-
 	std::string suffix = path.substr(matched->path.size());
 	while (!suffix.empty() && (suffix.front() == '/' || suffix.front() == '\\'))
 		suffix.erase(0, 1);
@@ -123,8 +114,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 	std::string fsPath = docRoot;
 	if (!suffix.empty())
 		fsPath += "/" + suffix;
-
-	std::cout << "FindFile: fsPath " << fsPath << std::endl;
 
 	if (client->getHttpMethod()== "POST" && matched->isCgi == false)
 	{
@@ -206,8 +195,6 @@ bool	Server::isBodySizeValid(ClientPtr &client)
 
 bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 {
-	std::cout << "DEBUG: Using location: " << matchedLocation->path << " with allowedMethods: " << matchedLocation->allowedMethods << std::endl;
-
 	int methodFlag = 0;
 	if (client->getHttpMethod()== "GET")
 		methodFlag = static_cast<int>(HttpMethod::GET);
@@ -216,13 +203,9 @@ bool	Server::isMethodAllowed(ClientPtr &client, const Location* matchedLocation)
 	else if (client->getHttpMethod()== "DELETE")
 		methodFlag = static_cast<int>(HttpMethod::DELETE);
 	else
-	{
-		std::cout << "DEBUG: Unknown method: " << client->getHttpMethod()<< std::endl;
 		return false;
-	}
 
 	bool allowed = (matchedLocation->allowedMethods & methodFlag) != 0;
-	std::cout << "DEBUG: Method " << client->getHttpMethod()<< " (flag: " << methodFlag << ") allowed: " << (allowed ? "YES" : "NO") << std::endl;
 
 	return allowed;
 }

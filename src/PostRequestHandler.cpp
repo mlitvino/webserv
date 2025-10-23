@@ -1,9 +1,8 @@
 #include "PostRequestHandler.hpp"
 #include "IpPort.hpp"
 
-void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string &path)
+void	PostRequestHandler::handlePostRequest(ClientPtr &client)
 {
-	std::cout << "DEBUG: handlePostRequest() called with path: " << path << std::endl;
 	if (!_bodyProcessingInitialized)
 	{
 		_bodyProcessingInitialized = true;
@@ -44,7 +43,6 @@ void	PostRequestHandler::handlePostRequest(ClientPtr &client, const std::string 
 			THROW_HTTP(400, "No more content and part not finished");
 	}
 	resetBodyState();
-	std::cout << "DEBUG: File uploaded successfully to: " << client->getResolvedPath() + _uploadFilename << std::endl;
 	std::string	addrPort = client->getIpPort().getAddrPort();
 	std::string	port = addrPort.substr(addrPort.find(":") + 1);
 

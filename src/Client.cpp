@@ -13,10 +13,7 @@ bool	Client::readRequest()
 		return true;
 	}
 	else if (bytesRead == 0)
-	{
-		std::cout << "client disconnected" << std::endl;
 		return false;
-	}
 	else if (bytesRead == -1)
 	{
 		THROW_ERRNO("read");
@@ -46,15 +43,9 @@ void	Client::sendResponse()
 			_fileOffset += static_cast<size_t>(bytesSent);
 	}
 
-	std::cout << "bytes was send: " << bytesSent << std::endl;
-
 	if (_responseOffset >= _responseBuffer.size()
 		&& _fileOffset >= _fileSize)
 	{
-		std::cout << "responseSize: " << _responseBuffer.size() << std::endl;
-		std::cout << "fileSize: " << _fileSize << std::endl;
-		std::cout << "IF BUFFER EMPTY: " << (_buffer.empty() ? "YES" : "NO") << std::endl;
-		std::cout << "Sending response is done" << std::endl;
 		_fileOffset = 0;
 		_fileSize = 0;
 		_responseOffset = 0;
@@ -76,15 +67,12 @@ void	Client::sendResponse()
 	}
 	else if (bytesSent == 0)
 	{
-		std::cout << "Connection was closed in resndResponse" << std::endl;
 		_ipPort.closeConnection(_clientFd);
 	}
 	else if (bytesSent == -1)
 	{
 		THROW_ERRNO("send");
 	}
-
-	std::cout << "Sending part of response is done" << std::endl;
 }
 
 void	Client::closeFile()
@@ -143,26 +131,22 @@ void	Client::handleEpollEvent(epoll_event &ev, int eventFd)
 	{
 		resetRequestData();
 		_buffer.clear();
-		std::cout << "HttpException: " << e.what() << ", statusCode " << e.getStatusCode() << std::endl;
 		auto FdclientPtr = _ipPort.getClientsMap().find(_clientFd);
 		_ipPort.generateResponse(FdclientPtr->second, "", e.getStatusCode());
 	}
 	catch (std::exception &e)
 	{
-		std::cout << "Exception: " << e.what() << std::endl;
 		_ipPort.closeConnection(eventFd);
 	}
 }
 
 void	Client::handleCgiStdoutEvent()
 {
-	std::cout << "Client: cgi stdout" << std::endl;
 	char	buf[IO_BUFFER_SIZE];
 
 	int readBytes = read(_cgi.getStdoutFd(), buf, sizeof(buf));
 	if (readBytes > 0)
 	{
-		std::cout << "Client Cgi   Out, readBytes>0" << std::endl;
 		_cgiBuffer.append(buf, readBytes);
 		_lastActivity = g_current_time;
 	}
@@ -173,7 +157,6 @@ void	Client::handleCgiStdoutEvent()
 		_handlersMap.erase(_cgi.getStdoutFd());
 		if (readBytes == 0)
 		{
-			std::cout << "Client Cgi   Out, readBytes=0" << std::endl;
 			int status = _cgi.reapChild();
 			if (status != 0)
 			{
@@ -194,13 +177,11 @@ void	Client::handleCgiStdoutEvent()
 
 void	Client::handleCgiStdinEvent()
 {
-	std::cout << "Client: cgi stdin" << std::endl;
 	char buf[IO_BUFFER_SIZE];
 
 	int	readBytes = read(_fileFd, buf, sizeof(buf));
 	if (readBytes > 0)
 	{
-		std::cout << "Client Cgi   In, readBytes>0" << std::endl;
 		int	wroteBytes = write(_cgi.getStdinFd(), buf, readBytes);
 		if (wroteBytes == -1)
 		{
@@ -208,7 +189,6 @@ void	Client::handleCgiStdinEvent()
 		}
 		else if (wroteBytes < readBytes)
 		{
-			std::cout << "Client Cgi   In, readBytes<0" << std::endl;
 			lseek(_fileFd, static_cast<off_t>(wroteBytes - readBytes), SEEK_CUR);
 			return;
 		}
@@ -221,7 +201,6 @@ void	Client::handleCgiStdinEvent()
 		_handlersMap.erase(_cgi.getStdinFd());
 		if (readBytes == 0)
 		{
-			std::cout << "Client Cgi   In, readBytes=0" << std::endl;
 			closeFile();
 			_state = ClientState::READING_CGI_OUTPUT;
 			return;
@@ -242,6 +221,7 @@ bool	Client::parseCgiOutput()
 	std::string::size_type	pos = _cgiBuffer.find("\r\n\r\n");
 	std::string				headers;
 	std::string				body;
+	int						code;
 	if (pos != std::string::npos)
 	{
 		headers = _cgiBuffer.substr(0, pos);
@@ -264,7 +244,6 @@ bool	Client::parseCgiOutput()
 		if (line.rfind(status, 0) == 0)
 		{
 			std::string	val = line.substr(status.size());
-			int			code;
 			try {
 				code = std::stoi(val);
 			}
@@ -287,6 +266,7 @@ bool	Client::parseCgiOutput()
 	_responseOffset = 0;
 	_state = ClientState::SENDING_RESPONSE;
 	_cgiBuffer.clear();
+	std::cout << "HTTP code for client: " << code << std::endl;
 	return true;
 }
 

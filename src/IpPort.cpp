@@ -105,10 +105,7 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int eventFd)
 
 void	IpPort::parseRequest(ClientPtr &client)
 {
-	std::cout << "---------" << std::endl;
-	//std::cout << "DEBUG: Buffer content: " << client->getBuffer() << std::endl;
 	parseHeaders(client);
-	std::cout << "Method: " << client->getHttpMethod() << ", Path: " << client->getHttpPath() << ", Version: " << client->getHttpVersion() << std::endl;
 	assignServerToClient(client);
 
 	client->getOwnerServer()->areHeadersValid(client);
@@ -122,7 +119,7 @@ void	IpPort::parseRequest(ClientPtr &client)
 	}
 	else if (client->getHttpMethod() == "POST")
 	{
-		client->getPostRequestHandler().handlePostRequest(client, client->getHttpPath());
+		client->getPostRequestHandler().handlePostRequest(client);
 	}
 	else if (client->getHttpMethod() == "DELETE")
 	{
@@ -223,12 +220,9 @@ void	IpPort::parseQuery(ClientPtr &client, const std::string &pathAndQuery)
 
 void IpPort::handleGetRequest(ClientPtr &client)
 {
-	std::cout << "DEBUG: _resolvedPath returned: " << client->getResolvedPath() << std::endl;
 
 	if (client->getFileType() == FileType::CGI_SCRIPT)
 	{
-		std::cout << "Handling get cgi..." << std::endl;
-
 		if (!client->getCgi().init())
 			THROW_HTTP(500, "Failed to start CGI process");
 
@@ -239,7 +233,6 @@ void IpPort::handleGetRequest(ClientPtr &client)
 			_handlersMap.erase(cgiIn);
 			close(cgiIn);
 		}
-
 		return;
 	}
 	generateResponse(client, client->getResolvedPath(), 200);
@@ -247,11 +240,8 @@ void IpPort::handleGetRequest(ClientPtr &client)
 
 void	IpPort::handleDeleteRequest(ClientPtr &client)
 {
-	std::cout << "DEBUG: _resolvedPath: " << client->getResolvedPath() << std::endl;
-
 	if (std::remove(client->getResolvedPath().c_str()) == 0)
 	{
-		std::cout << "DEBUG: File deleted successfully, generating 303 response" << std::endl;
 		std::string dirPath = client->getHttpPath().substr(0, client->getHttpPath().find_last_of("/"));
 		std::string	port = _addrPort.substr(_addrPort.find(":") + 1);
 		client->setRedirectedUrl(LOCALHOST_URL + port + dirPath + "/");
@@ -276,7 +266,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	size_t		contentLentgh = 0;
 	if (!filePath.empty())
 	{
-		std::cout << "DEBUG: filepath name -> " << filePath << std::endl;
 		int	success = true;
 		if (client->getFileType() == FileType::DIRECTORY)
 		{
@@ -292,7 +281,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		}
 		if (!success)
 		{
-			std::cout << "DEBUG: Coudln't open filePath" << std::endl;
 			statusCode = 500;
 			statusText = "Internal Server Error";
 		}
@@ -308,9 +296,6 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 	client->setState(ClientState::SENDING_RESPONSE);
 	utils::changeEpollHandler(_handlersMap, client->getFd(), client.get());
 	client->setResponseBuffer(std::move(response));
-
-	std::cout << "DEBUG: Response buffer size after generation: " << client->getResponseBuffer().size() << std::endl;
-	std::cout << "DEBUG: Response buffer: " << client->getResponseBuffer() << std::endl;
 }
 
 std::string	IpPort::formHeaders(ClientPtr &client, std::string &filePath, size_t contentLength, int code)
@@ -419,6 +404,7 @@ bool	IpPort::listDirectory(ClientPtr &client, std::string &listingBuffer)
 
 void	IpPort::acceptConnection()
 {
+	std::cout << "Accepting new connection..." << std::endl;
 	int					err;
 	epoll_event			newEv;
 	int					clientFd;
@@ -449,19 +435,18 @@ void	IpPort::acceptConnection()
 		closeConnection(clientFd);
 		std::cerr << "Failed to accept new connection:" << e.what() << std::endl;
 	}
+	std::cout << "Connection was accepted" << std::endl;
 }
 
 void	IpPort::closeConnection(int &clientFd)
 {
 	std::cout << "Closing connection..." << std::endl;
-
 	if (clientFd != -1)
 	{
 		_handlersMap.erase(clientFd);
 		_clientsMap.erase(clientFd);
 	}
-
-	std::cout << "Closing connection is done" << std::endl;
+	std::cout << "Connection was closed" << std::endl;
 }
 
 // Getters + Setters

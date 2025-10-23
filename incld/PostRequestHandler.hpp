@@ -48,6 +48,6 @@ class PostRequestHandler
 	public:
 		PostRequestHandler(IpPort &owner);
 		~PostRequestHandler();
-		void			handlePostRequest(ClientPtr &client, const std::string &path);
+		void			handlePostRequest(ClientPtr &client);
 		void			resetBodyState();
 };

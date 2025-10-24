@@ -33,7 +33,7 @@ struct Location {
 
 struct ListenConfig {
 	std::string host = "0.0.0.0";
-	int port = 8080;
+	int port = -1;
 	std::string getAddressPort() const { return host + ":" + std::to_string(port); }
 };
 
@@ -45,7 +45,7 @@ struct ServerConfig {
 	std::vector<Location> locations;
 
 	std::string getHost() const { return listens.empty() ? "0.0.0.0" : listens[0].host; }
-	int getPort() const { return listens.empty() ? 8080 : listens[0].port; }
+	int getPort() const { return listens.empty() ? -1 : listens[0].port; }
 };
 
 class ConfigParser {

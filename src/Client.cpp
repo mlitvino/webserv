@@ -123,7 +123,12 @@ void	Client::handleEpollEvent(epoll_event &ev, int eventFd)
 		resetRequestData();
 		_buffer.clear();
 		auto FdclientPtr = _ipPort.getClientsMap().find(_clientFd);
-		_ipPort.generateResponse(FdclientPtr->second, "", e.getStatusCode());
+		try {
+			_ipPort.generateResponse(FdclientPtr->second, "", e.getStatusCode());
+		}
+		catch (std::exception &e){
+			_ipPort.closeConnection(eventFd);
+		}
 	}
 	catch (std::exception &e)
 	{

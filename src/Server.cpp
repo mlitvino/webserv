@@ -44,6 +44,9 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (client->getResolvedPath().empty())
 		THROW_HTTP(404, "Not Found");
 
+	if (client->getFileType() == FileType::DIRECTORY && client->getHttpMethod() == "DELETe")
+		THROW_HTTP(405, "DELETE not allowed for directories");
+
 	if (client->getFileType() == FileType::CGI_SCRIPT)
 	{
 		size_t		dot = client->getResolvedPath().find_last_of(".");

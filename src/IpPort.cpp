@@ -92,7 +92,12 @@ void	IpPort::handleEpollEvent(epoll_event &ev, int eventFd)
 		{
 			client->resetRequestData();
 			client->getBuffer().clear();
-			generateResponse(client, "", e.getStatusCode());
+			try {
+				generateResponse(client, "", e.getStatusCode());
+			}
+			catch (std::exception &e){
+				closeConnection(eventFd);
+			}
 		}
 		catch (ChildFailedException& e)
 		{

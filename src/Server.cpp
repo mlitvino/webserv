@@ -174,7 +174,7 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 			return candidate;
 	}
 
-	if (matched->autoindex)
+	if (matched->autoindex && client->getHttpMethod() != "DELETE")
 	{
 		client->setFileType(FileType::DIRECTORY);
 		return fsDir;

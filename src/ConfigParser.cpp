@@ -71,7 +71,7 @@ void ConfigParser::parseLocationDirective(const std::string& line, Location& loc
 
 		try {
 			int code = std::stoi(codeStr);
-			if (code >= 300 && code < 400 && !url.empty()) {
+			if (code >= 300 && code < 309 && !url.empty()) {
 				location.redirectCode = code;
 				location.redirectUrl = url;
 				location.isRedirected = true;
@@ -115,6 +115,8 @@ void ConfigParser::parseServerDirective(const std::string& line, ServerConfig& c
 		iss >> listenValue;
 		ListenConfig listen;
 
+		if (listenValue.empty())
+			throw std::runtime_error("Empty port");
 		size_t colonPos = listenValue.find(':');
 		if (colonPos != std::string::npos) {
 			listen.host = listenValue.substr(0, colonPos);
@@ -164,6 +166,8 @@ void ConfigParser::parseServerBlock(std::ifstream& file, ServerConfig& config) {
 			std::string directive;
 			iss >> directive >> location.path;
 
+			if (location.path[0] != '/')
+				throw std::runtime_error("Empty location path");
 			if (line.find('{') == std::string::npos) {
 				std::string braceLine;
 				while (std::getline(file, braceLine)) {
@@ -223,10 +227,16 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 
 		std::vector<ListenConfig> listens = config.listens;
 		if (listens.empty()) {
-			ListenConfig defaultListen;
-			defaultListen.host = "0.0.0.0";
-			defaultListen.port = 8080;
-			listens.push_back(defaultListen);
+			std::runtime_error("Empty port");
+		}
+
+		for (auto it = listens.begin(), end = listens.end(); it != end; ++it) {
+			auto &listen = *it;
+			for (auto jt = std::next(it); jt != end; ++jt) {
+				if (jt->host == listen.host && jt->port == listen.port) {
+					throw std::runtime_error("Duplicate listen entry: same port");
+				}
+			}
 		}
 
 		for (const auto& listen : listens) {
@@ -243,6 +253,8 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 		}
 		program.getServers().push_back(server);
 	}
+	if (ipPortMap.size() == 0)
+		throw std::runtime_error("IpPort not created");
 }
 
 void ConfigParser::fulfillDefaultErrorPages(ServerConfig& config) {

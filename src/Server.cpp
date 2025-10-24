@@ -5,7 +5,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	const Location	*matchedLocation = findLocationForPath(client->getHttpPath());
 
 	if (!matchedLocation)
-		THROW_HTTP(400, "No matched location");
+		THROW_HTTP(404, "No matched location");
 
 	if (client->getHttpVersion() != HTTP_VERSION)
 		THROW_HTTP(505, "HTTP Version Not Supported");
@@ -44,7 +44,7 @@ bool	Server::areHeadersValid(ClientPtr &client)
 	if (client->getResolvedPath().empty())
 		THROW_HTTP(404, "Not Found");
 
-	if (client->getFileType() == FileType::DIRECTORY && client->getHttpMethod() == "DELETe")
+	if (client->getFileType() == FileType::DIRECTORY && client->getHttpMethod() == "DELETE")
 		THROW_HTTP(405, "DELETE not allowed for directories");
 
 	if (client->getFileType() == FileType::CGI_SCRIPT)
@@ -159,10 +159,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 				token.pop_back();
 			indexFiles.push_back(token);
 		}
-	}
-	else
-	{
-		indexFiles.push_back("index.html");
 	}
 
 	std::string fsDir = fsPath.empty() ? docRoot : fsPath;

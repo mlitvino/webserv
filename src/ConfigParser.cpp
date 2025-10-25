@@ -258,7 +258,7 @@ void ConfigParser::createServersAndIpPortsFromConfig(Program &program) {
 }
 
 void ConfigParser::fulfillDefaultErrorPages(ServerConfig& config) {
-	static const int codes[] = {400, 404, 405, 408, 413, 415, 500, 501, 505};
+	static const int codes[] = {400, 403, 404, 405, 408, 413, 415, 500, 501, 505};
 	for (int code : codes) {
 		if (config.errorPages.find(code) == config.errorPages.end()) {
 			config.errorPages[code] = DEFAULT_ERROR_DIR + std::to_string(code) + ".html";

@@ -125,6 +125,8 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 	if (!suffix.empty() && path.back() != '/')
 	{
 		struct stat st;
+		if (access(fsPath.c_str(), F_OK) != 0)
+			THROW_HTTP(404, "Not Found");
 		if (stat(fsPath.c_str(), &st) == 0)
 		{
 			if (S_ISREG(st.st_mode))
@@ -132,6 +134,13 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 				if (matched->isCgi == true)
 				{
 					client->setFileType(FileType::CGI_SCRIPT);
+					if (access(fsPath.c_str(), X_OK) != 0)
+						THROW_HTTP(403, "Forbidden");
+				}
+				else if ((access(fsPath.c_str(), R_OK) != 0 && client->getHttpMethod() == "GET")
+					|| (access(fsPath.c_str(), W_OK) != 0 && client->getHttpMethod() == "POST"))
+				{
+					THROW_HTTP(405, "bidden");
 				}
 				return fsPath;
 			}
@@ -140,11 +149,6 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 				THROW_HTTP(400, "Not regular file or directory");
 				return "";
 			}
-		}
-		else
-		{
-			THROW_HTTP(404, "Not Found");
-			return "";
 		}
 	}
 
@@ -169,6 +173,11 @@ std::string	Server::findFile(ClientPtr &client, const std::string& path, const L
 	{
 		std::string candidate = fsDir + *it;
 		struct stat st;
+		if (access(candidate.c_str(), R_OK) != 0 && access(candidate.c_str(), X_OK) != 0)
+		{
+			THROW_HTTP(403, "Forbidden");
+			return "";
+		}
 		if (stat(candidate.c_str(), &st) == 0 && S_ISREG(st.st_mode))
 			return candidate;
 	}

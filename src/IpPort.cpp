@@ -46,6 +46,7 @@ std::string	IpPort::getStatusText(int statusCode)
 		case 308: return "Permanent Redirect";
 
 		case 400: return "Bad Request";
+		case 403: return "Forbidden";
 		case 404: return "Not Found";
 		case 405: return "Method Not Allowed";
 		case 408: return "Request Timeout";
@@ -289,6 +290,7 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		}
 		else
 		{
+			std::cout << filePath << std::endl;
 			client->openFile(filePath);
 			if (client->getFileFd() < 0)
 				success = false;
@@ -298,6 +300,8 @@ void	IpPort::generateResponse(ClientPtr &client, std::string filePath, int statu
 		{
 			statusCode = 500;
 			statusText = "Internal Server Error";
+			listingBuffer = "<html><body><h1>500 Internal Server Error</h1>";
+			contentLentgh = listingBuffer.size();
 		}
 	}
 

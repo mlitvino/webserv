@@ -159,7 +159,7 @@ void	Client::handleCgiStdoutEvent()
 				closeFile();
 				std::string	errorPage = _ownerServer->getCustomErrorPage(status);
 				ClientPtr	self = _clientsMap.at(_clientFd);
-				_ipPort.generateResponse(self, errorPage, status);
+				_ipPort.generateResponse(self, errorPage, 500);
 				return;
 			}
 			parseCgiOutput();
